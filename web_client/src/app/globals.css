@@ -1,0 +1,515 @@
+/**
+ * @file: globals.css
+ * @description: Global CSS styles, Tailwind configuration, HappyRobot brand color variables, and custom utility classes.
+ * Author: HappyRobot Team
+ * Created: YYYY-MM-DD
+ * Last Modified: 2025-06-17
+ *
+ * Modification History:
+ * - 2025-06-17: Updated brand name from Bizai to HappyRobot throughout.
+ * - 2025-05-21: Reviewed and confirmed brand CSS variables. Updated Inter font usage.
+ * - YYYY-MM-DD: Initial file creation & added brand variables.
+ *
+ * Dependencies:
+ * - Tailwind CSS
+ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: 'Inter', Arial, Helvetica, sans-serif;
+}
+
+/* Smooth theme transitions - only for specific properties to avoid conflicts */
+html, body {
+  @apply transition-colors duration-300;
+}
+
+/* Custom scrollbar for better dark mode experience */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-bizai-lightGray dark:bg-bizai-primary;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-bizai-mediumGray dark:bg-bizai-accent1/30 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-bizai-darkGray dark:bg-bizai-accent1/50;
+}
+
+/* Skeleton animation for loading states */
+@keyframes skeleton-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.skeleton-shimmer {
+  animation: skeleton-shimmer 2s infinite;
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%; /* Bizai Dark Text */
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%; /* Bizai Dark Text */
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%; /* Bizai Dark Text */
+
+    /* Updated primary to Bizai Primary */
+    --primary: 217 70% 20%; /* Equivalent to #0D253F (Bizai Primary) */
+    --primary-foreground: 0 0% 100%; /* White for contrast on dark blue */
+
+    /* Updated secondary to Bizai Accent1 (Teal) */
+    --secondary: 187 100% 43%; /* Equivalent to #00B8D9 (Bizai Accent1) */
+    --secondary-foreground: 217 70% 20%; /* Bizai Primary for text on teal */
+
+    --muted: 210 40% 96.1%; /* Bizai Background Neutral (Light Gray) */
+    --muted-foreground: 215.4 16.3% 46.9%; /* Bizai Medium Gray */
+
+    /* Updated accent to Bizai Accent2 (Gold/Amber) */
+    --accent: 40 100% 50%; /* Equivalent to #FFAB00 (Bizai Accent2) */
+    --accent-foreground: 217 70% 20%; /* Bizai Primary for text on gold */
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%; /* A light gray for borders */
+    --input: 214.3 31.8% 91.4%; /* Input border */
+    --ring: 187 100% 33%; /* Darker Bizai Accent1 for focus rings */
+
+    /* Blue Theme (can be kept for specific components or removed if fully replaced by Bizai) */
+    --blue-50: 210 100% 98%;
+    --blue-100: 210 100% 95%;
+    --blue-200: 210 100% 90%;
+    --blue-300: 210 100% 80%;
+    --blue-400: 210 98% 70%;
+    --blue-500: 210 98% 60%;
+    --blue-600: 210 90% 50%;
+    --blue-700: 210 90% 40%;
+    --blue-800: 210 85% 30%;
+    --blue-900: 210 80% 20%;
+
+    /* Green Theme (can be kept for specific components or removed if fully replaced by Bizai) */
+    --green-50: 150 100% 98%;
+    --green-100: 150 100% 95%;
+    --green-200: 150 100% 90%;
+    --green-300: 150 100% 80%;
+    --green-400: 150 98% 70%;
+    --green-500: 150 98% 60%;
+    --green-600: 150 90% 50%;
+    --green-700: 150 90% 40%;
+    --green-800: 150 85% 30%;
+    --green-900: 150 80% 20%;
+
+    --radius: 0.5rem;
+
+    /* Bizai Light Theme - These are the source of truth now */
+    --bizai-primary: #0D253F; /* Dark Blue */
+    --bizai-primary-rgb: 13, 37, 63;
+    --bizai-accent1: #00B8D9; /* Teal */
+    --bizai-accent1-rgb: 0, 184, 217;
+    --bizai-accent2: #FFAB00; /* Gold/Amber */
+    --bizai-accent2-rgb: 255, 171, 0;
+    --bizai-bg-light: #FFFFFF; /* White */
+    --bizai-bg-light-rgb: 255, 255, 255;
+    --bizai-bg-neutral: #F4F6F8; /* Light Gray */
+    --bizai-bg-neutral-rgb: 244, 246, 248;
+    --bizai-text-dark: #212529; /* Very Dark Gray/Almost Black */
+    --bizai-text-dark-rgb: 33, 37, 41;
+    --bizai-text-medium: #495057; /* Medium Gray */
+    --bizai-text-medium-rgb: 73, 80, 87;
+    --bizai-white: #FFFFFF;
+    --bizai-white-rgb: 255, 255, 255;
+    --bizai-lightGray: #F4F6F8; /* Same as bg-neutral */
+    --bizai-lightGray-rgb: 244, 246, 248;
+    --bizai-mediumGray: #ADB5BD; /* Added a slightly darker medium gray */
+    --bizai-mediumGray-rgb: 173, 181, 189;
+    --bizai-darkGray: #495057; /* Same as text-medium */
+    --bizai-darkGray-rgb: 73, 80, 87;
+    --bizai-teal: #00B8D9; /* Same as accent1 */
+    --bizai-teal-rgb: 0, 184, 217;
+    --bizai-primary-darker: #0A1D30; /* A darker shade of Bizai Primary for depth */
+    --bizai-primary-darker-rgb: 10, 29, 48;
+    --bizai-teal-dark: #00A0BE; /* Darker teal for hover/active states */
+    --bizai-teal-dark-rgb: 0, 160, 190;
+    --bizai-teal-light: #E0F7FA; /* Lighter teal for backgrounds/accents */
+    --bizai-teal-light-rgb: 224, 247, 250;
+    --bizai-amber: #FFAB00; /* Same as accent2 */
+    --bizai-amber-rgb: 255, 171, 0;
+  }
+
+  .dark {
+    /* Updated dark theme foreground/background */
+    --background: 217 70% 8%; /* Consistent Dark Bizai Primary */
+    --foreground: 210 40% 95%; /* Light Gray for text */
+
+    --card: 217 70% 8%; /* Same as background for consistency */
+    --card-foreground: 210 40% 95%;
+
+    --popover: 217 70% 8%;
+    --popover-foreground: 210 40% 95%;
+
+    /* Updated dark theme primary to Bizai Accent1 (Teal) */
+    --primary: 187 100% 43%; /* Bizai Accent1 (Teal) */
+    --primary-foreground: 217 70% 10%; /* Dark Bizai Primary for text on teal */
+
+    /* Updated dark theme secondary to Bizai Accent2 (Gold/Amber) */
+    --secondary: 40 100% 50%; /* Bizai Accent2 (Gold/Amber) */
+    --secondary-foreground: 217 70% 10%; /* Dark Bizai Primary for text on gold */
+
+    --muted: 217 70% 20%;
+    --muted-foreground: 210 40% 70%; /* Lighter muted text */
+
+    /* Updated dark theme accent to a lighter Bizai Teal */
+    --accent: 187 100% 53%; /* Lighter Bizai Accent1 */
+    --accent-foreground: 217 70% 10%;
+
+    --destructive: 0 70% 55%; /* Slightly less intense red */
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 217 70% 25%;
+    --input: 217 70% 25%;
+    --ring: 187 100% 53%; /* Lighter Bizai Accent1 for focus rings */
+
+    /* Blue Theme - Dark Mode (can be kept or removed) */
+    --blue-50: 210 80% 10%;
+    --blue-100: 210 80% 15%;
+    --blue-200: 210 75% 20%;
+    --blue-300: 210 70% 30%;
+    --blue-400: 210 65% 40%;
+    --blue-500: 210 60% 50%;
+    --blue-600: 210 70% 60%;
+    --blue-700: 210 80% 70%;
+    --blue-800: 210 90% 80%;
+    --blue-900: 210 100% 90%;
+
+    /* Green Theme - Dark Mode (can be kept or removed) */
+    --green-50: 150 80% 10%;
+    --green-100: 150 80% 15%;
+    --green-200: 150 75% 20%;
+    --green-300: 150 70% 30%;
+    --green-400: 150 65% 40%;
+    --green-500: 150 60% 50%;
+    --green-600: 150 70% 60%;
+    --green-700: 150 80% 70%;
+    --green-800: 150 90% 80%;
+    --green-900: 150 100% 90%;
+
+    /* Bizai Dark Theme - These are the source of truth now */
+    --bizai-primary-dark: #0D253F; /* Base dark blue, same as light's primary */
+    --bizai-primary-dark-rgb: 13, 37, 63;
+    --bizai-accent1-dark: #00B8D9; /* Teal, same as light's accent1 */
+    --bizai-accent1-dark-rgb: 0, 184, 217;
+    --bizai-accent2-dark: #FFAB00; /* Gold/Amber, same as light's accent2 */
+    --bizai-accent2-dark-rgb: 255, 171, 0;
+    --bizai-bg-dark: #0A1D30; /* Darker background for depth */
+    --bizai-bg-dark-rgb: 10, 29, 48;
+    --bizai-text-light-dark: #F4F6F8; /* Off-white for text */
+    --bizai-text-light-dark-rgb: 244, 246, 248;
+    --bizai-text-accent-dark: #57D2E0; /* Lighter teal for accents on dark bg */
+    --bizai-text-accent-dark-rgb: 87, 210, 224;
+    --bizai-primary-darker-dark: #071522; /* Even darker shade for primary elements */
+    --bizai-primary-darker-dark-rgb: 7, 21, 34;
+    --bizai-teal-dark-theme: #00A0BE; /* Teal for dark theme buttons/accents */
+    --bizai-teal-dark-theme-rgb: 0, 160, 190;
+    --bizai-amber-dark-theme: #FFA000; /* Amber for dark theme accents */
+    --bizai-amber-dark-theme-rgb: 255, 160, 0;
+  }
+}
+
+/* Animation utility classes */
+@layer utilities {
+  .animate-in {
+    animation-duration: 0.3s;
+    animation-timing-function: ease-out;
+    animation-fill-mode: both;
+  }
+
+  .animate-out {
+    animation-duration: 0.2s;
+    animation-timing-function: ease-in;
+    animation-fill-mode: both;
+  }
+
+  /* Glass effect */
+  .glass {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .dark .glass {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  /* Shimmer effect */
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.1) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+  }
+
+  .dark .shimmer {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.05) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+  }
+
+  /* Shimmer animation */
+  @keyframes shimmer {
+    0% {
+      transform: translateX(-100%) skewX(-12deg);
+    }
+    100% {
+      transform: translateX(200%) skewX(-12deg);
+    }
+  }
+
+  .animate-shimmer {
+    animation: shimmer 3s ease-in-out infinite;
+  }
+
+  /* Global Button Hover Styles for Dark Mode - Using bizai-accent2 (orange #FFAB00) */
+  /* Only target actual buttons, not elements that happen to have button-like classes */
+  .dark button:hover:not([disabled]):not([class*="ghost"]):not([class*="outline"]),
+  .dark [role="button"]:hover:not([disabled]):not([class*="ghost"]):not([class*="outline"]),
+  .dark .button:hover:not([disabled]):not([class*="ghost"]):not([class*="outline"]) {
+    background-color: var(--bizai-accent2);
+    color: var(--bizai-primary);
+    transition: all 0.3s ease;
+  }
+
+  /* Override specific Button component variant hover styles */
+  .dark button[class*="hover:bg-primary/90"]:hover,
+  .dark button[class*="dark:hover:bg-primary/90"]:hover,
+  .dark button[class*="hover:bg-bizai-teal-dark"]:hover,
+  .dark button[class*="dark:hover:bg-bizai-teal-dark"]:hover {
+    background-color: var(--bizai-accent2) !important;
+    color: var(--bizai-primary) !important;
+  }
+
+  /* Exception for ghost/outline variants in dark mode */
+  .dark button[class*="variant-ghost"]:hover,
+  .dark button[class*="variant-outline"]:hover,
+  .dark .button[class*="ghost"]:hover,
+  .dark .button[class*="outline"]:hover,
+  .dark [class*="bg-transparent"]:hover,
+  .dark button[class*="hover:bg-neutral-100"]:hover,
+  .dark button[class*="dark:hover:bg-neutral-800"]:hover {
+    background-color: rgba(var(--bizai-accent2-rgb), 0.15) !important;
+    color: var(--bizai-accent2) !important;
+    border-color: var(--bizai-accent2) !important;
+  }
+
+  /* Exception for destructive/danger buttons */
+  .dark button[class*="destructive"]:hover,
+  .dark button[class*="danger"]:hover,
+  .dark .button[class*="destructive"]:hover,
+  .dark .button[class*="danger"]:hover,
+  .dark button[class*="bg-red-"]:hover {
+    background-color: hsl(var(--destructive)) !important;
+    color: hsl(var(--destructive-foreground)) !important;
+  }
+
+  /* Exception for secondary buttons - use lighter orange */
+  .dark button[class*="secondary"]:hover,
+  .dark button[class*="hover:bg-neutral-100/80"]:hover,
+  .dark button[class*="dark:hover:bg-neutral-700"]:hover {
+    background-color: rgba(var(--bizai-accent2-rgb), 0.2) !important;
+    color: var(--bizai-accent2) !important;
+  }
+
+  /* Specific targeting for common button patterns */
+  .dark .bg-bizai-accent1:hover {
+    background-color: var(--bizai-accent2) !important;
+  }
+
+  .dark .bg-bizai-primary:hover {
+    background-color: var(--bizai-accent2) !important;
+  }
+
+  .dark .hover\\:bg-bizai-accent2:hover {
+    background-color: var(--bizai-accent2) !important;
+  }
+
+  /* Enhanced specificity for all button elements */
+  .dark button[type="button"]:hover,
+  .dark button[type="submit"]:hover,
+  .dark input[type="button"]:hover,
+  .dark input[type="submit"]:hover {
+    background-color: var(--bizai-accent2) !important;
+    color: var(--bizai-primary) !important;
+  }
+
+  /* Removed ultra-high specificity override - too aggressive and causes conflicts */
+
+  /* Blue hover backgrounds for specific interactive elements (non-buttons) */
+  /* Use more specific selectors to avoid unintended matches */
+  .dark .sidebar-item:hover:not(button):not([role="button"]),
+  .dark .menu-item:hover:not(button):not([role="button"]),
+  .dark [data-radix-collection-item]:hover:not(button):not([role="button"]),
+  .dark [cmdk-item]:hover:not(button):not([role="button"]) {
+    background-color: rgba(var(--bizai-primary-rgb), 0.15);
+    color: hsl(var(--primary));
+  }
+
+  /* Blue hover for navigation links only */
+  .dark nav a:hover:not([class*="button"]):not([role="button"]),
+  .dark .nav-link:hover:not([class*="button"]):not([role="button"]) {
+    background-color: rgba(var(--bizai-primary-rgb), 0.1);
+  }
+
+  /* No hover color for header links */
+  .dark header a:hover {
+    background-color: transparent !important;
+  }
+
+  /* ShadCN UI components that act as buttons keep orange */
+  .dark [data-radix-collection-item][role="button"]:hover,
+  .dark [data-state="open"][role="button"]:hover,
+  .dark [data-orientation][role="button"]:hover,
+  .dark [cmdk-item][role="button"]:hover {
+    background-color: rgba(var(--bizai-accent2-rgb), 0.15) !important;
+    color: var(--bizai-accent2) !important;
+  }
+}
+
+/* Animation for enhanced register page banner */
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0) translateX(0) scale(1);
+  }
+  33% {
+    transform: translateY(-20px) translateX(10px) scale(1.05);
+  }
+  66% {
+    transform: translateY(20px) translateX(-10px) scale(0.95);
+  }
+}
+
+@keyframes float-delay {
+  0%, 100% {
+    transform: translateY(0) translateX(0) scale(1);
+  }
+  33% {
+    transform: translateY(30px) translateX(-15px) scale(0.95);
+  }
+  66% {
+    transform: translateY(-30px) translateX(15px) scale(1.05);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(139, 92, 246, 0.8);
+  }
+}
+
+.animate-gradient-shift {
+  background-size: 400% 400%;
+  animation: gradient-shift 15s ease infinite;
+}
+
+.animate-float {
+  animation: float 8s ease-in-out infinite;
+}
+
+.animate-float-delay {
+  animation: float-delay 10s ease-in-out infinite;
+  animation-delay: 2s;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Shimmer animation for AI Agent button */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(200%);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+/* Allow vertical scrolling only, prevent horizontal scrolling */
+html, body {
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* Ensure next root takes full height */
+#__next {
+  height: 100%;
+}
+
+/* Force no horizontal scrolling in sidebar */
+[class*="dashboard-sidebar"],
+[class*="sidebar"] {
+  overflow-x: hidden !important;
+  max-width: 100%;
+}
+
+/* Ensure sidebar children don't cause overflow */
+[class*="sidebar"] * {
+  max-width: 100%;
+}
+
+/* Screen reader only class for accessibility */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}

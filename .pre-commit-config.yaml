@@ -1,0 +1,61 @@
+repos:
+  # Python hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ['--maxkb=10000']  # Increase size limit to 10MB
+      - id: check-toml
+      - id: check-json
+      - id: check-merge-conflict
+
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        name: isort (python)
+        files: ^happyrobot/.*\.py$
+
+  - repo: https://github.com/psf/black
+    rev: 24.1.1
+    hooks:
+      - id: black
+        language_version: python3.12
+        files: ^happyrobot/.*\.py$
+
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: v0.1.14
+    hooks:
+      - id: ruff
+        args: [--fix]
+        files: ^happyrobot/.*\.py$
+
+  - repo: local
+    hooks:
+      - id: prettier
+        name: Prettier (Format Code)
+        entry: npx prettier --write
+        language: node
+        types: [javascript, jsx, ts, tsx, css, scss, json, yaml, markdown]
+        exclude: ^\.venv/
+        stages: [pre-commit]
+
+      - id: eslint
+        name: ESLint (Lint Code)
+        entry: npx eslint --fix
+        language: node
+        types: [javascript, jsx, ts, tsx]
+        stages: [pre-commit]
+        # Pass relevant file types/patterns if needed, otherwise relies on eslint config
+        # args: ["--ext", ".ts,.tsx,.js,.jsx"]
+
+      - id: typescript-check
+        name: TypeScript (Type Check)
+        entry: npx tsc --noEmit
+        language: node
+        types: [ts, tsx]
+        pass_filenames: false # tsc checks the whole project based on tsconfig
+        stages: [pre-commit]

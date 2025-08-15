@@ -1,0 +1,83 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+.env
+.venv
+env/
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Testing
+.coverage
+coverage.xml
+.pytest_cache/
+htmlcov/
+tests/coverage/
+
+# Logs
+*.log
+logs/
+
+# Local development
+*.sqlite3
+*.db
+
+# Temporary deployment files
+tmp-deploy/
+uploads/
+databases/
+bin/
+
+# Docker
+.docker/
+
+# Poetry
+poetry.lock
+dist/
+
+# Misc
+*.pem
+*.csv
+*.ipynb
+
+*.json
+# But track Step Functions state machine definitions
+*.tar.gz
+node_modules/
+.next/
+next-env.d.ts
+
+# Database backups
+backups/
+*.sql
+*.sql.gz
+
+# Claude
+.claude/

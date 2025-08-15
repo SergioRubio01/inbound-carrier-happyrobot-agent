@@ -1,0 +1,36 @@
+# syntax=docker/dockerfile:1
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+	PYTHONUNBUFFERED=1
+
+# System deps for psycopg2
+RUN apt-get update && apt-get install -y --no-install-recommends \
+	build-essential \
+	libpq-dev \
+	curl \
+	&& rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy project files
+COPY pyproject.toml README.md /app/
+COPY src /app/src
+COPY main.py /app/
+
+# Install runtime deps
+RUN pip install --no-cache-dir \
+	"fastapi==0.116.1" \
+	"uvicorn[standard]>=0.30.6,<1.0.0" \
+	"sqlalchemy>=2.0.43,<3.0.0" \
+	"asyncpg>=0.30.0,<1.0.0" \
+	"psycopg2-binary>=2.9.10,<3.0.0" \
+	"boto3>=1.40.10,<2.0.0"
+
+EXPOSE 8000
+
+ENV HOST=0.0.0.0 \
+	PORT=8000 \
+	ENVIRONMENT=prod
+
+CMD ["python", "main.py"]

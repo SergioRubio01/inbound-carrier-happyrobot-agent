@@ -1,0 +1,31 @@
+coverage:
+  status:
+    project:
+      default:
+        target: 0%  # Default target for all branches
+      main:
+        target: 80%
+        threshold: 2%
+        paths:
+          - "src/**/*"
+        branches:
+          - main
+    patch:
+      default:
+        target: 0%  # Default target for all branches
+      main:
+        target: 80%
+        threshold: 2%
+        paths:
+          - "src/**/*"
+        branches:
+          - main
+
+comment:
+  layout: "reach, diff, flags, files"
+  behavior: default
+  require_changes: false
+
+ignore:
+  - "tests/**/*"
+  - "setup.py"

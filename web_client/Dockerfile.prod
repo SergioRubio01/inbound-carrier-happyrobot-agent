@@ -1,0 +1,66 @@
+# Multi-stage build for optimized production image
+FROM node:18-alpine AS deps
+# Install dependencies for node-gyp
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+
+# Copy dependency files
+COPY package*.json ./
+RUN npm ci --only=production
+
+# Rebuild the source code only when needed
+FROM node:18-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+
+# Accept build arguments for environment-specific configuration
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+
+# Set production environment for build
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Build the application
+RUN npm run build
+
+# Production image, copy all the files and run next
+FROM node:18-alpine AS runner
+WORKDIR /app
+
+# Install curl for health checks
+RUN apk add --no-cache curl
+
+# Set production environment
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+# Copy necessary files from builder
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+
+# Change ownership to nextjs user
+RUN chown -R nextjs:nodejs /app
+
+USER nextjs
+
+# Expose port 3000
+EXPOSE 3000
+
+# Set port environment variable
+ENV PORT=3000
+
+# Add health check for ECS
+# Using the correct health endpoint and increased start-period
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=5 \
+    CMD curl -f http://localhost:3000/api/health || curl -f http://localhost:3000/ || exit 1
+
+# Use node directly to run the standalone server
+CMD ["node", "server.js"]

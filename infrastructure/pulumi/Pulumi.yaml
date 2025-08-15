@@ -1,0 +1,6 @@
+name: happyrobot-fde
+runtime:
+  name: nodejs
+  options:
+    typescript: true
+description: HappyRobot FDE AWS infrastructure with Spanish compliance

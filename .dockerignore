@@ -1,0 +1,111 @@
+# Git files
+.git
+.gitignore
+
+# Python cache
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info
+dist
+build
+eggs
+.eggs
+parts
+bin
+var
+sdist
+wheels
+*.egg
+.pytest_cache
+.ruff_cache
+htmlcov
+.coverage
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.cursor/
+.windsurf/
+
+# Frontend
+web_client/node_modules/
+web_client/.next/
+web_client/dist/
+web_client/build/
+web_client/coverage/
+web_client/.turbo/
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Tests
+tests/
+test_*.py
+
+# Development files
+.env
+.env.*
+!.env.example
+docker-compose.override.yml
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+*.so
+*.dylib
+*.dll
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+temp/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Coverage reports
+coverage/
+.coverage.*
+
+# Jupyter Notebooks
+*.ipynb
+.ipynb_checkpoints/
+
+# Examples
+examples/
+
+# Backups
+backups/
+
+# Infrastructure
+infrastructure/
+*.tfstate
+*.tfstate.*
+
+# Debug
+debug_output/
+
+# HTML coverage reports
+htmlcov/
