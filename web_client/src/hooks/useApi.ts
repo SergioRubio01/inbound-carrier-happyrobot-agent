@@ -3,7 +3,7 @@
  * @description: Custom React hooks for handling API requests with loading, error, and success states
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import apiClient from '@/lib/apiClient';
 import { toast } from 'sonner';
 
@@ -18,7 +18,7 @@ interface UseApiOptions {
 
 // Generic hook for API calls with loading and error states
 export function useApi<T = any>(
-  apiCallFn: (apiClient: typeof apiClient) => Promise<T>,
+  apiCallFn: (apiClient: any) => Promise<T>,
   options: UseApiOptions = {}
 ) {
   const [data, setData] = useState<T | null>(null);
@@ -35,13 +35,19 @@ export function useApi<T = any>(
     deps = [],
   } = options;
 
+  // Keep latest apiCallFn in a ref to avoid re-creating execute on every render
+  const apiCallRef = useRef(apiCallFn);
+  useEffect(() => {
+    apiCallRef.current = apiCallFn;
+  }, [apiCallFn]);
+
   const execute = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     setIsSuccess(false);
 
     try {
-      const result = await apiCallFn(apiClient);
+      const result = await apiCallRef.current(apiClient);
       setData(result);
       setIsSuccess(true);
 
@@ -70,7 +76,7 @@ export function useApi<T = any>(
     } finally {
       setIsLoading(false);
     }
-  }, [apiCallFn, ...deps]);
+  }, [...deps]);
 
   return {
     data,

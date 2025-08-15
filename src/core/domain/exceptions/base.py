@@ -232,3 +232,24 @@ class BaseException(Exception):
             A dictionary representation of the exception
         """
         return {"detail": self.detail, "status_code": self.status_code}
+
+
+class NotFoundException(BaseException):
+    """Exception raised when a resource is not found"""
+
+    def __init__(self, detail: str = "Resource not found"):
+        super().__init__(detail, 404)
+
+
+class UnauthorizedException(BaseException):
+    """Exception raised when authentication fails"""
+
+    def __init__(self, detail: str = "Unauthorized"):
+        super().__init__(detail, 401)
+
+
+class ForbiddenException(BaseException):
+    """Exception raised when access is forbidden"""
+
+    def __init__(self, detail: str = "Forbidden"):
+        super().__init__(detail, 403)

@@ -1,793 +1,461 @@
-/**
- * @file: page.tsx
- * @description: Modern startup-style landing page for HappyRobot - Document Processing Platform
- * @author HappyRobot Team
- * @created 2025-06-16
- * @lastModified 2025-07-29
- */
-
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { motion, useScroll, useTransform, AnimatePresence, useInView, useSpring, useMotionValue } from 'framer-motion';
-import { useTranslation } from '@/lib/i18n/useTranslation';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
-  FileCheck,
-  Zap,
-  Shield,
-  BarChart3,
-  FileText,
-  Clock,
-  ArrowRight,
-  CheckCircle2,
-  Sparkles,
-  Globe,
-  Layers,
-  Users,
+  Phone,
   TrendingUp,
-  Award,
-  Star,
-  Code2,
-  Cloud,
-  Database,
-  Bot,
-  ChevronRight,
-  Play,
-  Building,
-  Cpu,
-  Workflow,
+  Users,
+  Package,
+  DollarSign,
+  Clock,
+  ThumbsUp,
+  ThumbsDown,
+  Minus,
+  AlertCircle,
   X,
-  PlayCircle
+  Activity
 } from 'lucide-react';
-import { LandingFooter } from '@/components/landing-footer';
-import { LandingHeader } from '@/components/landing-header';
+import { useApiGet } from '@/hooks/useApi';
 
-// Modern gradient mesh background
-function GradientMesh() {
-  return (
-    <div className="absolute inset-0 overflow-hidden">
-      <div className="absolute -inset-[10px] opacity-50">
-        <div className="absolute top-0 -left-4 w-72 h-72 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
-        <div className="absolute top-0 -right-4 w-72 h-72 bg-bizai-accent1 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
-        <div className="absolute -bottom-8 left-20 w-72 h-72 bg-bizai-accent2 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
-      </div>
-    </div>
-  );
-}
-
-// Animated particles background
-function ParticleField() {
-  // Use deterministic values based on index to avoid hydration mismatch
-  const particles = Array.from({ length: 20 }, (_, i) => {
-    // Create pseudo-random but deterministic values based on index
-    const hash = (i * 2654435761) % 2147483647;
-    const normalizedHash = hash / 2147483647;
-
-    return {
-      id: i,
-      size: (normalizedHash * 4 + 1).toFixed(2),
-      x: ((hash % 100) + (i * 5.263)) % 100,
-      y: ((hash % 87) + (i * 7.129)) % 100,
-      duration: (normalizedHash * 20 + 10).toFixed(1),
-      delay: (i * 0.3) % 5,
+// Interface for metrics data matching the API response
+interface MetricsData {
+  period: {
+    start: string;
+    end: string;
+    days: number;
+  };
+  call_metrics: {
+    total_calls: number;
+    unique_carriers: number;
+    average_duration_seconds: number;
+    peak_hour: string;
+    by_outcome: {
+      accepted: number;
+      declined: number;
+      negotiation_failed: number;
+      no_equipment: number;
+      callback_requested: number;
+      not_eligible: number;
+      wrong_lane: number;
+      information_only: number;
     };
-  });
-
-  return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {particles.map((particle) => (
-        <motion.div
-          key={particle.id}
-          className="absolute rounded-full bg-bizai-accent1/20"
-          style={{
-            width: `${particle.size}px`,
-            height: `${particle.size}px`,
-            left: `${particle.x}%`,
-            top: `${particle.y}%`,
-          }}
-          animate={{
-            y: [0, -30, 0],
-            x: [0, 10, 0],
-            opacity: [0, 1, 0],
-          }}
-          transition={{
-            duration: parseFloat(particle.duration),
-            repeat: Infinity,
-            ease: 'easeInOut',
-            delay: particle.delay,
-          }}
-        />
-      ))}
-    </div>
-  );
+  };
+  conversion_metrics: {
+    loads_booked: number;
+    booking_rate: number;
+    average_negotiation_rounds: number;
+    first_offer_acceptance_rate: number;
+    average_time_to_accept_minutes: number;
+  };
+  financial_metrics: {
+    total_booked_revenue: number;
+    average_load_value: number;
+    average_agreed_rate: number;
+    average_loadboard_rate: number;
+    average_margin_percentage: number;
+  };
+  sentiment_analysis: {
+    positive: number;
+    neutral: number;
+    negative: number;
+    average_score: number;
+    trend: string;
+  };
+  carrier_metrics: {
+    repeat_callers: number;
+    new_carriers: number;
+    top_equipment_types: Array<{ type: string; count: number }>;
+    average_mc_verification_time_ms: number;
+  };
+  performance_indicators: {
+    api_availability: number;
+    average_response_time_ms: number;
+    error_rate: number;
+    handoff_success_rate: number;
+  };
+  generated_at: string;
 }
 
-// 3D floating cards animation
-function FloatingCard({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-
-  const rotateX = useSpring(useTransform(y, [-100, 100], [10, -10]));
-  const rotateY = useSpring(useTransform(x, [-100, 100], [-10, 10]));
-
-  function handleMouse(event: React.MouseEvent<HTMLDivElement>) {
-    const rect = ref.current?.getBoundingClientRect();
-    if (!rect) return;
-
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-
-    x.set(event.clientX - centerX);
-    y.set(event.clientY - centerY);
-  }
-
-  function handleMouseLeave() {
-    x.set(0);
-    y.set(0);
-  }
+// MetricCard component
+function MetricCard({
+  title,
+  value,
+  subtitle,
+  icon: Icon,
+  trend,
+  color = "blue"
+}: {
+  title: string;
+  value: string | number;
+  subtitle?: string;
+  icon: React.ElementType;
+  trend?: { value: number; isPositive: boolean };
+  color?: "blue" | "green" | "orange" | "purple" | "red";
+}) {
+  const colorClasses = {
+    blue: "bg-blue-50 border-blue-200 text-blue-600",
+    green: "bg-green-50 border-green-200 text-green-600",
+    orange: "bg-orange-50 border-orange-200 text-orange-600",
+    purple: "bg-purple-50 border-purple-200 text-purple-600",
+    red: "bg-red-50 border-red-200 text-red-600"
+  };
 
   return (
     <motion.div
-      ref={ref}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay }}
-      onMouseMove={handleMouse}
-      onMouseLeave={handleMouseLeave}
-      style={{
-        rotateX,
-        rotateY,
-        transformStyle: 'preserve-3d',
-      }}
-      className="relative"
+      transition={{ duration: 0.5 }}
+      className={`p-6 rounded-lg border-2 ${colorClasses[color]} hover:shadow-lg transition-shadow duration-200`}
     >
-      {children}
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-gray-600">{title}</p>
+          <p className="text-3xl font-bold text-gray-900">{value}</p>
+          {subtitle && (
+            <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
+          )}
+          {trend && (
+            <div className={`flex items-center mt-2 text-sm ${trend.isPositive ? 'text-green-600' : 'text-red-600'}`}>
+              <TrendingUp className={`w-4 h-4 mr-1 ${!trend.isPositive ? 'rotate-180' : ''}`} />
+              {Math.abs(trend.value)}% from last week
+            </div>
+          )}
+        </div>
+        <div className={`p-3 rounded-full ${colorClasses[color]}`}>
+          <Icon className="w-6 h-6" />
+        </div>
+      </div>
     </motion.div>
   );
 }
 
-// Animated counter component
-function AnimatedCounter({ value, suffix = '' }: { value: number; suffix?: string }) {
-  const [count, setCount] = useState(0);
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true });
-
-  useEffect(() => {
-    if (isInView) {
-      const interval = setInterval(() => {
-        setCount(prev => {
-          if (prev >= value) {
-            clearInterval(interval);
-            return value;
-          }
-          return prev + Math.ceil(value / 50);
-        });
-      }, 30);
-      return () => clearInterval(interval);
-    }
-  }, [isInView, value]);
-
+// Call Agent Modal component
+function CallAgentModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   return (
-    <span ref={ref} className="tabular-nums">
-      {count}{suffix}
-    </span>
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+          />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          >
+            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-gray-900">Call Sales Agent</h3>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="p-1 rounded-full hover:bg-gray-100 transition-colors"
+                >
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+              <div className="space-y-4">
+                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <h4 className="font-semibold text-blue-900 mb-2">Web Call Trigger</h4>
+                  <p className="text-sm text-blue-700">
+                    To test the voice agent, click the button below to trigger a test call:
+                  </p>
+                  <button type="button" className="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    <Phone className="w-4 h-4 inline mr-2" />
+                    Start Test Call
+                  </button>
+                </div>
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <h4 className="font-semibold text-gray-900 mb-2">Call Flow</h4>
+                  <ul className="text-sm text-gray-600 space-y-1">
+                    <li>• Agent asks for MC number</li>
+                    <li>• Verifies carrier eligibility</li>
+                    <li>• Searches for matching loads</li>
+                    <li>• Handles price negotiation</li>
+                    <li>• Transfers to sales rep on agreement</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
   );
 }
 
 export default function HomePage() {
-  const router = useRouter();
-  const { t } = useTranslation();
-  const [hoveredFeature, setHoveredFeature] = useState<number | null>(null);
-  const [activeTestimonial, setActiveTestimonial] = useState(0);
-  const [showDemoModal, setShowDemoModal] = useState(false);
-  const containerRef = useRef(null);
-  const { scrollYProgress } = useScroll({ target: containerRef });
+  const [showCallModal, setShowCallModal] = useState(false);
 
-  // Parallax effects
-  const heroY = useTransform(scrollYProgress, [0, 1], [0, 200]);
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
+  // Fetch metrics data from the API
+  const { data: metrics, isLoading, error } = useApiGet<MetricsData>('/api/v1/metrics/summary');
 
-  const features = [
-    {
-      icon: FileCheck,
-      title: t('landing', 'feature1Title'),
-      description: t('landing', 'feature1Description'),
-      gradient: 'from-purple-500 to-pink-500',
-      color: 'text-purple-500',
-      bgColor: 'bg-purple-500/10'
+  // Mock data for development (fallback)
+  const mockMetrics: MetricsData = {
+    period: {
+      start: "2024-08-01T00:00:00Z",
+      end: "2024-08-15T23:59:59Z",
+      days: 15
     },
-    {
-      icon: Zap,
-      title: t('landing', 'feature2Title'),
-      description: t('landing', 'feature2Description'),
-      gradient: 'from-yellow-400 to-orange-500',
-      color: 'text-orange-500',
-      bgColor: 'bg-orange-500/10'
+    call_metrics: {
+      total_calls: 247,
+      unique_carriers: 189,
+      average_duration_seconds: 240,
+      peak_hour: "14:00",
+      by_outcome: {
+        accepted: 89,
+        declined: 67,
+        negotiation_failed: 45,
+        no_equipment: 23,
+        callback_requested: 12,
+        not_eligible: 8,
+        wrong_lane: 3,
+        information_only: 0
+      }
     },
-    {
-      icon: Shield,
-      title: t('landing', 'feature3Title'),
-      description: t('landing', 'feature3Description'),
-      gradient: 'from-green-500 to-teal-500',
-      color: 'text-green-500',
-      bgColor: 'bg-green-500/10'
+    conversion_metrics: {
+      loads_booked: 89,
+      booking_rate: 36.1,
+      average_negotiation_rounds: 1.8,
+      first_offer_acceptance_rate: 42.7,
+      average_time_to_accept_minutes: 4.2
     },
-    {
-      icon: BarChart3,
-      title: t('landing', 'feature4Title'),
-      description: t('landing', 'feature4Description'),
-      gradient: 'from-blue-500 to-cyan-500',
-      color: 'text-blue-500',
-      bgColor: 'bg-blue-500/10'
+    financial_metrics: {
+      total_booked_revenue: 241750.00,
+      average_load_value: 2715.17,
+      average_agreed_rate: 2850.50,
+      average_loadboard_rate: 2720.00,
+      average_margin_percentage: 4.8
     },
-    {
-      icon: Bot,
-      title: 'AI-Powered Intelligence',
-      description: 'Advanced machine learning for smart document understanding',
-      gradient: 'from-indigo-500 to-purple-500',
-      color: 'text-indigo-500',
-      bgColor: 'bg-indigo-500/10'
+    sentiment_analysis: {
+      positive: 145,
+      neutral: 78,
+      negative: 24,
+      average_score: 0.74,
+      trend: "IMPROVING"
     },
-    {
-      icon: Workflow,
-      title: 'Automated Workflows',
-      description: 'Build custom automation pipelines with visual workflow designer',
-      gradient: 'from-pink-500 to-rose-500',
-      color: 'text-pink-500',
-      bgColor: 'bg-pink-500/10'
-    }
-  ];
+    carrier_metrics: {
+      repeat_callers: 45,
+      new_carriers: 144,
+      top_equipment_types: [
+        { type: "53-foot van", count: 98 },
+        { type: "Reefer", count: 67 },
+        { type: "Flatbed", count: 45 }
+      ],
+      average_mc_verification_time_ms: 420
+    },
+    performance_indicators: {
+      api_availability: 99.96,
+      average_response_time_ms: 118,
+      error_rate: 0.015,
+      handoff_success_rate: 97.2
+    },
+    generated_at: new Date().toISOString()
+  };
 
-  const stats = [
-    { value: 500000, suffix: '+', label: 'Documents Processed' },
-    { value: 90, suffix: '%', label: 'Accuracy Rate' },
-    { value: 2, suffix: '+', label: 'Enterprise Clients' },
-    { value: 24, suffix: '/7', label: 'Support Available' }
-  ];
-
-  const techStack = [
-    { name: 'AWS Textract', icon: Cloud },
-    { name: 'React', icon: Code2 },
-    { name: 'TypeScript', icon: Layers },
-    { name: 'PostgreSQL', icon: Database },
-    { name: 'Machine Learning', icon: Cpu },
-  ];
-
-  const testimonials = [
-    {
-      quote: "HappyRobot transformed our document processing workflow. What used to take hours now takes minutes.",
-      author: "Sarah Chen",
-      role: "CFO at TechCorp",
-      rating: 5
-    },
-    {
-      quote: "The accuracy and speed of data extraction is incredible. It's like having a team of experts working 24/7.",
-      author: "Michael Rodriguez",
-      role: "Operations Director at FinanceHub",
-      rating: 5
-    },
-    {
-      quote: "The Excel export feature alone saved us 20 hours per week. Game-changing platform!",
-      author: "Emily Watson",
-      role: "Audit Manager at GlobalAudit",
-      rating: 5
-    }
-  ];
-
-  // Auto-rotate testimonials
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setActiveTestimonial((prev) => (prev + 1) % testimonials.length);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [testimonials.length]);
+  const displayMetrics = metrics || mockMetrics;
 
   return (
-    <div ref={containerRef} className="relative min-h-screen w-full bg-gradient-to-b from-white via-gray-50/50 to-white dark:from-bizai-primary dark:via-gray-900 dark:to-bizai-primary overflow-x-hidden">
-      {/* Modern animated background */}
-      <div className="fixed inset-0 z-0">
-        <GradientMesh />
-        <ParticleField />
-      </div>
-
-      <LandingHeader />
-
-      {/* Modern Hero Section with Parallax */}
-      <main className="relative z-10">
-        <motion.section
-          style={{ y: heroY, opacity: heroOpacity }}
-          className="relative min-h-screen flex items-center justify-center px-4 pt-24 pb-20"
-        >
-          <div className="container max-w-7xl mx-auto">
-            <div className="text-center">
-              {/* Animated badge */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6 }}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-bizai-accent1/10 to-bizai-accent2/10 border border-bizai-accent1/20 mb-8"
-              >
-                <Sparkles className="w-4 h-4 text-bizai-accent1" />
-                <span className="text-sm font-medium text-bizai-darkGray dark:text-gray-300">
-                  Powered by AI
-                </span>
-              </motion.div>
-
-              {/* Main headline with gradient text */}
-              <motion.h1
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.1 }}
-                className="text-5xl sm:text-6xl lg:text-7xl font-bold mb-6"
-              >
-                <span className="bg-gradient-to-r from-bizai-accent1 via-bizai-accent2 to-bizai-yellow dark:from-bizai-accent1 dark:via-bizai-yellow dark:to-bizai-accent2 bg-clip-text text-transparent">
-                  {t('landing', 'heroTitle')}
-                </span>
-                <br />
-                <span className="text-bizai-darkGray dark:text-white">
-                  {t('landing', 'heroSubtitle')}
-                </span>
-              </motion.h1>
-
-              {/* Animated description */}
-              <motion.p
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-                className="text-xl text-bizai-mediumGray dark:text-gray-300 mb-10 max-w-3xl mx-auto leading-relaxed"
-              >
-                {t('landing', 'heroDescription')}
-              </motion.p>
-
-              {/* CTA buttons with hover effects */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.3 }}
-                className="flex flex-col sm:flex-row gap-4 justify-center items-center"
-              >
-                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                  <Button
-                    size="lg"
-                    onClick={() => router.push('/login')}
-                    className="group relative bg-gradient-to-r from-bizai-accent1 to-bizai-accent1/90 text-white px-8 py-6 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden"
-                  >
-                    <span className="relative z-10 flex items-center">
-                      {t('landing', 'getStarted')}
-                      <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
-                    </span>
-                    <div className="absolute inset-0 bg-gradient-to-r from-bizai-accent2 to-bizai-accent1 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  </Button>
-                </motion.div>
-
-                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    onClick={() => setShowDemoModal(true)}
-                    className="group px-8 py-6 text-lg font-semibold rounded-xl border-2 border-bizai-accent1/30 hover:border-bizai-accent1 backdrop-blur-sm bg-white/50 dark:bg-black/20 transition-all duration-300"
-                  >
-                    <PlayCircle className="mr-2 h-5 w-5 group-hover:text-bizai-accent1 transition-colors" />
-                    Watch Demo
-                  </Button>
-                </motion.div>
-              </motion.div>
-
-              {/* Trust indicators */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.6, delay: 0.4 }}
-                className="mt-12 flex flex-wrap items-center justify-center gap-8 text-sm text-bizai-mediumGray"
-              >
-                <div className="flex items-center gap-2">
-                  <Shield className="w-4 h-4" />
-                  <span>SOC 2 Compliant</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>GDPR Ready</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Award className="w-4 h-4" />
-                  <span>ISO 27001 Certified</span>
-                </div>
-              </motion.div>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">HappyRobot FDE</h1>
+              <p className="text-sm text-gray-600">Inbound Carrier Sales</p>
             </div>
-          </div>
-        </motion.section>
-
-        {/* Stats Section with Animated Counters */}
-        <section className="py-20 relative">
-          <div className="container max-w-7xl mx-auto px-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-              {stats.map((stat, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                  viewport={{ once: true }}
-                  className="text-center"
-                >
-                  <div className="text-4xl lg:text-5xl font-bold bg-gradient-to-r from-bizai-accent1 to-bizai-accent2 bg-clip-text text-transparent">
-                    <AnimatedCounter value={stat.value} suffix={stat.suffix} />
-                  </div>
-                  <p className="mt-2 text-bizai-mediumGray dark:text-gray-400">{stat.label}</p>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Modern Bento Grid Features Section */}
-        <section id="features" className="py-20 relative">
-          <div className="container max-w-7xl mx-auto px-4">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              viewport={{ once: true }}
-              className="text-center mb-16"
-            >
-              <h2 className="text-4xl lg:text-5xl font-bold mb-4">
-                <span className="bg-gradient-to-r from-bizai-accent1 to-bizai-accent2 dark:from-bizai-accent1 dark:to-bizai-yellow bg-clip-text text-transparent">
-                  Powerful Features
-                </span>
-              </h2>
-              <p className="text-xl text-bizai-mediumGray dark:text-gray-300 max-w-3xl mx-auto">
-                Everything you need to automate document processing at scale
-              </p>
-            </motion.div>
-
-            {/* Bento Grid Layout */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {features.map((feature, index) => (
-                <FloatingCard key={index} delay={index * 0.1}>
-                  <motion.div
-                    whileHover={{ scale: 1.02 }}
-                    className={`relative group h-full rounded-2xl p-8 backdrop-blur-sm bg-white/80 dark:bg-gray-900/80 border border-gray-200/50 dark:border-gray-700/50 shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden ${
-                      index === 0 ? 'lg:col-span-2' : ''
-                    }`}
-                  >
-                    {/* Gradient overlay on hover */}
-                    <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-300`} />
-
-                    {/* Icon with gradient background */}
-                    <div className={`inline-flex p-3 rounded-xl ${feature.bgColor} mb-4`}>
-                      <feature.icon className={`w-8 h-8 ${feature.color}`} />
-                    </div>
-
-                    <h3 className="text-2xl font-bold mb-3 text-bizai-darkGray dark:text-white">
-                      {feature.title}
-                    </h3>
-                    <p className="text-bizai-mediumGray dark:text-gray-300 leading-relaxed">
-                      {feature.description}
-                    </p>
-
-                    {/* Animated arrow on hover */}
-                    <motion.div
-                      initial={{ opacity: 0, x: -10 }}
-                      whileHover={{ opacity: 1, x: 0 }}
-                      className="absolute bottom-8 right-8"
-                    >
-                      <ArrowRight className={`w-6 h-6 ${feature.color}`} />
-                    </motion.div>
-                  </motion.div>
-                </FloatingCard>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Tech Stack Showcase - Infinite Scroll */}
-        <section className="py-20 relative bg-gradient-to-b from-transparent via-gray-50/50 to-transparent dark:via-gray-900/50 overflow-hidden">
-          <div className="container max-w-7xl mx-auto px-4">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              viewport={{ once: true }}
-              className="text-center mb-12"
-            >
-              <h2 className="text-3xl lg:text-4xl font-bold mb-4 text-bizai-darkGray dark:text-white">
-                Built with Modern Technology
-              </h2>
-              <p className="text-lg text-bizai-mediumGray dark:text-gray-300">
-                Enterprise-grade infrastructure for reliability and scale
-              </p>
-            </motion.div>
-
-            {/* Infinite scrolling logos */}
-            <div className="relative">
-              {/* Gradient masks for fade effect */}
-              <div className="absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-white via-white/50 to-transparent dark:from-bizai-primary dark:via-bizai-primary/50 z-10" />
-              <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-white via-white/50 to-transparent dark:from-bizai-primary dark:via-bizai-primary/50 z-10" />
-
-              {/* Scrolling container */}
-              <div className="flex overflow-hidden">
-                <motion.div
-                  className="flex gap-12 items-center"
-                  animate={{
-                    x: [0, -1200],
-                  }}
-                  transition={{
-                    x: {
-                      repeat: Infinity,
-                      repeatType: "loop",
-                      duration: 20,
-                      ease: "linear",
-                    },
-                  }}
-                >
-                  {/* First set of logos */}
-                  {[...techStack, ...techStack].map((tech, index) => (
-                    <div
-                      key={`first-${index}`}
-                      className="flex flex-col items-center justify-center min-w-[120px] group"
-                    >
-                      <div className="p-4 rounded-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 shadow-md group-hover:shadow-lg transition-all duration-300 group-hover:scale-110">
-                        <tech.icon className="w-12 h-12 text-bizai-accent1 group-hover:text-bizai-accent2 transition-colors" />
-                      </div>
-                      <span className="mt-3 text-sm font-medium text-bizai-darkGray dark:text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                        {tech.name}
-                      </span>
-                    </div>
-                  ))}
-                  {/* Second set for seamless loop */}
-                  {[...techStack, ...techStack].map((tech, index) => (
-                    <div
-                      key={`second-${index}`}
-                      className="flex flex-col items-center justify-center min-w-[120px] group"
-                    >
-                      <div className="p-4 rounded-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 shadow-md group-hover:shadow-lg transition-all duration-300 group-hover:scale-110">
-                        <tech.icon className="w-12 h-12 text-bizai-accent1 group-hover:text-bizai-accent2 transition-colors" />
-                      </div>
-                      <span className="mt-3 text-sm font-medium text-bizai-darkGray dark:text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                        {tech.name}
-                      </span>
-                    </div>
-                  ))}
-                </motion.div>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center text-sm text-gray-500">
+                <Activity className="w-4 h-4 mr-1" />
+                Live Dashboard
               </div>
             </div>
           </div>
-        </section>
+        </div>
+      </header>
 
-        {/* Testimonials Carousel */}
-        <section className="py-20 relative">
-          <div className="container max-w-7xl mx-auto px-4">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              viewport={{ once: true }}
-              className="text-center mb-12"
-            >
-              <h2 className="text-3xl lg:text-4xl font-bold mb-4 text-bizai-darkGray dark:text-white">
-                Trusted by Industry Leaders
-              </h2>
-              <p className="text-lg text-bizai-mediumGray dark:text-gray-300">
-                See what our customers have to say
-              </p>
-            </motion.div>
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Hero Section */}
+        <div className="text-center mb-12">
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-4xl font-bold text-gray-900 mb-4"
+          >
+            Automated Voice Agent for Carrier Load Matching
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto"
+          >
+            Real-time dashboard showing voice agent performance, carrier interactions, and load negotiation outcomes.
+          </motion.p>
 
-            <div className="relative max-w-4xl mx-auto">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={activeTestimonial}
-                  initial={{ opacity: 0, x: 50 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -50 }}
-                  transition={{ duration: 0.5 }}
-                  className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl p-8 md:p-12 shadow-xl border border-gray-200/50 dark:border-gray-700/50"
-                >
-                  <div className="flex gap-1 mb-6">
-                    {[...Array(testimonials[activeTestimonial].rating)].map((_, i) => (
-                      <Star key={i} className="w-5 h-5 fill-bizai-accent2 text-bizai-accent2" />
-                    ))}
-                  </div>
-                  <blockquote className="text-xl md:text-2xl font-medium text-bizai-darkGray dark:text-white mb-6 leading-relaxed">
-                    "{testimonials[activeTestimonial].quote}"
-                  </blockquote>
-                  <div>
-                    <p className="font-semibold text-bizai-darkGray dark:text-white">
-                      {testimonials[activeTestimonial].author}
-                    </p>
-                    <p className="text-bizai-mediumGray dark:text-gray-400">
-                      {testimonials[activeTestimonial].role}
-                    </p>
-                  </div>
-                </motion.div>
-              </AnimatePresence>
+          {/* Call Agent Button */}
+          <motion.button
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            type="button"
+            onClick={() => setShowCallModal(true)}
+            className="inline-flex items-center px-8 py-4 bg-blue-600 text-white font-semibold rounded-xl shadow-lg hover:bg-blue-700 transform hover:scale-105 transition-all duration-200"
+          >
+            <Phone className="w-5 h-5 mr-3" />
+            Call Sales Agent
+          </motion.button>
+        </div>
 
-              {/* Testimonial indicators */}
-              <div className="flex justify-center gap-2 mt-6">
-                {testimonials.map((_, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setActiveTestimonial(index)}
-                    className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                      activeTestimonial === index
-                        ? 'w-8 bg-bizai-accent1'
-                        : 'bg-gray-300 dark:bg-gray-600'
-                    }`}
-                  />
-                ))}
-              </div>
+        {/* Loading State */}
+        {isLoading && (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading metrics...</p>
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-8">
+            <div className="flex items-center">
+              <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
+              <p className="text-red-700">Failed to load metrics. Showing demo data.</p>
             </div>
           </div>
-        </section>
+        )}
 
-        {/* Modern CTA Section */}
-        <section className="py-20 relative">
-          <div className="container max-w-7xl mx-auto px-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5 }}
-              viewport={{ once: true }}
-              className="relative rounded-3xl overflow-hidden"
-            >
-              {/* Animated gradient background */}
-              <div className="absolute inset-0 bg-gradient-to-r from-bizai-accent1 via-bizai-accent2 to-bizai-accent1 animate-gradient-shift" />
-
-              <div className="relative z-10 p-12 md:p-20 text-center">
-                <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-                  {t('landing', 'ctaTitle')}
-                </h2>
-                <p className="text-xl text-white/90 mb-10 max-w-2xl mx-auto">
-                  {t('landing', 'ctaDescription')}
-                </p>
-                <motion.div
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="inline-block"
-                >
-                  <Button
-                    size="lg"
-                    onClick={() => router.push('/login')}
-                    className="bg-white text-bizai-primary hover:bg-gray-100 px-10 py-6 text-lg font-semibold rounded-xl shadow-xl transition-all duration-300"
-                  >
-                    {t('landing', 'ctaButton')}
-                    <ArrowRight className="ml-2 h-5 w-5" />
-                  </Button>
-                </motion.div>
-              </div>
-            </motion.div>
-          </div>
-        </section>
-
-        {/* Trusted By Section */}
-        <section className="py-16 relative">
-          <div className="container max-w-7xl mx-auto px-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              transition={{ duration: 0.5 }}
-              viewport={{ once: true }}
-              className="text-center"
-            >
-              <p className="text-sm uppercase tracking-wider text-bizai-mediumGray dark:text-gray-400 mb-8">
-                Trusted by 500+ companies worldwide
-              </p>
-              <div className="flex flex-wrap items-center justify-center gap-12">
-                {['TechCorp', 'FinanceHub', 'GlobalAudit', 'DataSync', 'CloudVault'].map((company, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: index * 0.05 }}
-                    viewport={{ once: true }}
-                    className="flex items-center gap-2 opacity-60 dark:opacity-50 grayscale hover:opacity-100 hover:grayscale-0 transition-all duration-300"
-                  >
-                    <Building className="w-8 h-8 text-bizai-darkGray dark:text-gray-400" />
-                    <span className="text-xl font-semibold text-bizai-darkGray dark:text-gray-400">{company}</span>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
-          </div>
-        </section>
-      </main>
-
-      <LandingFooter />
-
-      {/* Demo Video Modal */}
-      <AnimatePresence>
-        {showDemoModal && (
+        {/* Metrics Dashboard */}
+        {!isLoading && (
           <>
-            {/* Backdrop with blur */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowDemoModal(false)}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
-            />
+            {/* Key Metrics Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <MetricCard
+                title="Total Calls Today"
+                value={displayMetrics.call_metrics.total_calls}
+                icon={Phone}
+                color="blue"
+                trend={{ value: 12, isPositive: true }}
+              />
+              <MetricCard
+                title="Unique Carriers"
+                value={displayMetrics.call_metrics.unique_carriers}
+                subtitle={`${Math.round((displayMetrics.call_metrics.unique_carriers / displayMetrics.call_metrics.total_calls) * 100)}% of total calls`}
+                icon={Users}
+                color="green"
+                trend={{ value: 8, isPositive: true }}
+              />
+              <MetricCard
+                title="Loads Booked"
+                value={displayMetrics.conversion_metrics.loads_booked}
+                subtitle={`${displayMetrics.conversion_metrics.booking_rate.toFixed(1)}% booking rate`}
+                icon={Package}
+                color="orange"
+                trend={{ value: 5, isPositive: true }}
+              />
+              <MetricCard
+                title="Revenue Booked"
+                value={`$${(displayMetrics.financial_metrics.total_booked_revenue / 1000).toFixed(0)}K`}
+                subtitle={`$${displayMetrics.financial_metrics.average_load_value.toFixed(0)} avg per load`}
+                icon={DollarSign}
+                color="purple"
+                trend={{ value: 3, isPositive: true }}
+              />
+            </div>
 
-            {/* Modal */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              transition={{ type: "spring", damping: 20, stiffness: 300 }}
-              className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
-            >
-              <div className="relative bg-black rounded-2xl shadow-2xl max-w-5xl w-full overflow-hidden pointer-events-auto">
-                {/* Close button */}
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={() => setShowDemoModal(false)}
-                  className="absolute top-4 right-4 z-10 p-2 rounded-full bg-black/50 hover:bg-black/70 transition-colors"
-                >
-                  <X className="w-6 h-6 text-white" />
-                </motion.button>
-
-                {/* Video Container */}
-                <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
-                  <iframe
-                    className="absolute inset-0 w-full h-full"
-                    src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&rel=0&showinfo=0"
-                    title="HappyRobot Demo Video"
-                    frameBorder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
+            {/* Additional Metrics Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              <MetricCard
+                title="Average Response Time"
+                value={`${(displayMetrics.performance_indicators.average_response_time_ms / 1000).toFixed(1)}s`}
+                subtitle="Time to first response"
+                icon={Clock}
+                color="blue"
+              />
+              <div className="bg-white rounded-lg border-2 border-gray-200 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <Activity className="w-5 h-5 mr-2 text-purple-600" />
+                  Sentiment Distribution
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <ThumbsUp className="w-4 h-4 mr-2 text-green-600" />
+                      <span className="text-sm font-medium">Positive</span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="text-2xl font-bold text-green-600 mr-2">
+                        {displayMetrics.sentiment_analysis.positive}
+                      </span>
+                      <span className="text-sm text-gray-500">
+                        ({Math.round((displayMetrics.sentiment_analysis.positive / displayMetrics.call_metrics.total_calls) * 100)}%)
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <Minus className="w-4 h-4 mr-2 text-gray-600" />
+                      <span className="text-sm font-medium">Neutral</span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="text-2xl font-bold text-gray-600 mr-2">
+                        {displayMetrics.sentiment_analysis.neutral}
+                      </span>
+                      <span className="text-sm text-gray-500">
+                        ({Math.round((displayMetrics.sentiment_analysis.neutral / displayMetrics.call_metrics.total_calls) * 100)}%)
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <ThumbsDown className="w-4 h-4 mr-2 text-red-600" />
+                      <span className="text-sm font-medium">Negative</span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="text-2xl font-bold text-red-600 mr-2">
+                        {displayMetrics.sentiment_analysis.negative}
+                      </span>
+                      <span className="text-sm text-gray-500">
+                        ({Math.round((displayMetrics.sentiment_analysis.negative / displayMetrics.call_metrics.total_calls) * 100)}%)
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </motion.div>
+            </div>
+
+            {/* System Status */}
+            <div className="bg-white rounded-lg border-2 border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">System Status</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="flex items-center">
+                  <div className="w-3 h-3 bg-green-500 rounded-full mr-3"></div>
+                  <span className="text-sm">Voice Agent: Online</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-3 h-3 bg-green-500 rounded-full mr-3"></div>
+                  <span className="text-sm">FMCSA API: Connected</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-3 h-3 bg-green-500 rounded-full mr-3"></div>
+                  <span className="text-sm">Load Database: Active</span>
+                </div>
+              </div>
+            </div>
           </>
         )}
-      </AnimatePresence>
+      </main>
 
-      <style jsx>{`
-        @keyframes blob {
-          0% {
-            transform: translate(0px, 0px) scale(1);
-          }
-          33% {
-            transform: translate(30px, -50px) scale(1.1);
-          }
-          66% {
-            transform: translate(-20px, 20px) scale(0.9);
-          }
-          100% {
-            transform: translate(0px, 0px) scale(1);
-          }
-        }
-
-        .animate-blob {
-          animation: blob 7s infinite;
-        }
-
-        .animation-delay-2000 {
-          animation-delay: 2s;
-        }
-
-        .animation-delay-4000 {
-          animation-delay: 4s;
-        }
-
-        @keyframes gradient-shift {
-          0%, 100% {
-            background-position: 0% 50%;
-          }
-          50% {
-            background-position: 100% 50%;
-          }
-        }
-
-        .animate-gradient-shift {
-          background-size: 200% 200%;
-          animation: gradient-shift 4s ease infinite;
-        }
-      `}</style>
+      {/* Call Agent Modal */}
+      <CallAgentModal isOpen={showCallModal} onClose={() => setShowCallModal(false)} />
     </div>
   );
 }

@@ -16,9 +16,18 @@
  */
 
 import { create } from 'zustand';
-import { WizardEventViewData } from '@/components/wizard/EventStreamDisplay';
-import { TemplateKey } from '@/components/wizard/TemplateSelectionModal';
-import { formatRawEventToViewData } from '@/lib/wizardUtils'; // Assuming this path
+import { formatRawEventToViewData } from '@/lib/wizardUtils';
+
+// Stub types for POC - wizard functionality removed
+interface WizardEventViewData {
+  id: string;
+  type: string;
+  timestamp: string;
+  displayText: string;
+  status: 'info' | 'loading' | 'success' | 'error' | 'warning';
+}
+
+type TemplateKey = string;
 
 export type WizardStep = 'templateSelection' | 'promptInput' | 'processing' | 'completed' | 'error';
 

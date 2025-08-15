@@ -1,13 +1,17 @@
 # FDE Technical Challenge: Inbound Carrier Sales (HappyRobot)
 
+## Table of Contents
+- [Overview](#overview)
+- [Tech Stack](#tech-stack-as-required)
+- [Architecture Summary](#architecture-summary)
+- [Repository Layout](#repository-layout)
+- [Local Development](#local-development)
+- [HappyRobot Platform: Manual Steps](#happyrobot-platform-manual-steps-to-connect-the-agentic-workflow)
+- [Deployment (AWS ECS / RDS)](#deployment-aws-ecs--rds)
+- [Contributing](#contributing)
+
 ## Overview
 This repository contains a working proof-of-concept for automating inbound carrier load sales using the HappyRobot platform. The solution implements an inbound agent that answers carrier calls, authenticates them (MC), searches viable loads, negotiates price, classifies the call outcome and sentiment, and hands off the call to a sales rep when an agreement is reached.
-
-The backend follows a hexagonal architecture in `src/`:
-- `src/config`: environment configuration
-- `src/core`: domain, ports, and application logic
-- `src/infrastructure`: adapters (database, external APIs)
-- `src/interfaces`: API endpoints and middleware
 
 Frontend lives in `web_client/` (Next.js). For this POC we only use REST—no WebSockets are required.
 
@@ -31,12 +35,13 @@ Frontend lives in `web_client/` (Next.js). For this POC we only use REST—no We
 - The HappyRobot agent invokes these endpoints via web call triggers.
 - The Next.js dashboard queries the API and renders KPIs and reports.
 
+For a detailed architecture overview, see [ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
 ## Repository layout
-- `src/`: hexagonal API (config, core, infrastructure, interfaces)
+- `src/`: API source code
 - `web_client/`: Next.js app for the dashboard
-- `Dockerfile.api`: API container image
 - `docker-compose.yml`: local dev with Postgres, pgAdmin, API, and frontend
-- `docs/IMPLEMENTATION_PLAN.md`: detailed implementation plan
+- `docs/DEPLOYMENT.md`: detailed deployment guide
 
 ## Local development
 
@@ -83,27 +88,7 @@ All endpoints require an API key via either header:
 
 Exempt: `/health`, `/api/v1/health`, `/api/v1/openapi.json`, `/api/v1/docs`, `/api/v1/redoc`.
 
-## Database
-
-### Loads schema
-Minimum fields per load:
-- `load_id` (UUID/PK)
-- `origin`
-- `destination`
-- `pickup_datetime`
-- `delivery_datetime`
-- `equipment_type`
-- `loadboard_rate`
-- `notes`
-- `weight`
-- `commodity_type`
-- `num_of_pieces`
-- `miles`
-- `dimensions`
-
-You can create the table and seed example loads via pgAdmin or migrations. See `docs/IMPLEMENTATION_PLAN.md` for a ready-to-use SQL block.
-
-## HappyRobot platform: manual steps to connect the agentic workflow
+## HappyRobot platform: manual steps to connect the agentic-workflow
 The solution uses the web call trigger and REST callbacks (no purchased phone numbers).
 
 1) Create an agent “Inbound Carrier Sales”
@@ -151,6 +136,8 @@ The solution uses the web call trigger and REST callbacks (no purchased phone nu
 Note: The exact JSON schemas are documented in `docs/IMPLEMENTATION_PLAN.md` with request/response examples you can paste into HappyRobot’s HTTP steps.
 
 ## Deployment (AWS ECS / RDS)
+This section provides a high-level overview. For detailed, step-by-step instructions, please refer to the [Deployment Guide](docs/DEPLOYMENT.md).
+
 High level steps:
 1) Provision RDS PostgreSQL and import the schema
 2) Build and push two images to ECR:
@@ -160,46 +147,6 @@ High level steps:
 4) Attach HTTPS certificate via ACM to ALB
 5) Configure environment variables and secrets (RDS URL, `API_KEY`, etc.) in ECS Task Definitions
 6) Point frontend env `NEXT_PUBLIC_API_URL` to the API’s public ALB domain
-
-## Deliverables (templates)
-
-### 1) Email to prospect (Carlos Becker)
-Subject: HappyRobot Inbound Carrier Sales – POC Progress and Demo Readiness
-
-Hi Carlos,
-
-Ahead of our meeting, here’s a quick update on the POC:
-- Implemented an inbound voice agent that authenticates carriers by MC via FMCSA, finds viable loads, and negotiates up to three rounds.
-- Built a REST API with API key security that the agent calls using web call triggers (no phone purchase needed).
-- Added an analytics dashboard showing core KPIs for adoption and performance.
-- Containerized both API and frontend; deployment plan prepared for ECS Fargate with RDS.
-
-For the demo, I’ll walk through the agent workflow, a short negotiation scenario, and the dashboard. Please let me know if you’d like any additional metrics or flows highlighted.
-
-Best regards,
-
-[Your Name]
-CC: [Recruiter Name]
-
-### 2) Build description for broker (Acme Logistics)
-A 1–2 page description covering objectives, flow, data handled, and security is included in `docs/IMPLEMENTATION_PLAN.md` (Executive Summary section). You can share it directly with stakeholders.
-
-### 3) Link to repository
-Provide: [Fill with your repo URL]
-
-### 4) Link to configured campaign in HappyRobot
-Provide: [Fill with your HappyRobot campaign URL]
-
-### 5) Short video (5 minutes)
-Cover:
-- Use case setup (agent flow)
-- Short demo (MC → match → negotiate → handoff)
-- Dashboard tour (KPIs)
-
-## Notes
-- This POC intentionally avoids WebSockets and Redis. All interactions are REST-based and state is persisted in Postgres.
-- Backups are managed at the RDS level in production; no extra backup service is run locally.
-
 
 ## Contributing
 We welcome contributions! Please see our [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to set up your development environment, run tests, and submit a pull request.

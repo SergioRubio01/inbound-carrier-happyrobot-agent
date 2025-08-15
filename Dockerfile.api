@@ -1,36 +1,44 @@
-# syntax=docker/dockerfile:1
 FROM python:3.12-slim
 
-ENV PYTHONDONTWRITEBYTECODE=1 \
-	PYTHONUNBUFFERED=1
-
-# System deps for psycopg2
-RUN apt-get update && apt-get install -y --no-install-recommends \
-	build-essential \
-	libpq-dev \
-	curl \
-	&& rm -rf /var/lib/apt/lists/*
-
+# Set working directory
 WORKDIR /app
 
-# Copy project files
-COPY pyproject.toml README.md /app/
-COPY src /app/src
-COPY main.py /app/
+# Install system dependencies including PostgreSQL development headers
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    netcat-openbsd \
+    curl \
+    libpq-dev \
+    postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install runtime deps
-RUN pip install --no-cache-dir \
-	"fastapi==0.116.1" \
-	"uvicorn[standard]>=0.30.6,<1.0.0" \
-	"sqlalchemy>=2.0.43,<3.0.0" \
-	"asyncpg>=0.30.0,<1.0.0" \
-	"psycopg2-binary>=2.9.10,<3.0.0" \
-	"boto3>=1.40.10,<2.0.0"
+# Copy requirements first for better caching
+COPY pyproject.toml poetry.lock ./
 
+# Install poetry and dependencies (without the project first)
+RUN pip install poetry && \
+    poetry config virtualenvs.create false && \
+    poetry install --only=main --no-root
+
+# Copy application code
+COPY . .
+
+# Install the project in development mode after copying code
+RUN poetry install --only-root
+
+# Make entrypoint script executable (it's already copied with COPY . .)
+RUN cp scripts/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh && \
+    chmod +x /usr/local/bin/docker-entrypoint.sh && \
+    sed -i 's/\r$//' /usr/local/bin/docker-entrypoint.sh
+
+# Expose port
 EXPOSE 8000
 
-ENV HOST=0.0.0.0 \
-	PORT=8000 \
-	ENVIRONMENT=prod
+# Add health check for ECS
+# Increased start-period to 180s to allow for database migrations
+HEALTHCHECK --interval=30s --timeout=10s --start-period=180s --retries=5 \
+    CMD curl -f http://localhost:8000/api/v1/health || exit 1
 
-CMD ["python", "main.py"]
+# Use entrypoint script
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]

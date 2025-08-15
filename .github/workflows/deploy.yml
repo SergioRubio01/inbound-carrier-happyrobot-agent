@@ -1,0 +1,346 @@
+name: Deploy HappyRobot FDE Infrastructure
+
+on:
+  push:
+    branches:
+      - master
+      - main
+    paths:
+      - 'infrastructure/pulumi/**'
+      - 'src/**'
+      - 'web_client/**'
+      - 'Dockerfile.api'
+      - 'web_client/Dockerfile.prod'
+      - '.github/workflows/deploy.yml'
+
+  pull_request:
+    branches:
+      - master
+      - main
+    paths:
+      - 'infrastructure/pulumi/**'
+      - 'src/**'
+      - 'web_client/**'
+      - 'Dockerfile.api'
+      - 'web_client/Dockerfile.prod'
+
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+
+env:
+  AWS_REGION: eu-south-2  # Spain region for compliance
+  ECR_API_REPOSITORY: happyrobot-api
+  ECR_WEB_REPOSITORY: happyrobot-frontend
+  PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+
+jobs:
+  # Test and lint before deployment
+  test:
+    name: Run Tests and Quality Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r pyproject.toml || pip install fastapi uvicorn pytest ruff mypy
+
+      - name: Run Python linting
+        run: |
+          ruff check .
+          ruff format --check .
+
+      - name: Run Python type checking
+        run: |
+          mypy .
+
+      - name: Run Python tests
+        run: |
+          pytest
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: web_client/package-lock.json
+
+      - name: Install Node.js dependencies
+        run: |
+          cd web_client
+          npm ci
+
+      - name: Run frontend linting
+        run: |
+          cd web_client
+          npm run lint
+
+      - name: Run frontend type checking
+        run: |
+          cd web_client
+          npm run type-check
+
+      - name: Run frontend tests
+        run: |
+          cd web_client
+          npm run test
+
+  # Build and push Docker images
+  build:
+    name: Build and Push Docker Images
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+
+    outputs:
+      api-image-tag: ${{ steps.meta.outputs.api-tag }}
+      web-image-tag: ${{ steps.meta.outputs.web-tag }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Generate image tags
+        id: meta
+        run: |
+          TIMESTAMP=$(date +%Y%m%d%H%M%S)
+          SHORT_SHA=${GITHUB_SHA::8}
+
+          API_TAG="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_API_REPOSITORY }}:${TIMESTAMP}-${SHORT_SHA}"
+          WEB_TAG="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_WEB_REPOSITORY }}:${TIMESTAMP}-${SHORT_SHA}"
+
+          echo "api-tag=${API_TAG}" >> $GITHUB_OUTPUT
+          echo "web-tag=${WEB_TAG}" >> $GITHUB_OUTPUT
+
+          # Also tag as latest for convenience
+          echo "api-latest=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_API_REPOSITORY }}:latest" >> $GITHUB_OUTPUT
+          echo "web-latest=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_WEB_REPOSITORY }}:latest" >> $GITHUB_OUTPUT
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.api
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.api-tag }}
+            ${{ steps.meta.outputs.api-latest }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+
+      - name: Build and push Web image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./web_client
+          file: ./web_client/Dockerfile.prod
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.web-tag }}
+            ${{ steps.meta.outputs.web-latest }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+
+  # Deploy infrastructure with Pulumi
+  deploy:
+    name: Deploy Infrastructure
+    needs: [test, build]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+
+    strategy:
+      matrix:
+        environment:
+          - ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'dev' }}
+
+    environment:
+      name: ${{ matrix.environment }}
+      url: ${{ steps.pulumi.outputs.loadbalancer-dns-name }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: infrastructure/pulumi/package-lock.json
+
+      - name: Install Pulumi dependencies
+        run: |
+          cd infrastructure/pulumi
+          npm ci
+
+      - name: Install Pulumi CLI
+        uses: pulumi/actions@v4
+
+      - name: Deploy with Pulumi
+        id: pulumi
+        uses: pulumi/actions@v4
+        with:
+          command: up
+          stack-name: happyrobot-fde
+          work-dir: infrastructure/pulumi
+          cloud-url: https://api.pulumi.com
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+
+      - name: Update ECS services with new images
+        if: needs.build.outputs.api-image-tag != ''
+        run: |
+          # Update API service
+          aws ecs update-service \
+            --cluster happyrobot-fde \
+            --service happyrobot-api \
+            --force-new-deployment \
+            --region ${{ env.AWS_REGION }}
+
+          # Update Web service
+          aws ecs update-service \
+            --cluster happyrobot-fde \
+            --service happyrobot-frontend \
+            --force-new-deployment \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Wait for services to stabilize
+        run: |
+          echo "Waiting for API service to stabilize..."
+          aws ecs wait services-stable \
+            --cluster happyrobot-fde \
+            --services happyrobot-api \
+            --region ${{ env.AWS_REGION }}
+
+          echo "Waiting for Web service to stabilize..."
+          aws ecs wait services-stable \
+            --cluster happyrobot-fde \
+            --services happyrobot-frontend \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Run health checks
+        run: |
+          # Get ALB DNS name from Pulumi outputs
+          ALB_DNS=$(pulumi stack output loadBalancerDnsName -s happyrobot-fde)
+
+          echo "Running health checks against https://${ALB_DNS}"
+
+          # Check API health
+          curl -f "https://${ALB_DNS}/api/v1/health" || exit 1
+          echo "✅ API health check passed"
+
+          # Check Web health (basic connectivity)
+          curl -f "https://${ALB_DNS}/" -I || exit 1
+          echo "✅ Web health check passed"
+
+  # Deploy to staging after successful dev deployment
+  deploy-staging:
+    name: Deploy to Staging
+    needs: deploy
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+
+    environment:
+      name: staging
+      url: ${{ steps.pulumi.outputs.loadbalancer-dns-name }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: infrastructure/pulumi/package-lock.json
+
+      - name: Install Pulumi dependencies
+        run: |
+          cd infrastructure/pulumi
+          npm ci
+
+      - name: Install Pulumi CLI
+        uses: pulumi/actions@v4
+
+      - name: Deploy staging with Pulumi
+        id: pulumi
+        uses: pulumi/actions@v4
+        with:
+          command: up
+          stack-name: happyrobot-staging
+          work-dir: infrastructure/pulumi
+          cloud-url: https://api.pulumi.com
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+
+  # Notify on deployment completion
+  notify:
+    name: Notify Deployment Status
+    needs: [deploy, deploy-staging]
+    runs-on: ubuntu-latest
+    if: always() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+
+    steps:
+      - name: Notify Success
+        if: needs.deploy.result == 'success'
+        run: |
+          echo "🚀 Deployment completed successfully!"
+          echo "Environment: ${{ matrix.environment || 'dev' }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Load Balancer: ${{ needs.deploy.outputs.loadbalancer-dns-name }}"
+
+      - name: Notify Failure
+        if: needs.deploy.result == 'failure'
+        run: |
+          echo "❌ Deployment failed!"
+          echo "Check the logs for more details."
+          exit 1

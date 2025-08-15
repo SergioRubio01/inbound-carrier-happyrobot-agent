@@ -39,6 +39,22 @@ def create_app() -> FastAPI:
             {
                 "name": "Calls",
                 "description": "Operations for calls",
+            },
+            {
+                "name": "Metrics",
+                "description": "Operations for metrics",
+            },
+            {
+                "name": "Negotiations",
+                "description": "Operations for negotiations",
+            },
+            {
+                "name": "FMCSAs",
+                "description": "Operations for FMCSAs",
+            },
+            {
+                "name": "Loads",
+                "description": "Operations for loads",
             }
         ],
     )
@@ -66,13 +82,13 @@ def create_app() -> FastAPI:
         max_age=3600,
     )
 
-    # Add custom middleware (order can be important)
-    # CORSHandlerMiddleware first to handle OPTIONS requests
-    app.add_middleware(CORSHandlerMiddleware)
-    # AuthMiddleware for user authentication and role checks
-    app.add_middleware(AuthenticationMiddleware)
-    # Rate limiter to prevent abuse
+    # Add custom middleware (order is important - last added runs first)
+    # Rate limiter to prevent abuse (runs third)
     app.add_middleware(RateLimiterMiddleware)
+    # AuthMiddleware for user authentication and role checks (runs second)
+    app.add_middleware(AuthenticationMiddleware)
+    # CORSHandlerMiddleware first to handle OPTIONS requests (runs first)
+    app.add_middleware(CORSHandlerMiddleware)
 
     # Add exception handlers
     @app.exception_handler(BaseException)
@@ -96,6 +112,15 @@ def create_app() -> FastAPI:
     @app.exception_handler(ValidationException)
     async def validation_exception_handler(request: Request, exc: ValidationException):
         return JSONResponse(status_code=422, content={"detail": exc.details})
+
+    # Include API routers
+    from src.interfaces.api.v1 import fmcsa, loads, negotiations, calls, metrics
+
+    app.include_router(fmcsa.router, prefix="/api/v1")
+    app.include_router(loads.router, prefix="/api/v1")
+    app.include_router(negotiations.router, prefix="/api/v1")
+    app.include_router(calls.router, prefix="/api/v1")
+    app.include_router(metrics.router, prefix="/api/v1")
 
     # Add startup event handler
     @app.on_event("startup")

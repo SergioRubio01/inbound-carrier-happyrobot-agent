@@ -38,7 +38,7 @@ class Settings(BaseSettings):
 
     # Security settings
     api_key: str = Field(default="dev-local-api-key", alias="API_KEY")
-    jwt_secret_key: str = Field(default="supersecretkey", alias="JWT_SECRET_key")
+    jwt_secret_key: str = Field(default="supersecretkey", alias="JWT_SECRET_KEY")
     jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
     access_token_expire_minutes: int = Field(
         default=30, alias="ACCESS_TOKEN_EXPIRE_MINUTES"

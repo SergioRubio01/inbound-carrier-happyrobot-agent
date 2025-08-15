@@ -118,3 +118,31 @@ class DatabaseConnection:
         except Exception as e:
             logger.error(f"Database health check failed: {e}")
             return False
+
+
+# Global database connection instance
+_db_connection: Optional[DatabaseConnection] = None
+
+
+def initialize_database_connection(settings: Settings) -> DatabaseConnection:
+    """Initialize the global database connection"""
+    global _db_connection
+
+    if _db_connection is None:
+        _db_connection = DatabaseConnection(settings=settings)
+        _db_connection.initialize()
+
+    return _db_connection
+
+
+async def get_database_session() -> AsyncSession:
+    """Dependency function for FastAPI to get database session"""
+    if _db_connection is None:
+        from src.config.settings import settings
+        initialize_database_connection(settings)
+
+    session = await _db_connection.get_session()
+    try:
+        yield session
+    finally:
+        await session.close()

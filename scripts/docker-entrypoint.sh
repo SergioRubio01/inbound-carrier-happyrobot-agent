@@ -5,47 +5,18 @@ echo "=== HappyRobot API Startup ==="
 echo "Current working directory: $(pwd)"
 echo "Python path: $PYTHONPATH"
 
-# =============================================================================
-# CLEAN DATABASE CONFIGURATION ARCHITECTURE
-# =============================================================================
-# Priority 1: DATABASE_URL override (explicit setting takes precedence)
-# Priority 2: AWS RDS configuration (when RDS_ENABLED=true)
-# Priority 3: Local PostgreSQL configuration (default for local development)
-# =============================================================================
-
 # Skip DATABASE_URL construction if explicitly set
 if [ ! -z "$DATABASE_URL" ]; then
   echo "Using explicit DATABASE_URL configuration"
-elif [ "$RDS_ENABLED" = "true" ] && [ ! -z "$RDS_ENDPOINT" ] && [ ! -z "$RDS_USERNAME" ] && [ ! -z "$RDS_PASSWORD" ] && [ ! -z "$RDS_DATABASE_NAME" ]; then
-  # AWS RDS Configuration (Production/Development environments)
-  RDS_PORT=${RDS_PORT:-5432}
-
-  # Handle AWS Secrets Manager JSON format for RDS_PASSWORD
-  if echo "$RDS_PASSWORD" | grep -q '^{.*"password".*}$'; then
-    echo "Extracting RDS credentials from AWS Secrets Manager JSON"
-    EXTRACTED_PASSWORD=$(echo "$RDS_PASSWORD" | python3 -c "import sys, json; data = json.load(sys.stdin); print(data.get('password', ''))" 2>/dev/null || echo "")
-    EXTRACTED_USER=$(echo "$RDS_PASSWORD" | python3 -c "import sys, json; data = json.load(sys.stdin); print(data.get('username', ''))" 2>/dev/null || echo "")
-
-    if [ ! -z "$EXTRACTED_PASSWORD" ]; then
-      RDS_PASSWORD="$EXTRACTED_PASSWORD"
-      # Use extracted username if available
-      if [ ! -z "$EXTRACTED_USER" ]; then
-        RDS_USERNAME="$EXTRACTED_USER"
-        echo "Using RDS username from AWS Secrets Manager: $RDS_USERNAME"
-      fi
-    fi
-  fi
-
-  # URL-encode the password to handle special characters
-  ENCODED_PASSWORD=$(python3 -c "import urllib.parse; print(urllib.parse.quote_plus('${RDS_PASSWORD}'))")
-
-  export DATABASE_URL="postgresql+asyncpg://${RDS_USERNAME}:${ENCODED_PASSWORD}@${RDS_ENDPOINT}:${RDS_PORT}/${RDS_DATABASE_NAME}"
-  export DATABASE_URL_SYNC="postgresql+psycopg2://${RDS_USERNAME}:${ENCODED_PASSWORD}@${RDS_ENDPOINT}:${RDS_PORT}/${RDS_DATABASE_NAME}"
-  echo "Constructed DATABASE_URL from RDS configuration"
 
 elif [ ! -z "$POSTGRES_HOST" ] && [ ! -z "$POSTGRES_USER" ] && [ ! -z "$POSTGRES_PASSWORD" ] && [ ! -z "$POSTGRES_DB" ]; then
   # Local PostgreSQL Configuration (Local development)
   POSTGRES_PORT=${POSTGRES_PORT:-5432}
+
+  # Build DATABASE_URL for local development
+  export DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}"
+  export DATABASE_URL_SYNC="${DATABASE_URL}"
+  echo "Built DATABASE_URL for local development"
 
   # Handle AWS Secrets Manager JSON format for POSTGRES_PASSWORD (fallback for mixed deployments)
   if echo "$POSTGRES_PASSWORD" | grep -q '^{.*"password".*}$'; then
@@ -53,22 +24,7 @@ elif [ ! -z "$POSTGRES_HOST" ] && [ ! -z "$POSTGRES_USER" ] && [ ! -z "$POSTGRES
     EXTRACTED_PASSWORD=$(echo "$POSTGRES_PASSWORD" | python3 -c "import sys, json; data = json.load(sys.stdin); print(data.get('password', ''))" 2>/dev/null || echo "")
     EXTRACTED_USER=$(echo "$POSTGRES_PASSWORD" | python3 -c "import sys, json; data = json.load(sys.stdin); print(data.get('username', ''))" 2>/dev/null || echo "")
 
-    if [ ! -z "$EXTRACTED_PASSWORD" ]; then
-      POSTGRES_PASSWORD="$EXTRACTED_PASSWORD"
-      # Use extracted username if available
-      if [ ! -z "$EXTRACTED_USER" ]; then
-        POSTGRES_USER="$EXTRACTED_USER"
-        echo "Using PostgreSQL username from AWS Secrets Manager: $POSTGRES_USER"
-      fi
-    fi
   fi
-
-  # URL-encode the password to handle special characters
-  ENCODED_PASSWORD=$(python3 -c "import urllib.parse; print(urllib.parse.quote_plus('${POSTGRES_PASSWORD}'))")
-
-  export DATABASE_URL="postgresql+asyncpg://${POSTGRES_USER}:${ENCODED_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}"
-  export DATABASE_URL_SYNC="postgresql+psycopg2://${POSTGRES_USER}:${ENCODED_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}"
-  echo "Constructed DATABASE_URL from local PostgreSQL configuration"
 
 else
   echo "Warning: No valid database configuration found. Falling back to application defaults."
@@ -101,9 +57,6 @@ else
   DB_HOST="postgres"
   DB_PORT="5432"
 fi
-
-echo "Database host: $DB_HOST"
-echo "Database port: $DB_PORT"
 
 # Wait for database to be ready
 while ! nc -z $DB_HOST $DB_PORT; do
@@ -143,7 +96,7 @@ from sqlalchemy import create_engine, text
 database_url = os.environ.get('DATABASE_URL_SYNC')
 if not database_url:
     # Fallback to importing settings if no DATABASE_URL_SYNC
-    from HappyRobot.config.settings import settings
+    from src.config.settings import settings
     database_url = settings.get_sync_database_url
 
 engine = create_engine(database_url)
@@ -154,20 +107,11 @@ with engine.connect() as conn:
     ))
     alembic_exists = result.scalar()
 
-    # Check if any of our tables exist
-    result = conn.execute(text(
-        \"SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'batch_jobs')\"
-    ))
-    tables_exist = result.scalar()
-
-    if not alembic_exists and not tables_exist:
+    if not alembic_exists:
         print('EMPTY_DATABASE')
         sys.exit(0)
-    elif not tables_exist:
-        print('MIGRATIONS_ONLY')
-        sys.exit(0)
     else:
-        print('EXISTING_DATABASE')
+        print('MIGRATIONS_ONLY')
         sys.exit(0)
 "
 DB_STATE=$?
@@ -182,7 +126,7 @@ from sqlalchemy import create_engine, text
 database_url = os.environ.get('DATABASE_URL_SYNC')
 if not database_url:
     # Fallback to importing settings if no DATABASE_URL_SYNC
-    from HappyRobot.config.settings import settings
+    from src.config.settings import settings
     database_url = settings.get_sync_database_url
 
 engine = create_engine(database_url)
@@ -191,17 +135,11 @@ with engine.connect() as conn:
         \"SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'alembic_version')\"
     ))
     alembic_exists = result.scalar()
-    result = conn.execute(text(
-        \"SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'batch_jobs')\"
-    ))
-    tables_exist = result.scalar()
 
-    if not alembic_exists and not tables_exist:
+    if not alembic_exists:
         print('EMPTY_DATABASE')
-    elif not tables_exist:
-        print('MIGRATIONS_ONLY')
     else:
-        print('EXISTING_DATABASE')
+        print('MIGRATIONS_ONLY')
 ")
 
   echo "Database state: $DB_STATUS"
@@ -251,9 +189,9 @@ fi
 echo "=== Starting HappyRobot API server ==="
 
 # Check if we're in development mode
-if [ "$ENVIRONMENT" = "development" ] || [ "$ENVIRONMENT" = "local" ]; then
+if [ "$ENVIRONMENT" = "dev" ] || [ "$ENVIRONMENT" = "local" ]; then
   echo "Starting in development mode with reload enabled"
-  exec uvicorn HappyRobot.interfaces.api.app:create_app \
+  exec uvicorn src.interfaces.api.app:create_app \
       --host 0.0.0.0 \
       --port 8000 \
       --reload \
@@ -261,7 +199,7 @@ if [ "$ENVIRONMENT" = "development" ] || [ "$ENVIRONMENT" = "local" ]; then
       --log-level info
 else
   echo "Starting in production mode"
-  exec uvicorn HappyRobot.interfaces.api.app:create_app \
+  exec uvicorn src.interfaces.api.app:create_app \
       --host 0.0.0.0 \
       --port 8000 \
       --factory \

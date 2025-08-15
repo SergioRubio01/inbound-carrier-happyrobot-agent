@@ -18,7 +18,10 @@ from .base import (
     ConcurrencyException,
     DomainException,
     EntityNotFoundException,
+    ForbiddenException,
     InfrastructureException,
+    NotFoundException,
+    UnauthorizedException,
     ValidationException,
 )
 

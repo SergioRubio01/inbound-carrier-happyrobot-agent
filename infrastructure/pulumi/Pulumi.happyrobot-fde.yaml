@@ -1,0 +1,6 @@
+config:
+  aws:region: eu-south-2  # Spain region for compliance
+  happyrobot-fde:environment: dev
+  happyrobot-fde:dbInstanceClass: db.t3.micro
+  happyrobot-fde:dbAllocatedStorage: "20"
+  # happyrobot-fde:certificateArn: "arn:aws:acm:eu-south-2:ACCOUNT_ID:certificate/CERT_ID"  # Uncomment when SSL certificate is available
