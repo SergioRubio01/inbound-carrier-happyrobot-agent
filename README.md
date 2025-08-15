@@ -15,6 +15,8 @@ This repository contains a working proof-of-concept for automating inbound carri
 
 Frontend lives in `web_client/` (Next.js). For this POC we only use REST—no WebSockets are required.
 
+![image](web_client/public/foto.png)
+
 ## Tech stack (as required)
 - **AWS RDS for PostgreSQL** (with pgAdmin locally)
 - **ECS (Fargate)** for backend and frontend as two images
