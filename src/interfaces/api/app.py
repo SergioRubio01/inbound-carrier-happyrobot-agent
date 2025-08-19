@@ -49,8 +49,8 @@ def create_app() -> FastAPI:
                 "description": "Operations for negotiations",
             },
             {
-                "name": "FMCSAs",
-                "description": "Operations for FMCSAs",
+                "name": "FMCSA",
+                "description": "Operations for FMCSA",
             },
             {
                 "name": "Loads",
@@ -61,10 +61,10 @@ def create_app() -> FastAPI:
 
     # Add health check endpoints BEFORE middleware to ensure fast response
     # These endpoints bypass all middleware processing
-    @app.get("/health")
-    async def root_health_check():
-        """Root health check endpoint for load balancer"""
-        return {"status": "ok", "service": "HappyRobot FDE API", "version": "0.1.0"}
+    # @app.get("/health")
+    # async def root_health_check():
+    #     """Root health check endpoint for load balancer"""
+    #     return {"status": "ok", "service": "HappyRobot FDE API", "version": "0.1.0"}
 
     @app.get("/api/v1/health")
     async def api_health_check():
