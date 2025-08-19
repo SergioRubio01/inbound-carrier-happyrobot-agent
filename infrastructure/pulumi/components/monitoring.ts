@@ -4,7 +4,6 @@ import * as aws from "@pulumi/aws";
 export interface MonitoringArgs {
     ecsCluster: aws.ecs.Cluster;
     apiService: aws.ecs.Service;
-    webService: aws.ecs.Service;
     database: aws.rds.Instance;
     loadBalancer: aws.lb.LoadBalancer;
     environment: string;
@@ -13,12 +12,10 @@ export interface MonitoringArgs {
 
 export class MonitoringComponent extends pulumi.ComponentResource {
     public readonly apiLogGroup: aws.cloudwatch.LogGroup;
-    public readonly webLogGroup: aws.cloudwatch.LogGroup;
     public readonly dashboard: aws.cloudwatch.Dashboard;
     public readonly dashboardUrl: pulumi.Output<string>;
     public readonly snsTopicAlerts: aws.sns.Topic;
     public readonly apiServiceAlarm: aws.cloudwatch.MetricAlarm;
-    public readonly webServiceAlarm: aws.cloudwatch.MetricAlarm;
     public readonly databaseAlarm: aws.cloudwatch.MetricAlarm;
     public readonly albAlarm: aws.cloudwatch.MetricAlarm;
 
@@ -36,15 +33,6 @@ export class MonitoringComponent extends pulumi.ComponentResource {
             },
         }, { parent: this });
 
-        this.webLogGroup = new aws.cloudwatch.LogGroup(`${name}-web-logs`, {
-            name: `/aws/ecs/${name}-web`,
-            retentionInDays: args.environment === "prod" ? 30 : 7,
-            tags: {
-                ...args.tags,
-                Name: `${name}-web-logs`,
-                Service: "web",
-            },
-        }, { parent: this });
 
         // Create SNS topic for alerts
         this.snsTopicAlerts = new aws.sns.Topic(`${name}-alerts`, {
@@ -82,29 +70,6 @@ export class MonitoringComponent extends pulumi.ComponentResource {
             },
         }, { parent: this });
 
-        // Web Service CPU Utilization Alarm
-        this.webServiceAlarm = new aws.cloudwatch.MetricAlarm(`${name}-web-cpu-alarm`, {
-            name: `${name}-web-cpu-high`,
-            description: "Web service CPU utilization is too high",
-            metricName: "CPUUtilization",
-            namespace: "AWS/ECS",
-            statistic: "Average",
-            period: 300,
-            evaluationPeriods: 2,
-            threshold: 70,
-            comparisonOperator: "GreaterThanThreshold",
-            dimensions: {
-                ServiceName: args.webService.name,
-                ClusterName: args.ecsCluster.name,
-            },
-            alarmActions: [this.snsTopicAlerts.arn],
-            okActions: [this.snsTopicAlerts.arn],
-            tags: {
-                ...args.tags,
-                Name: `${name}-web-cpu-alarm`,
-                Service: "web",
-            },
-        }, { parent: this });
 
         // Database CPU Utilization Alarm
         this.databaseAlarm = new aws.cloudwatch.MetricAlarm(`${name}-db-cpu-alarm`, {
@@ -161,10 +126,9 @@ export class MonitoringComponent extends pulumi.ComponentResource {
             dashboardBody: pulumi.all([
                 args.ecsCluster.name,
                 args.apiService.name,
-                args.webService.name,
                 args.database.identifier,
                 args.loadBalancer.arnSuffix,
-            ]).apply(([clusterName, apiServiceName, webServiceName, dbIdentifier, albArn]) =>
+            ]).apply(([clusterName, apiServiceName, dbIdentifier, albArn]) =>
                 JSON.stringify({
                     widgets: [
                         {
@@ -182,25 +146,6 @@ export class MonitoringComponent extends pulumi.ComponentResource {
                                 stacked: false,
                                 region: aws.config.region!,
                                 title: "API Service Metrics",
-                                period: 300,
-                                stat: "Average",
-                            },
-                        },
-                        {
-                            type: "metric",
-                            x: 12,
-                            y: 0,
-                            width: 12,
-                            height: 6,
-                            properties: {
-                                metrics: [
-                                    ["AWS/ECS", "CPUUtilization", "ServiceName", webServiceName, "ClusterName", clusterName],
-                                    [".", "MemoryUtilization", ".", ".", ".", "."],
-                                ],
-                                view: "timeSeries",
-                                stacked: false,
-                                region: aws.config.region!,
-                                title: "Web Service Metrics",
                                 period: 300,
                                 stat: "Average",
                             },
@@ -280,23 +225,6 @@ export class MonitoringComponent extends pulumi.ComponentResource {
                         },
                         {
                             type: "metric",
-                            x: 8,
-                            y: 18,
-                            width: 8,
-                            height: 6,
-                            properties: {
-                                metrics: [
-                                    ["AWS/ECS", "RunningTaskCount", "ServiceName", webServiceName, "ClusterName", clusterName],
-                                ],
-                                view: "singleValue",
-                                region: aws.config.region!,
-                                title: "Web Running Tasks",
-                                period: 300,
-                                stat: "Average",
-                            },
-                        },
-                        {
-                            type: "metric",
                             x: 16,
                             y: 18,
                             width: 8,
@@ -323,12 +251,10 @@ export class MonitoringComponent extends pulumi.ComponentResource {
         // Register outputs
         this.registerOutputs({
             apiLogGroup: this.apiLogGroup,
-            webLogGroup: this.webLogGroup,
             dashboard: this.dashboard,
             dashboardUrl: this.dashboardUrl,
             snsTopicAlerts: this.snsTopicAlerts,
             apiServiceAlarm: this.apiServiceAlarm,
-            webServiceAlarm: this.webServiceAlarm,
             databaseAlarm: this.databaseAlarm,
             albAlarm: this.albAlarm,
         });

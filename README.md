@@ -13,18 +13,15 @@
 ## Overview
 This repository contains a working proof-of-concept for automating inbound carrier load sales using the HappyRobot platform. The solution implements an inbound agent that answers carrier calls, authenticates them (MC), searches viable loads, negotiates price, classifies the call outcome and sentiment, and hands off the call to a sales rep when an agreement is reached.
 
-Frontend lives in `web_client/` (Next.js). For this POC we only use REST—no WebSockets are required.
-
-![image](web_client/foto.png)
+The API serves as the backend for HappyRobot platform integration. For this POC we only use REST—no WebSockets are required.
 
 ## Tech stack (as required)
 - **AWS RDS for PostgreSQL** (with pgAdmin locally)
-- **ECS (Fargate)** for backend and frontend as two images
+- **ECS (Fargate)** for backend deployment
 - **Docker Compose** for local development
 - **FastAPI** for REST API (Python 3.12)
-- **Next.js 15** for the dashboard/report UI
 - Security: **HTTPS (in AWS with ALB/ACM)** and **API Key** authentication for all API endpoints
-- Note: No WebSocket, no Redis, no backups services in this architecture
+- Note: No WebSocket, no Redis, no backup services in this architecture
 
 ## Architecture summary
 - A single FastAPI service exposes REST endpoints for:
@@ -35,14 +32,13 @@ Frontend lives in `web_client/` (Next.js). For this POC we only use REST—no We
   - Metrics aggregation for the dashboard
 - A PostgreSQL database stores loads and call transcripts/metadata.
 - The HappyRobot agent invokes these endpoints via web call triggers.
-- The Next.js dashboard queries the API and renders KPIs and reports.
+- The API provides metrics endpoints for monitoring and reporting.
 
 For a detailed architecture overview, see [ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Repository layout
 - `src/`: API source code
-- `web_client/`: Next.js app for the dashboard
-- `docker-compose.yml`: local dev with Postgres, pgAdmin, API, and frontend
+- `docker-compose.yml`: local dev with Postgres, pgAdmin, and API
 - `docs/DEPLOYMENT.md`: detailed deployment guide
 
 ## Local development
@@ -73,7 +69,6 @@ docker compose up --build
 
 Services:
 - API: http://localhost:8000 (health at `/api/v1/health`)
-- Frontend: http://localhost:3000
 - Postgres: localhost:5432
 - pgAdmin: http://localhost:5050 (default: admin@local / admin)
 
@@ -131,8 +126,8 @@ The solution uses the web call trigger and REST callbacks (no purchased phone nu
   - `outcome_class` (accepted/declined/callback/no-eligible)
   - `sentiment` (positive/neutral/negative)
 
-7) Metrics dashboard
-- The frontend queries `GET /api/v1/metrics/summary` and renders KPIs such as:
+7) Metrics monitoring
+- The HappyRobot platform can query `GET /api/v1/metrics/summary` for KPIs such as:
   - Total calls, eligible carriers, matched loads, accepted offers, average negotiation steps, average agreed rate vs. loadboard rate, sentiment distribution
 
 Note: The exact JSON schemas are documented in `docs/IMPLEMENTATION_PLAN.md` with request/response examples you can paste into HappyRobot’s HTTP steps.
@@ -142,13 +137,11 @@ This section provides a high-level overview. For detailed, step-by-step instruct
 
 High level steps:
 1) Provision RDS PostgreSQL and import the schema
-2) Build and push two images to ECR:
+2) Build and push API image to ECR:
    - API image from `Dockerfile.api`
-   - Frontend image from `web_client/Dockerfile.prod`
-3) Create two ECS Fargate services (API, Frontend) behind an ALB (two target groups) with a single task each under the same cluster HappyRobot-FDE
+3) Create ECS Fargate service for the API behind an ALB with a single task under the cluster HappyRobot-FDE
 4) Attach HTTPS certificate via ACM to ALB
-5) Configure environment variables and secrets (RDS URL, `API_KEY`, etc.) in ECS Task Definitions
-6) Point frontend env `NEXT_PUBLIC_API_URL` to the API’s public ALB domain
+5) Configure environment variables and secrets (RDS URL, `API_KEY`, etc.) in ECS Task Definition
 
 ## Contributing
 We welcome contributions! Please see our [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to set up your development environment, run tests, and submit a pull request.

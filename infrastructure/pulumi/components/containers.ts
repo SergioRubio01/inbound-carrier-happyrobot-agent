@@ -14,15 +14,11 @@ export interface ContainersArgs {
 export class ContainersComponent extends pulumi.ComponentResource {
     public readonly cluster: aws.ecs.Cluster;
     public readonly apiRepository: aws.ecr.Repository;
-    public readonly webRepository: aws.ecr.Repository;
     public readonly taskRole: aws.iam.Role;
     public readonly executionRole: aws.iam.Role;
     public readonly apiTaskDefinition: aws.ecs.TaskDefinition;
-    public readonly webTaskDefinition: aws.ecs.TaskDefinition;
     public readonly apiService: aws.ecs.Service;
-    public readonly webService: aws.ecs.Service;
     public readonly apiTargetGroup: aws.lb.TargetGroup;
-    public readonly webTargetGroup: aws.lb.TargetGroup;
 
     constructor(name: string, args: ContainersArgs, opts?: pulumi.ComponentResourceOptions) {
         super("happyrobot:containers", name, {}, opts);
@@ -55,17 +51,6 @@ export class ContainersComponent extends pulumi.ComponentResource {
             },
         }, { parent: this });
 
-        this.webRepository = new aws.ecr.Repository(`${name}-web-repo`, {
-            name: "happyrobot-frontend",
-            imageTagMutability: "MUTABLE",
-            imageScanningConfiguration: {
-                scanOnPush: true,
-            },
-            tags: {
-                ...args.tags,
-                Name: "happyrobot-frontend",
-            },
-        }, { parent: this });
 
         // Create lifecycle policies for ECR repositories
         new aws.ecr.LifecyclePolicy(`${name}-api-lifecycle`, {
@@ -88,25 +73,6 @@ export class ContainersComponent extends pulumi.ComponentResource {
             }),
         }, { parent: this });
 
-        new aws.ecr.LifecyclePolicy(`${name}-web-lifecycle`, {
-            repository: this.webRepository.name,
-            policy: JSON.stringify({
-                rules: [
-                    {
-                        rulePriority: 1,
-                        description: "Keep last 10 images",
-                        selection: {
-                            tagStatus: "any",
-                            countType: "imageCountMoreThan",
-                            countNumber: 10,
-                        },
-                        action: {
-                            type: "expire",
-                        },
-                    },
-                ],
-            }),
-        }, { parent: this });
 
         // Create IAM role for task execution
         this.executionRole = new aws.iam.Role(`${name}-execution-role`, {
@@ -193,14 +159,6 @@ export class ContainersComponent extends pulumi.ComponentResource {
             },
         }, { parent: this });
 
-        const webLogGroup = new aws.cloudwatch.LogGroup(`${name}-web-logs`, {
-            name: `/aws/ecs/${name}-web`,
-            retentionInDays: args.environment === "prod" ? 30 : 7,
-            tags: {
-                ...args.tags,
-                Name: `${name}-web-logs`,
-            },
-        }, { parent: this });
 
         // Create target groups (will be used by load balancer)
         this.apiTargetGroup = new aws.lb.TargetGroup(`${name}-api-tg`, {
@@ -226,28 +184,6 @@ export class ContainersComponent extends pulumi.ComponentResource {
             },
         }, { parent: this });
 
-        this.webTargetGroup = new aws.lb.TargetGroup(`${name}-web-tg`, {
-            name: `${name}-web-tg`,
-            port: 3000,
-            protocol: "HTTP",
-            vpcId: args.vpc.id,
-            targetType: "ip",
-            healthCheck: {
-                enabled: true,
-                healthyThreshold: 2,
-                unhealthyThreshold: 3,
-                timeout: 10,
-                interval: 30,
-                path: "/",
-                matcher: "200",
-                protocol: "HTTP",
-                port: "traffic-port",
-            },
-            tags: {
-                ...args.tags,
-                Name: `${name}-web-tg`,
-            },
-        }, { parent: this });
 
         // API Task Definition
         this.apiTaskDefinition = new aws.ecs.TaskDefinition(`${name}-api-task`, {
@@ -320,59 +256,6 @@ export class ContainersComponent extends pulumi.ComponentResource {
             },
         }, { parent: this });
 
-        // Web Task Definition
-        this.webTaskDefinition = new aws.ecs.TaskDefinition(`${name}-web-task`, {
-            family: `${name}-web`,
-            networkMode: "awsvpc",
-            requiresCompatibilities: ["FARGATE"],
-            cpu: "256",
-            memory: "512",
-            executionRoleArn: this.executionRole.arn,
-            taskRoleArn: this.taskRole.arn,
-            containerDefinitions: this.webRepository.repositoryUrl.apply(repositoryUrl => JSON.stringify([
-                {
-                    name: "happyrobot-web",
-                    image: `${repositoryUrl}:latest`,
-                    essential: true,
-                    portMappings: [
-                        {
-                            containerPort: 3000,
-                            protocol: "tcp",
-                        },
-                    ],
-                    environment: [
-                        {
-                            name: "NODE_ENV",
-                            value: args.environment === "prod" ? "production" : "development",
-                        },
-                        // API URL will be set via load balancer DNS name in deployment
-                        {
-                            name: "NEXT_PUBLIC_API_URL",
-                            value: `https://api.happyrobot-fde.${args.environment}.com`,
-                        },
-                    ],
-                    logConfiguration: {
-                        logDriver: "awslogs",
-                        options: {
-                            "awslogs-group": webLogGroup.name,
-                            "awslogs-region": aws.config.region!,
-                            "awslogs-stream-prefix": "ecs",
-                        },
-                    },
-                    healthCheck: {
-                        command: ["CMD-SHELL", "curl -f http://localhost:3000/ || exit 1"],
-                        interval: 30,
-                        timeout: 5,
-                        retries: 3,
-                        startPeriod: 60,
-                    },
-                },
-            ])),
-            tags: {
-                ...args.tags,
-                Name: `${name}-web-task`,
-            },
-        }, { parent: this });
 
         // API ECS Service
         this.apiService = new aws.ecs.Service(`${name}-api-service`, {
@@ -405,36 +288,6 @@ export class ContainersComponent extends pulumi.ComponentResource {
             },
         }, { parent: this });
 
-        // Web ECS Service
-        this.webService = new aws.ecs.Service(`${name}-web-service`, {
-            name: "happyrobot-frontend",
-            cluster: this.cluster.id,
-            taskDefinition: this.webTaskDefinition.arn,
-            launchType: "FARGATE",
-            desiredCount: 1,
-            platformVersion: "LATEST",
-
-            networkConfiguration: {
-                subnets: args.privateSubnets.map(subnet => subnet.id),
-                securityGroups: [args.ecsSecurityGroup.id],
-                assignPublicIp: false,
-            },
-
-            loadBalancers: [
-                {
-                    targetGroupArn: this.webTargetGroup.arn,
-                    containerName: "happyrobot-web",
-                    containerPort: 3000,
-                },
-            ],
-
-            dependsOn: [this.webTargetGroup],
-
-            tags: {
-                ...args.tags,
-                Name: "happyrobot-frontend",
-            },
-        }, { parent: this });
 
         // Auto Scaling configuration
         this.createAutoScaling(args);
@@ -443,15 +296,11 @@ export class ContainersComponent extends pulumi.ComponentResource {
         this.registerOutputs({
             cluster: this.cluster,
             apiRepository: this.apiRepository,
-            webRepository: this.webRepository,
             taskRole: this.taskRole,
             executionRole: this.executionRole,
             apiTaskDefinition: this.apiTaskDefinition,
-            webTaskDefinition: this.webTaskDefinition,
             apiService: this.apiService,
-            webService: this.webService,
             apiTargetGroup: this.apiTargetGroup,
-            webTargetGroup: this.webTargetGroup,
         });
     }
 
@@ -481,29 +330,5 @@ export class ContainersComponent extends pulumi.ComponentResource {
             },
         }, { parent: this });
 
-        // Web Auto Scaling
-        const webAutoScalingTarget = new aws.appautoscaling.Target(`${this.getResource().urn.name}-web-autoscaling-target`, {
-            maxCapacity: 3,
-            minCapacity: 1,
-            resourceId: pulumi.interpolate`service/${this.cluster.name}/${this.webService.name}`,
-            scalableDimension: "ecs:service:DesiredCount",
-            serviceNamespace: "ecs",
-        }, { parent: this });
-
-        new aws.appautoscaling.Policy(`${this.getResource().urn.name}-web-autoscaling-policy`, {
-            name: `${this.getResource().urn.name}-web-cpu-autoscaling`,
-            policyType: "TargetTrackingScaling",
-            resourceId: webAutoScalingTarget.resourceId,
-            scalableDimension: webAutoScalingTarget.scalableDimension,
-            serviceNamespace: webAutoScalingTarget.serviceNamespace,
-            targetTrackingScalingPolicyConfiguration: {
-                predefinedMetricSpecification: {
-                    predefinedMetricType: "ECSServiceAverageCPUUtilization",
-                },
-                targetValue: 60,
-                scaleInCooldown: 600,
-                scaleOutCooldown: 300,
-            },
-        }, { parent: this });
     }
 }

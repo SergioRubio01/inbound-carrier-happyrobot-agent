@@ -53,15 +53,15 @@ The HappyRobot FDE platform implements a hexagonal architecture pattern for the 
                     └───────────────────────┘
                         │               │
                         ▼               ▼
-            ┌───────────────────┐ ┌───────────────────┐
-            │   Target Group 1  │ │   Target Group 2  │
-            └───────────────────┘ └───────────────────┘
-                        │               │
-                        ▼               ▼
-            ┌───────────────────┐ ┌───────────────────┐
-            │  ECS Service API  │ │ ECS Service Web   │
-            │  (Fargate Tasks)  │ │ (Fargate Tasks)   │
-            └───────────────────┘ └───────────────────┘
+            ┌───────────────────┐
+            │   Target Group    │
+            └───────────────────┘
+                        │
+                        ▼
+            ┌───────────────────┐
+            │  ECS Service API  │
+            │  (Fargate Tasks)  │
+            └───────────────────┘
                         │               │
             ┌───────────────────────────────────────┐
             │          VPC (10.0.0.0/16)            │
@@ -93,17 +93,6 @@ The HappyRobot FDE platform implements a hexagonal architecture pattern for the 
 
 ### Layer Architecture
 ```
-┌──────────────────────────────────────────────────────────────┐
-│                     Presentation Layer                       │
-│  ┌────────────────────────────────────────────────────────┐ │
-│  │          Next.js Frontend (React + TypeScript)         │ │
-│  │  - Server-side rendering                               │ │
-│  │  - React Query for data fetching                       │ │
-│  │  - Shadcn/UI components                                │ │
-│  └────────────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────────────┘
-                               │
-                               ▼
 ┌──────────────────────────────────────────────────────────────┐
 │                     Interface Layer                          │
 │  ┌────────────────────────────────────────────────────────┐ │
@@ -534,12 +523,6 @@ The HappyRobot FDE platform implements a hexagonal architecture pattern for the 
 │  │  │  │  - Auto-scaling (2-10 tasks)           │  │  │  │
 │  │  │  │  - Health checks                       │  │  │  │
 │  │  │  └────────────────────────────────────────┘  │  │  │
-│  │  │  ┌────────────────────────────────────────┐  │  │  │
-│  │  │  │         Web Service (Fargate)          │  │  │  │
-│  │  │  │  - Task Definition                     │  │  │  │
-│  │  │  │  - Auto-scaling (1-5 tasks)            │  │  │  │
-│  │  │  │  - Health checks                       │  │  │  │
-│  │  │  └────────────────────────────────────────┘  │  │  │
 │  │  └──────────────────────────────────────────────┘  │  │
 │  │                                                     │  │
 │  │  ┌──────────────────────────────────────────────┐  │  │
@@ -551,9 +534,8 @@ The HappyRobot FDE platform implements a hexagonal architecture pattern for the 
 │  │  └──────────────────────────────────────────────┘  │  │
 │  │                                                     │  │
 │  │  ┌──────────────────────────────────────────────┐  │  │
-│  │  │              ECR Repositories                │  │  │
+│  │  │              ECR Repository                  │  │  │
 │  │  │  - happyrobot-api:latest                     │  │  │
-│  │  │  - happyrobot-web:latest                     │  │  │
 │  │  └──────────────────────────────────────────────┘  │  │
 │  └────────────────────────────────────────────────────┘  │
 └──────────────────────────────────────────────────────────┘
@@ -646,13 +628,6 @@ export class HappyRobotInfrastructure extends pulumi.ComponentResource {
 │ - Max tasks: 10                                         │
 │ - Scale out: +2 tasks if CPU > 70% for 2 min           │
 │ - Scale in: -1 task if CPU < 30% for 10 min            │
-├─────────────────────────────────────────────────────────┤
-│ Web Service:                                            │
-│ - Target CPU: 60%                                       │
-│ - Min tasks: 1                                          │
-│ - Max tasks: 5                                          │
-│ - Scale out: +1 task if CPU > 60% for 3 min            │
-│ - Scale in: -1 task if CPU < 20% for 15 min            │
 ├─────────────────────────────────────────────────────────┤
 │ Database:                                               │
 │ - Read replicas: Add if CPU > 80%                      │
@@ -747,7 +722,6 @@ API Gateway ──► API Service ──► Database
 │ Component          │ RTO        │ RPO                  │
 ├────────────────────┼────────────┼──────────────────────┤
 │ API Service        │ 5 minutes  │ 0 (stateless)        │
-│ Web Service        │ 5 minutes  │ 0 (stateless)        │
 │ Database           │ 30 minutes │ 1 hour               │
 │ Load Balancer      │ 10 minutes │ 0 (config in code)   │
 └────────────────────┴────────────┴──────────────────────┘

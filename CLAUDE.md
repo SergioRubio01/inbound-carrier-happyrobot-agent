@@ -19,8 +19,6 @@ HappyRobot FDE - Inbound Carrier Sales automation platform using voice AI agents
   - `database/postgres`: Postgres implementation of models
 - `src/interfaces/api/v1`: FastAPI endpoints and middleware
 
-**Frontend**: Next.js 15 app in `web_client/` with TypeScript, React Query, and shadcn/ui components
-
 **Infrastructure**: AWS ECS Fargate deployment with RDS PostgreSQL, managed via Pulumi IaC in `infrastructure/pulumi/`
 
 **Migrations**: Database migrations are in `migrations/versions`. Every time there is a change in database models, a new migration shall be created.
@@ -29,15 +27,11 @@ HappyRobot FDE - Inbound Carrier Sales automation platform using voice AI agents
 
 ### Local Development
 ```bash
-# Start all services (API, Frontend, PostgreSQL, pgAdmin)
+# Start all services (API, PostgreSQL, pgAdmin)
 docker compose up --build
 
 # Run only backend API locally
 python main.py
-
-# Frontend development
-cd web_client
-npm run dev
 ```
 
 ### Testing
@@ -48,11 +42,6 @@ pytest -v -s  # Verbose with stdout
 pytest tests/unit/  # Run specific test directory
 pytest -k "test_name"  # Run specific test by name
 
-# Frontend tests
-cd web_client
-npm run test  # Jest unit tests
-npm run test:e2e  # Playwright E2E tests
-npm run test:all  # Run all tests
 ```
 
 ### Code Quality
@@ -62,12 +51,6 @@ ruff check .  # Linting
 ruff format .  # Formatting
 mypy .  # Type checking
 
-# Frontend
-cd web_client
-npm run lint  # ESLint
-npm run lint:fix  # Fix linting issues
-npm run format  # Prettier formatting
-npm run type-check  # TypeScript check
 ```
 
 ### Database Operations
@@ -133,7 +116,6 @@ AWS_REGION=eu-south-2
 
 Local development:
 - API: http://localhost:8000
-- Frontend: http://localhost:3000
 - PostgreSQL: localhost:5432
 - pgAdmin: http://localhost:5050 (admin@local/admin)
 
@@ -152,7 +134,6 @@ Each step uses HTTP POST to the API endpoints with appropriate JSON payloads.
 
 - Backend: Tests in `src/tests/` following pytest conventions
 - Use markers: `@pytest.mark.unit`, `@pytest.mark.integration`, `@pytest.mark.aws`
-- Frontend: Jest for unit tests, Playwright for E2E in `web_client/src/tests/`
 - Mock external services (AWS, FMCSA) in tests
 
 ## Development Workflow
@@ -168,5 +149,4 @@ Each step uses HTTP POST to the API endpoints with appropriate JSON payloads.
 
 - PostgreSQL optimized with connection pooling (max 200 connections)
 - API uses async/await for I/O operations
-- Frontend implements React Query for efficient data fetching
 - Database indexes on frequently queried fields (MC number, load status)

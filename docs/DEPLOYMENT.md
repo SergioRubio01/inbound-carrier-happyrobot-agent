@@ -10,7 +10,6 @@
 ### Prerequisites
 - Docker Desktop installed and running
 - Git installed
-- Node.js 18+ (for frontend development)
 - Python 3.12+ (for backend development)
 
 ### Step 1: Clone and Setup Environment
@@ -40,7 +39,6 @@ docker-compose up --build -d
 
 # Services will be available at:
 # - API: http://localhost:8000
-# - Frontend: http://localhost:3000
 # - PostgreSQL: localhost:5432
 # - pgAdmin: http://localhost:5050 (admin@happyrobot.com/admin1234)
 ```
@@ -73,8 +71,6 @@ curl -X POST http://localhost:8000/api/v1/fmcsa/verify \
   -H "Content-Type: application/json" \
   -d '{"mc_number": "123456"}'
 
-# Check frontend
-# Open http://localhost:3000
 ```
 
 ### Step 5: Stop Services
@@ -168,7 +164,6 @@ pulumi up -s inbound-carrier-agent -y
 ```bash
 # Get ECR repository URLs from Pulumi output
 pulumi stack output ecrApiUrl
-pulumi stack output ecrFrontendUrl
 
 # Login to ECR
 aws ecr get-login-password --region eu-south-2 | \
@@ -179,11 +174,6 @@ docker build -t happyrobot-api:latest -f Dockerfile.api .
 docker tag happyrobot-api:latest <ecr-api-url>:latest
 docker push <ecr-api-url>:latest
 
-# Build and push frontend image
-cd web_client
-docker build -t happyrobot-frontend:latest -f Dockerfile.prod .
-docker tag happyrobot-frontend:latest <ecr-frontend-url>:latest
-docker push <ecr-frontend-url>:latest
 ```
 
 ### Step 6: Update ECS Services
@@ -195,15 +185,10 @@ aws ecs update-service \
   --service api-service \
   --force-new-deployment
 
-aws ecs update-service \
-  --cluster happyrobot-fde \
-  --service frontend-service \
-  --force-new-deployment
-
 # Monitor deployment
 aws ecs wait services-stable \
   --cluster happyrobot-fde \
-  --services api-service frontend-service
+  --services api-service
 ```
 
 ### Step 7: Run Database Migrations
@@ -235,7 +220,6 @@ curl https://<alb-url>/health
 
 # Access services
 # API: https://<alb-url>/api/v1/docs
-# Frontend: https://<alb-url>
 ```
 
 ### Step 9: Configure HappyRobot Platform
@@ -292,8 +276,6 @@ Monitors:
 # API logs
 aws logs tail /ecs/happyrobot-fde/api --follow
 
-# Frontend logs
-aws logs tail /ecs/happyrobot-fde/frontend --follow
 
 # Database logs
 aws logs tail /aws/rds/instance/happyrobot-fde --follow

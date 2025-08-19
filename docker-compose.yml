@@ -69,8 +69,6 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       # API Key for endpoint security
       API_KEY: ${API_KEY:-dev-local-api-key}
-      # Frontend URL
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       # AWS
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
@@ -96,35 +94,6 @@ services:
       retries: 3
       start_period: 40s
 
-  # HappyRobot Frontend (Next.js)
-  happyrobot-frontend:
-    build:
-      context: ./web_client
-      dockerfile: Dockerfile.dev
-    container_name: happyrobot-frontend
-    restart: unless-stopped
-    ports:
-      - "3000:3000"
-    environment:
-      # Development mode
-      NODE_ENV: development
-    volumes:
-      # Mount source code for hot reload in development
-      - ./web_client:/app
-      - /app/node_modules
-      - /app/.next
-    networks:
-      - happyrobot-network
-    depends_on:
-      - happyrobot-api
-    develop:
-      watch:
-        - action: sync
-          path: ./web_client
-          target: /app
-          ignore:
-            - node_modules/
-            - .next/
 
 
 volumes:

@@ -6,7 +6,6 @@ export interface LoadBalancerArgs {
     publicSubnets: aws.ec2.Subnet[];
     albSecurityGroup: aws.ec2.SecurityGroup;
     apiTargetGroup: aws.lb.TargetGroup;
-    webTargetGroup: aws.lb.TargetGroup;
     certificateArn?: string;
     environment: string;
     tags: Record<string, string>;
@@ -17,7 +16,6 @@ export class LoadBalancerComponent extends pulumi.ComponentResource {
     public readonly httpListener: aws.lb.Listener;
     public readonly httpsListener?: aws.lb.Listener;
     public readonly apiListenerRule: aws.lb.ListenerRule;
-    public readonly webListenerRule: aws.lb.ListenerRule;
 
     constructor(name: string, args: LoadBalancerArgs, opts?: pulumi.ComponentResourceOptions) {
         super("happyrobot:loadbalancer", name, {}, opts);
@@ -64,7 +62,7 @@ export class LoadBalancerComponent extends pulumi.ComponentResource {
             ] : [
                 {
                     type: "forward",
-                    targetGroupArn: args.webTargetGroup.arn,
+                    targetGroupArn: args.apiTargetGroup.arn,
                 },
             ],
 
@@ -86,7 +84,7 @@ export class LoadBalancerComponent extends pulumi.ComponentResource {
                 defaultActions: [
                     {
                         type: "forward",
-                        targetGroupArn: args.webTargetGroup.arn,
+                        targetGroupArn: args.apiTargetGroup.arn,
                     },
                 ],
 
@@ -178,31 +176,6 @@ export class LoadBalancerComponent extends pulumi.ComponentResource {
             },
         }, { parent: this });
 
-        // Default rule for frontend (everything else goes to web target group)
-        this.webListenerRule = new aws.lb.ListenerRule(`${name}-web-rule`, {
-            listenerArn: listenerArn,
-            priority: 1000, // Lower priority (evaluated last)
-
-            actions: [
-                {
-                    type: "forward",
-                    targetGroupArn: args.webTargetGroup.arn,
-                },
-            ],
-
-            conditions: [
-                {
-                    pathPattern: {
-                        values: ["/*"],
-                    },
-                },
-            ],
-
-            tags: {
-                ...args.tags,
-                Name: `${name}-web-rule`,
-            },
-        }, { parent: this });
 
         // Create WAF for additional security (optional for POC)
         if (args.environment === "prod") {
@@ -215,7 +188,6 @@ export class LoadBalancerComponent extends pulumi.ComponentResource {
             httpListener: this.httpListener,
             httpsListener: this.httpsListener,
             apiListenerRule: this.apiListenerRule,
-            webListenerRule: this.webListenerRule,
         });
     }
 

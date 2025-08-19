@@ -55,7 +55,6 @@ const loadBalancer = new LoadBalancerComponent("loadbalancer", {
     publicSubnets: networking.publicSubnets,
     albSecurityGroup: networking.albSecurityGroup,
     apiTargetGroup: containers.apiTargetGroup,
-    webTargetGroup: containers.webTargetGroup,
     certificateArn: config.get("certificateArn"), // Optional SSL certificate
     environment,
     tags: commonTags,
@@ -65,7 +64,6 @@ const loadBalancer = new LoadBalancerComponent("loadbalancer", {
 const monitoring = new MonitoringComponent("monitoring", {
     ecsCluster: containers.cluster,
     apiService: containers.apiService,
-    webService: containers.webService,
     database: database.instance,
     loadBalancer: loadBalancer.alb,
     environment,
@@ -79,7 +77,6 @@ export const privateSubnetIds = networking.privateSubnets.map(subnet => subnet.i
 export const databaseEndpoint = database.endpoint;
 export const ecsClusterName = containers.cluster.name;
 export const apiRepositoryUrl = containers.apiRepository.repositoryUrl;
-export const webRepositoryUrl = containers.webRepository.repositoryUrl;
 export const loadBalancerDnsName = loadBalancer.alb.dnsName;
 export const loadBalancerZoneId = loadBalancer.alb.zoneId;
 export const dashboardUrl = monitoring.dashboardUrl;
@@ -101,19 +98,16 @@ export const outputs = {
     },
     repositories: {
         api: containers.apiRepository.repositoryUrl,
-        web: containers.webRepository.repositoryUrl,
     },
     loadBalancer: {
         dnsName: loadBalancer.alb.dnsName,
         hostedZoneId: loadBalancer.alb.zoneId,
         apiTargetGroupArn: containers.apiTargetGroup.arn,
-        webTargetGroupArn: containers.webTargetGroup.arn,
     },
     monitoring: {
         dashboardUrl: monitoring.dashboardUrl,
         logGroupNames: {
             api: monitoring.apiLogGroup.name,
-            web: monitoring.webLogGroup.name,
         },
     },
 };
