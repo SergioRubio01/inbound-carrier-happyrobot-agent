@@ -69,12 +69,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       # API Key for endpoint security
       API_KEY: ${API_KEY:-dev-local-api-key}
-      # JWT configuration
-      JWT_SECRET_KEY: your-super-secret-jwt-key-change-this-in-production
-      ACCESS_TOKEN_EXPIRE_MINUTES: 30
-      REFRESH_TOKEN_EXPIRE_DAYS: 7
-      JWT_ALGORITHM: HS256
-      # Frontend URL for OAuth redirects
+      # Frontend URL
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       # AWS
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
