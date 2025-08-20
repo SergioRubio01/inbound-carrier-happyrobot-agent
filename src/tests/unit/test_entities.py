@@ -95,10 +95,12 @@ class TestLoad:
         )
 
         assert load.reference_number == "LOAD001"
-        assert load.origin.city == "Chicago"
-        assert load.destination.city == "Atlanta"
+        assert load.origin is not None and load.origin.city == "Chicago"
+        assert load.destination is not None and load.destination.city == "Atlanta"
         assert load.miles == 716
-        assert load.loadboard_rate.to_float() == 2500
+        assert (
+            load.loadboard_rate is not None and load.loadboard_rate.to_float() == 2500
+        )
 
     def test_load_rate_per_mile(self):
         """Test load rate per mile calculation."""
@@ -119,7 +121,9 @@ class TestLoad:
             updated_at=datetime.utcnow(),
         )
 
-        assert load.rate_per_mile == 4.0  # $2000 / 500 miles
+        rate_per_mile = load.rate_per_mile
+        assert rate_per_mile is not None
+        assert rate_per_mile.to_float() == 4.0  # $2000 / 500 miles
 
 
 class TestNegotiation:
@@ -148,9 +152,15 @@ class TestNegotiation:
         )
 
         assert negotiation.round_number == 1
-        assert negotiation.carrier_offer.to_float() == 2800
+        assert (
+            negotiation.carrier_offer is not None
+            and negotiation.carrier_offer.to_float() == 2800
+        )
         assert negotiation.system_response == SystemResponse.COUNTER_OFFER
-        assert negotiation.counter_offer.to_float() == 2600
+        assert (
+            negotiation.counter_offer is not None
+            and negotiation.counter_offer.to_float() == 2600
+        )
 
     def test_negotiation_completion(self):
         """Test negotiation completion logic."""
@@ -173,4 +183,7 @@ class TestNegotiation:
 
         assert not negotiation.is_active
         assert negotiation.final_status == NegotiationStatus.DEAL_ACCEPTED
-        assert negotiation.agreed_rate.to_float() == 2600
+        assert (
+            negotiation.agreed_rate is not None
+            and negotiation.agreed_rate.to_float() == 2600
+        )
