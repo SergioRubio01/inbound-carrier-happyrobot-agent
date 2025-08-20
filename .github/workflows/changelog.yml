@@ -1,0 +1,124 @@
+name: Generate Changelog
+
+on:
+  push:
+    branches:
+      - master
+      - main
+  workflow_dispatch:
+
+jobs:
+  changelog:
+    name: Generate Changelog
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for accurate changelog
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Generate CHANGELOG.md
+        run: |
+          cat > CHANGELOG.md << 'EOF'
+          # Changelog
+
+          All notable changes to HappyRobot FDE will be documented in this file.
+
+          The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+          and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+          EOF
+
+          # Get all tags sorted by version
+          git tag -l "v*" --sort=-version:refname | while read TAG; do
+            echo "## [$TAG] - $(git log -1 --format=%ai $TAG | cut -d' ' -f1)" >> CHANGELOG.md
+            echo "" >> CHANGELOG.md
+
+            # Get previous tag
+            PREV_TAG=$(git tag -l "v*" --sort=-version:refname | grep -A1 "^$TAG$" | tail -n1)
+
+            if [ "$PREV_TAG" != "$TAG" ]; then
+              RANGE="$PREV_TAG..$TAG"
+            else
+              RANGE="$TAG"
+            fi
+
+            # Categorize commits
+            echo "### Added" >> CHANGELOG.md
+            git log $RANGE --pretty=format:"- %s (%h)" --grep="^feat" --grep="^feature" >> CHANGELOG.md || echo "- No new features" >> CHANGELOG.md
+            echo -e "\n" >> CHANGELOG.md
+
+            echo "### Fixed" >> CHANGELOG.md
+            git log $RANGE --pretty=format:"- %s (%h)" --grep="^fix" --grep="^bugfix" >> CHANGELOG.md || echo "- No bug fixes" >> CHANGELOG.md
+            echo -e "\n" >> CHANGELOG.md
+
+            echo "### Changed" >> CHANGELOG.md
+            git log $RANGE --pretty=format:"- %s (%h)" --grep="^refactor" --grep="^perf" >> CHANGELOG.md || echo "- No changes" >> CHANGELOG.md
+            echo -e "\n" >> CHANGELOG.md
+
+            echo "### Security" >> CHANGELOG.md
+            git log $RANGE --pretty=format:"- %s (%h)" --grep="^security" --grep="^vuln" >> CHANGELOG.md || echo "- No security updates" >> CHANGELOG.md
+            echo -e "\n" >> CHANGELOG.md
+
+            echo "### Documentation" >> CHANGELOG.md
+            git log $RANGE --pretty=format:"- %s (%h)" --grep="^docs" --grep="^doc" >> CHANGELOG.md || echo "- No documentation changes" >> CHANGELOG.md
+            echo -e "\n" >> CHANGELOG.md
+
+            echo "---" >> CHANGELOG.md
+            echo "" >> CHANGELOG.md
+          done
+
+          # Add unreleased section for commits since last tag
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+
+          if [ -n "$LATEST_TAG" ]; then
+            echo "## [Unreleased]" >> CHANGELOG.md
+            echo "" >> CHANGELOG.md
+
+            echo "### Added" >> CHANGELOG.md
+            git log $LATEST_TAG..HEAD --pretty=format:"- %s (%h)" --grep="^feat" --grep="^feature" >> CHANGELOG.md || echo "- No new features" >> CHANGELOG.md
+            echo -e "\n" >> CHANGELOG.md
+
+            echo "### Fixed" >> CHANGELOG.md
+            git log $LATEST_TAG..HEAD --pretty=format:"- %s (%h)" --grep="^fix" --grep="^bugfix" >> CHANGELOG.md || echo "- No bug fixes" >> CHANGELOG.md
+            echo -e "\n" >> CHANGELOG.md
+
+            echo "### Changed" >> CHANGELOG.md
+            git log $LATEST_TAG..HEAD --pretty=format:"- %s (%h)" --grep="^refactor" --grep="^perf" >> CHANGELOG.md || echo "- No changes" >> CHANGELOG.md
+            echo -e "\n" >> CHANGELOG.md
+          fi
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if git diff --quiet CHANGELOG.md; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Pull Request
+        if: steps.changes.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "docs: update CHANGELOG.md"
+          title: "docs: Update CHANGELOG.md"
+          body: |
+            This PR updates the CHANGELOG.md file with the latest changes.
+
+            - Auto-generated from commit history
+            - Categorized by change type
+            - Following semantic versioning conventions
+          branch: update-changelog
+          delete-branch: true
+          labels: documentation, automated

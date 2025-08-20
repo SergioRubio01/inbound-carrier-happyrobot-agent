@@ -10,6 +10,9 @@ on:
       - 'src/**'
       - 'Dockerfile.api'
       - '.github/workflows/deploy.yml'
+    tags:
+      - 'v*.*.*'  # Trigger on semantic version tags
+      - 'v*.*.*-*'  # Include pre-release tags
 
   pull_request:
     branches:
@@ -29,6 +32,8 @@ on:
         type: choice
         options:
           - dev
+          - staging
+          - production
 
 env:
   AWS_REGION: eu-south-2  # Spain region for compliance
@@ -114,12 +119,24 @@ jobs:
           TIMESTAMP=$(date +%Y%m%d%H%M%S)
           SHORT_SHA=${GITHUB_SHA::8}
 
-          API_TAG="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_API_REPOSITORY }}:${TIMESTAMP}-${SHORT_SHA}"
+          # If this is a tag, use the tag as part of the image tag
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/}
+            API_TAG="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_API_REPOSITORY }}:${VERSION}"
+            API_LATEST="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_API_REPOSITORY }}:latest"
+
+            # For production releases (non-prerelease), also tag as stable
+            if [[ ! "$VERSION" =~ - ]]; then
+              API_STABLE="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_API_REPOSITORY }}:stable"
+              echo "api-stable=${API_STABLE}" >> $GITHUB_OUTPUT
+            fi
+          else
+            API_TAG="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_API_REPOSITORY }}:${TIMESTAMP}-${SHORT_SHA}"
+            API_LATEST="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_API_REPOSITORY }}:latest"
+          fi
 
           echo "api-tag=${API_TAG}" >> $GITHUB_OUTPUT
-
-          # Also tag as latest for convenience
-          echo "api-latest=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_API_REPOSITORY }}:latest" >> $GITHUB_OUTPUT
+          echo "api-latest=${API_LATEST}" >> $GITHUB_OUTPUT
 
       - name: Build and push API image
         uses: docker/build-push-action@v5
@@ -130,6 +147,7 @@ jobs:
           tags: |
             ${{ steps.meta.outputs.api-tag }}
             ${{ steps.meta.outputs.api-latest }}
+            ${{ steps.meta.outputs.api-stable }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64
