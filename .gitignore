@@ -59,7 +59,6 @@ bin/
 .docker/
 
 # Poetry
-poetry.lock
 dist/
 
 # Misc
