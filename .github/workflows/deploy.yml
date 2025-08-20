@@ -60,7 +60,8 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r pyproject.toml || pip install fastapi uvicorn pytest ruff mypy
+          pip install fastapi uvicorn sqlalchemy alembic pydantic pydantic-settings psycopg2-binary asyncpg boto3 docker
+          pip install pytest pytest-asyncio pytest-cov pytest-mock ruff mypy black isort
 
       - name: Run Python linting
         run: |
