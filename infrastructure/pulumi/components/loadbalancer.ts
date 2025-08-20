@@ -32,11 +32,13 @@ export class LoadBalancerComponent extends pulumi.ComponentResource {
             enableHttp2: true,
             enableCrossZoneLoadBalancing: true,
 
-            accessLogs: {
-                bucket: this.createAccessLogsBucket(args).bucket,
-                enabled: true,
-                prefix: "alb-access-logs",
-            },
+            // Access logs temporarily disabled due to S3 permissions issues
+            // TODO: Fix S3 bucket policy for ALB access logs
+            // accessLogs: {
+            //     bucket: this.createAccessLogsBucket(args).bucket,
+            //     enabled: true,
+            //     prefix: "alb-access-logs",
+            // },
 
             tags: {
                 ...args.tags,
@@ -47,7 +49,7 @@ export class LoadBalancerComponent extends pulumi.ComponentResource {
         // Create HTTP listener (redirects to HTTPS if certificate is provided)
         this.httpListener = new aws.lb.Listener(`${name}-http-listener`, {
             loadBalancerArn: this.alb.arn,
-            port: "80",
+            port: 80,
             protocol: "HTTP",
 
             defaultActions: args.certificateArn ? [
@@ -76,7 +78,7 @@ export class LoadBalancerComponent extends pulumi.ComponentResource {
         if (args.certificateArn) {
             this.httpsListener = new aws.lb.Listener(`${name}-https-listener`, {
                 loadBalancerArn: this.alb.arn,
-                port: "443",
+                port: 443,
                 protocol: "HTTPS",
                 sslPolicy: "ELBSecurityPolicy-TLS-1-2-2017-01",
                 certificateArn: args.certificateArn,
@@ -192,9 +194,10 @@ export class LoadBalancerComponent extends pulumi.ComponentResource {
     }
 
     private createAccessLogsBucket(args: LoadBalancerArgs): aws.s3.Bucket {
+        const name = "loadbalancer";
         // Create S3 bucket for ALB access logs
-        const bucket = new aws.s3.Bucket(`${this.getResource().urn.name}-access-logs`, {
-            bucket: `${this.getResource().urn.name}-alb-access-logs-${args.environment}`,
+        const bucket = new aws.s3.Bucket(`${name}-access-logs`, {
+            bucket: `${name}-alb-access-logs-${args.environment}`,
 
             versioning: {
                 enabled: false,
@@ -218,16 +221,10 @@ export class LoadBalancerComponent extends pulumi.ComponentResource {
                 },
             },
 
-            publicAccessBlock: {
-                blockPublicAcls: true,
-                blockPublicPolicy: true,
-                ignorePublicAcls: true,
-                restrictPublicBuckets: true,
-            },
 
             tags: {
                 ...args.tags,
-                Name: `${this.getResource().urn.name}-access-logs`,
+                Name: `${name}-access-logs`,
                 Purpose: "ALB Access Logs",
             },
         }, { parent: this });
@@ -237,64 +234,22 @@ export class LoadBalancerComponent extends pulumi.ComponentResource {
         const region = aws.getRegion({});
 
         // Create bucket policy to allow ALB to write logs
-        new aws.s3.BucketPolicy(`${this.getResource().urn.name}-access-logs-policy`, {
+        new aws.s3.BucketPolicy(`${name}-access-logs-policy`, {
             bucket: bucket.id,
-            policy: pulumi.all([current, region, bucket.arn]).apply(([account, reg, bucketArn]) => {
-                // ELB service account IDs by region
-                const elbServiceAccounts: { [key: string]: string } = {
-                    "us-east-1": "127311923021",
-                    "us-east-2": "033677994240",
-                    "us-west-1": "027434742980",
-                    "us-west-2": "797873946194",
-                    "eu-west-1": "156460612806",
-                    "eu-west-2": "652711504416",
-                    "eu-west-3": "009996457667",
-                    "eu-central-1": "054676820928",
-                    "eu-south-1": "635631232127",
-                    "eu-south-2": "975236955715", // Spain region
-                    "ap-northeast-1": "582318560864",
-                    "ap-northeast-2": "600734575887",
-                    "ap-southeast-1": "114774131450",
-                    "ap-southeast-2": "783225319266",
-                    "ap-south-1": "718504428378",
-                    "sa-east-1": "507241528517",
-                    "ca-central-1": "985666609251",
-                };
-
-                const elbServiceAccount = elbServiceAccounts[reg.name] || elbServiceAccounts["us-east-1"];
-
+            policy: bucket.arn.apply((bucketArn) => {
+                // Simplified policy for ALB access logs
                 return JSON.stringify({
                     Version: "2012-10-17",
                     Statement: [
                         {
+                            Sid: "AllowALBAccessLogs",
                             Effect: "Allow",
                             Principal: {
-                                AWS: `arn:aws:iam::${elbServiceAccount}:root`,
+                                Service: "elasticloadbalancing.amazonaws.com"
                             },
                             Action: "s3:PutObject",
-                            Resource: `${bucketArn}/alb-access-logs/AWSLogs/${account.accountId}/*`,
-                        },
-                        {
-                            Effect: "Allow",
-                            Principal: {
-                                Service: "delivery.logs.amazonaws.com",
-                            },
-                            Action: "s3:PutObject",
-                            Resource: `${bucketArn}/alb-access-logs/AWSLogs/${account.accountId}/*`,
-                            Condition: {
-                                StringEquals: {
-                                    "s3:x-amz-acl": "bucket-owner-full-control",
-                                },
-                            },
-                        },
-                        {
-                            Effect: "Allow",
-                            Principal: {
-                                Service: "delivery.logs.amazonaws.com",
-                            },
-                            Action: "s3:GetBucketAcl",
-                            Resource: bucketArn,
-                        },
+                            Resource: `${bucketArn}/*`
+                        }
                     ],
                 });
             }),
@@ -304,9 +259,10 @@ export class LoadBalancerComponent extends pulumi.ComponentResource {
     }
 
     private createWAF(args: LoadBalancerArgs) {
+        const name = "loadbalancer";
         // Create WAF Web ACL for production environments
-        const webAcl = new aws.wafv2.WebAcl(`${this.getResource().urn.name}-waf`, {
-            name: `${this.getResource().urn.name}-waf`,
+        const webAcl = new aws.wafv2.WebAcl(`${name}-waf`, {
+            name: `${name}-waf`,
             description: "WAF for HappyRobot FDE ALB",
             scope: "REGIONAL",
 
@@ -374,17 +330,17 @@ export class LoadBalancerComponent extends pulumi.ComponentResource {
             visibilityConfig: {
                 sampledRequestsEnabled: true,
                 cloudwatchMetricsEnabled: true,
-                metricName: `${this.getResource().urn.name}-waf-metric`,
+                metricName: `${name}-waf-metric`,
             },
 
             tags: {
                 ...args.tags,
-                Name: `${this.getResource().urn.name}-waf`,
+                Name: `${name}-waf`,
             },
         }, { parent: this });
 
         // Associate WAF with ALB
-        new aws.wafv2.WebAclAssociation(`${this.getResource().urn.name}-waf-association`, {
+        new aws.wafv2.WebAclAssociation(`${name}-waf-association`, {
             resourceArn: this.alb.arn,
             webAclArn: webAcl.arn,
         }, { parent: this });

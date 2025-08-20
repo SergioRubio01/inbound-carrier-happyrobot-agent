@@ -28,6 +28,7 @@ export class DatabaseComponent extends pulumi.ComponentResource {
         const dbPassword = new random.RandomPassword(`${name}-password`, {
             length: 32,
             special: true,
+            overrideSpecial: "!#$%&*()-_=+[]{}:?", // Exclude characters that RDS doesn't accept: /@"' and space
         }, { parent: this });
 
         // Create database subnet group
@@ -40,80 +41,12 @@ export class DatabaseComponent extends pulumi.ComponentResource {
             },
         }, { parent: this });
 
-        // Create database parameter group for PostgreSQL optimization
-        const parameterGroup = new aws.rds.ParameterGroup(`${name}-parameter-group`, {
-            family: "postgres15",
-            name: `${name}-parameter-group`,
-            description: "Custom parameter group for HappyRobot PostgreSQL",
-            parameters: [
-                {
-                    name: "shared_preload_libraries",
-                    value: "pg_stat_statements",
-                },
-                {
-                    name: "log_statement",
-                    value: "all",
-                },
-                {
-                    name: "log_min_duration_statement",
-                    value: "1000", // Log queries taking more than 1 second
-                },
-                {
-                    name: "max_connections",
-                    value: "200", // Match connection pool size from architecture
-                },
-            ],
-            tags: {
-                ...args.tags,
-                Name: `${name}-parameter-group`,
-            },
-        }, { parent: this });
+        // Use default parameter group to avoid issues with static parameters
+        // Custom parameters can be added later after the database is created
 
-        // Create RDS PostgreSQL instance
-        this.instance = new aws.rds.Instance(`${name}-postgres`, {
-            identifier: `${name}-postgres`,
-            engine: "postgres",
-            engineVersion: "15.4",
-            instanceClass: args.instanceClass,
-            allocatedStorage: args.allocatedStorage,
-            storageType: "gp3",
-            storageEncrypted: true,
-
-            // Database configuration
-            dbName: "happyrobot",
-            username: "happyrobot",
-            password: dbPassword.result,
-
-            // Network configuration
-            dbSubnetGroupName: this.subnetGroup.name,
-            vpcSecurityGroupIds: [args.databaseSecurityGroup.id],
-            publiclyAccessible: false,
-
-            // Backup and maintenance
-            backupRetentionPeriod: args.environment === "prod" ? 7 : 1,
-            backupWindow: "03:00-04:00", // 3-4 AM UTC
-            maintenanceWindow: "Sun:04:00-Sun:05:00", // Sunday 4-5 AM UTC
-            autoMinorVersionUpgrade: true,
-            applyImmediately: false,
-
-            // Performance and monitoring
-            parameterGroupName: parameterGroup.name,
-            performanceInsightsEnabled: true,
-            performanceInsightsRetentionPeriod: 7,
-            monitoringInterval: 60,
-            monitoringRoleArn: this.createMonitoringRole().arn,
-            enabledCloudwatchLogsExports: ["postgresql"],
-
-            // Deletion protection for production
-            deletionProtection: args.environment === "prod",
-            skipFinalSnapshot: args.environment !== "prod",
-            finalSnapshotIdentifier: args.environment === "prod" ? `${name}-final-snapshot` : undefined,
-
-            tags: {
-                ...args.tags,
-                Name: `${name}-postgres`,
-            },
-        }, { parent: this });
+        // Reference the existing database instance
+        // The database already exists in AWS, so we just reference it
+        this.instance = aws.rds.Instance.get(`${name}-postgres`, `${name}-postgres`, undefined, { parent: this }) as aws.rds.Instance;
 
         // Create AWS Secrets Manager secret for database credentials
         this.secret = new aws.secretsmanager.Secret(`${name}-credentials`, {
@@ -157,9 +90,10 @@ export class DatabaseComponent extends pulumi.ComponentResource {
     }
 
     private createMonitoringRole(): aws.iam.Role {
+        const name = "database";
         // Create IAM role for RDS Enhanced Monitoring
-        const monitoringRole = new aws.iam.Role(`${this.getResource().urn.name}-monitoring-role`, {
-            name: `${this.getResource().urn.name}-rds-monitoring-role`,
+        const monitoringRole = new aws.iam.Role(`${name}-monitoring-role`, {
+            name: `${name}-rds-monitoring-role`,
             assumeRolePolicy: JSON.stringify({
                 Version: "2012-10-17",
                 Statement: [
@@ -173,12 +107,12 @@ export class DatabaseComponent extends pulumi.ComponentResource {
                 ],
             }),
             tags: {
-                Name: `${this.getResource().urn.name}-rds-monitoring-role`,
+                Name: `${name}-rds-monitoring-role`,
             },
         }, { parent: this });
 
         // Attach the AWS managed policy for RDS Enhanced Monitoring
-        new aws.iam.RolePolicyAttachment(`${this.getResource().urn.name}-monitoring-policy`, {
+        new aws.iam.RolePolicyAttachment(`${name}-monitoring-policy`, {
             role: monitoringRole.name,
             policyArn: "arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole",
         }, { parent: this });

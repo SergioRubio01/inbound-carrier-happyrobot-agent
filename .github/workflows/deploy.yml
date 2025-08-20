@@ -38,7 +38,7 @@ on:
 
 env:
   AWS_REGION: eu-south-2  # Spain region for compliance
-  ECR_API_REPOSITORY: happyrobot-api
+  ECR_API_REPOSITORY: happyrobot-dev-containers-api
   ECR_WEB_REPOSITORY: happyrobot-frontend
   PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
 
@@ -232,46 +232,50 @@ jobs:
         run: |
           # Update API service
           aws ecs update-service \
-            --cluster happyrobot-fde \
-            --service happyrobot-api \
+            --cluster happyrobot-dev-containers-cluster \
+            --service happyrobot-dev-containers-api-service \
             --force-new-deployment \
             --region ${{ env.AWS_REGION }}
 
-          # Update Web service
-          aws ecs update-service \
-            --cluster happyrobot-fde \
-            --service happyrobot-frontend \
-            --force-new-deployment \
-            --region ${{ env.AWS_REGION }}
+          # Note: Frontend service not deployed yet
+          # # Update Web service
+          # aws ecs update-service \
+          #   --cluster happyrobot-dev-containers-cluster \
+          #   --service happyrobot-frontend \
+          #   --force-new-deployment \
+          #   --region ${{ env.AWS_REGION }}
 
       - name: Wait for services to stabilize
         run: |
           echo "Waiting for API service to stabilize..."
           aws ecs wait services-stable \
-            --cluster happyrobot-fde \
-            --services happyrobot-api \
+            --cluster happyrobot-dev-containers-cluster \
+            --services happyrobot-dev-containers-api-service \
             --region ${{ env.AWS_REGION }}
 
-          echo "Waiting for Web service to stabilize..."
-          aws ecs wait services-stable \
-            --cluster happyrobot-fde \
-            --services happyrobot-frontend \
-            --region ${{ env.AWS_REGION }}
+          # Note: Frontend service not deployed yet
+          # echo "Waiting for Web service to stabilize..."
+          # aws ecs wait services-stable \
+          #   --cluster happyrobot-dev-containers-cluster \
+          #   --services happyrobot-frontend \
+          #   --region ${{ env.AWS_REGION }}
 
       - name: Run health checks
         run: |
           # Get ALB DNS name from Pulumi outputs
+          cd infrastructure/pulumi
           ALB_DNS=$(pulumi stack output loadBalancerDnsName -s happyrobot-fde)
 
-          echo "Running health checks against https://${ALB_DNS}"
+          echo "Running health checks against http://${ALB_DNS}"
 
           # Check API health
-          curl -f "https://${ALB_DNS}/api/v1/health" || exit 1
+          curl -f "http://${ALB_DNS}/api/v1/health" || exit 1
           echo "✅ API health check passed"
 
-          # Check Web health (basic connectivity)
-          curl -f "https://${ALB_DNS}/" -I || exit 1
-          echo "✅ Web health check passed"
+          # Note: Frontend not deployed yet
+          # # Check Web health (basic connectivity)
+          # curl -f "http://${ALB_DNS}/" -I || exit 1
+          # echo "✅ Web health check passed"
 
   # Deploy to staging after successful dev deployment
   deploy-staging:
@@ -279,10 +283,6 @@ jobs:
     needs: deploy
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/master' && github.event_name == 'push'
-
-    environment:
-      name: staging
-      url: ${{ steps.pulumi.outputs.loadbalancer-dns-name }}
 
     steps:
       - name: Checkout code
