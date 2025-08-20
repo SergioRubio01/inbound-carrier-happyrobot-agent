@@ -5,16 +5,18 @@ Author: HappyRobot Team
 Created: 2024-08-20
 """
 
-import pytest
-from fastapi.testclient import TestClient
-from fastapi import FastAPI
 from datetime import datetime, timedelta
 from uuid import uuid4
+
+import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
 from src.interfaces.api.v1 import loads
 
 app = FastAPI()
 app.include_router(loads.router, prefix="/api/v1")
+
 
 @pytest.fixture
 def client():
@@ -29,24 +31,20 @@ def valid_load_data():
     delivery_date = future_date + timedelta(days=2)
 
     return {
-        "origin": {
-            "city": "Chicago",
-            "state": "IL",
-            "zip": "60601"
-        },
-        "destination": {
-            "city": "Los Angeles",
-            "state": "CA",
-            "zip": "90210"
-        },
-        "pickup_datetime": future_date.replace(hour=10, minute=0, second=0, microsecond=0).isoformat(),
-        "delivery_datetime": delivery_date.replace(hour=16, minute=0, second=0, microsecond=0).isoformat(),
+        "origin": {"city": "Chicago", "state": "IL", "zip": "60601"},
+        "destination": {"city": "Los Angeles", "state": "CA", "zip": "90210"},
+        "pickup_datetime": future_date.replace(
+            hour=10, minute=0, second=0, microsecond=0
+        ).isoformat(),
+        "delivery_datetime": delivery_date.replace(
+            hour=16, minute=0, second=0, microsecond=0
+        ).isoformat(),
         "equipment_type": "53-foot van",
         "loadboard_rate": 2500.00,
         "weight": 25000,
         "commodity_type": "Electronics",
         "notes": "Handle with care",
-        "broker_company": "Test Broker LLC"
+        "broker_company": "Test Broker LLC",
     }
 
 
@@ -60,19 +58,14 @@ def api_key_headers():
 def test_delete_load_success(client, setup_database, valid_load_data, api_key_headers):
     """Test successful load deletion."""
     create_response = client.post(
-        "/api/v1/loads/",
-        json=valid_load_data,
-        headers=api_key_headers
+        "/api/v1/loads/", json=valid_load_data, headers=api_key_headers
     )
 
     assert create_response.status_code == 201
     created_load = create_response.json()
     load_id = created_load["load_id"]
 
-    delete_response = client.delete(
-        f"/api/v1/loads/{load_id}",
-        headers=api_key_headers
-    )
+    delete_response = client.delete(f"/api/v1/loads/{load_id}", headers=api_key_headers)
 
     assert delete_response.status_code == 204
     assert delete_response.text == ""
@@ -84,8 +77,7 @@ def test_delete_load_not_found(client, setup_database, api_key_headers):
     non_existent_id = str(uuid4())
 
     delete_response = client.delete(
-        f"/api/v1/loads/{non_existent_id}",
-        headers=api_key_headers
+        f"/api/v1/loads/{non_existent_id}", headers=api_key_headers
     )
 
     assert delete_response.status_code == 404
@@ -99,8 +91,7 @@ def test_delete_load_invalid_id(client, setup_database, api_key_headers):
     invalid_id = "not-a-uuid"
 
     delete_response = client.delete(
-        f"/api/v1/loads/{invalid_id}",
-        headers=api_key_headers
+        f"/api/v1/loads/{invalid_id}", headers=api_key_headers
     )
 
     assert delete_response.status_code == 422
@@ -112,7 +103,7 @@ def test_delete_load_unauthorized(client, setup_database, valid_load_data):
     create_response = client.post(
         "/api/v1/loads/",
         json=valid_load_data,
-        headers={"X-API-Key": "dev-local-api-key"}
+        headers={"X-API-Key": "dev-local-api-key"},
     )
 
     assert create_response.status_code == 201
@@ -125,12 +116,12 @@ def test_delete_load_unauthorized(client, setup_database, valid_load_data):
 
 
 @pytest.mark.integration
-def test_delete_load_idempotency(client, setup_database, valid_load_data, api_key_headers):
+def test_delete_load_idempotency(
+    client, setup_database, valid_load_data, api_key_headers
+):
     """Test deleting same load twice."""
     create_response = client.post(
-        "/api/v1/loads/",
-        json=valid_load_data,
-        headers=api_key_headers
+        "/api/v1/loads/", json=valid_load_data, headers=api_key_headers
     )
 
     assert create_response.status_code == 201
@@ -138,37 +129,32 @@ def test_delete_load_idempotency(client, setup_database, valid_load_data, api_ke
     load_id = created_load["load_id"]
 
     first_delete_response = client.delete(
-        f"/api/v1/loads/{load_id}",
-        headers=api_key_headers
+        f"/api/v1/loads/{load_id}", headers=api_key_headers
     )
 
     assert first_delete_response.status_code == 204
 
     second_delete_response = client.delete(
-        f"/api/v1/loads/{load_id}",
-        headers=api_key_headers
+        f"/api/v1/loads/{load_id}", headers=api_key_headers
     )
 
     assert second_delete_response.status_code == 404
 
 
 @pytest.mark.integration
-def test_get_load_by_id_success(client, setup_database, valid_load_data, api_key_headers):
+def test_get_load_by_id_success(
+    client, setup_database, valid_load_data, api_key_headers
+):
     """Test successfully retrieving a load by ID."""
     create_response = client.post(
-        "/api/v1/loads/",
-        json=valid_load_data,
-        headers=api_key_headers
+        "/api/v1/loads/", json=valid_load_data, headers=api_key_headers
     )
 
     assert create_response.status_code == 201
     created_load = create_response.json()
     load_id = created_load["load_id"]
 
-    get_response = client.get(
-        f"/api/v1/loads/{load_id}",
-        headers=api_key_headers
-    )
+    get_response = client.get(f"/api/v1/loads/{load_id}", headers=api_key_headers)
 
     assert get_response.status_code == 200
     load_data = get_response.json()
@@ -184,29 +170,23 @@ def test_get_load_by_id_success(client, setup_database, valid_load_data, api_key
 
 
 @pytest.mark.integration
-def test_get_deleted_load_returns_404(client, setup_database, valid_load_data, api_key_headers):
+def test_get_deleted_load_returns_404(
+    client, setup_database, valid_load_data, api_key_headers
+):
     """Test that getting a deleted load returns 404."""
     create_response = client.post(
-        "/api/v1/loads/",
-        json=valid_load_data,
-        headers=api_key_headers
+        "/api/v1/loads/", json=valid_load_data, headers=api_key_headers
     )
 
     assert create_response.status_code == 201
     created_load = create_response.json()
     load_id = created_load["load_id"]
 
-    delete_response = client.delete(
-        f"/api/v1/loads/{load_id}",
-        headers=api_key_headers
-    )
+    delete_response = client.delete(f"/api/v1/loads/{load_id}", headers=api_key_headers)
 
     assert delete_response.status_code == 204
 
-    get_response = client.get(
-        f"/api/v1/loads/{load_id}",
-        headers=api_key_headers
-    )
+    get_response = client.get(f"/api/v1/loads/{load_id}", headers=api_key_headers)
 
     assert get_response.status_code == 404
     response_data = get_response.json()

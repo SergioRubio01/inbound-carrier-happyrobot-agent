@@ -5,16 +5,18 @@ Author: HappyRobot Team
 Created: 2024-08-20
 """
 
-import pytest
-from fastapi.testclient import TestClient
-from fastapi import FastAPI
 from datetime import datetime, timedelta
+
+import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
 # Create a simple test app without middleware
 from src.interfaces.api.v1 import loads
 
 app = FastAPI()
 app.include_router(loads.router, prefix="/api/v1")
+
 
 @pytest.fixture
 def client():
@@ -29,33 +31,26 @@ def valid_load_data():
     delivery_date = future_date + timedelta(days=2)
 
     return {
-        "origin": {
-            "city": "Chicago",
-            "state": "IL",
-            "zip": "60601"
-        },
-        "destination": {
-            "city": "Los Angeles",
-            "state": "CA",
-            "zip": "90210"
-        },
-        "pickup_datetime": future_date.replace(hour=10, minute=0, second=0, microsecond=0).isoformat(),
-        "delivery_datetime": delivery_date.replace(hour=16, minute=0, second=0, microsecond=0).isoformat(),
+        "origin": {"city": "Chicago", "state": "IL", "zip": "60601"},
+        "destination": {"city": "Los Angeles", "state": "CA", "zip": "90210"},
+        "pickup_datetime": future_date.replace(
+            hour=10, minute=0, second=0, microsecond=0
+        ).isoformat(),
+        "delivery_datetime": delivery_date.replace(
+            hour=16, minute=0, second=0, microsecond=0
+        ).isoformat(),
         "equipment_type": "53-foot van",
         "loadboard_rate": 2500.00,
         "weight": 25000,
         "commodity_type": "Electronics",
         "notes": "Handle with care",
-        "broker_company": "Test Broker LLC"
+        "broker_company": "Test Broker LLC",
     }
 
 
 def test_create_load_success(client, valid_load_data):
     """Test successful load creation."""
-    response = client.post(
-        "/api/v1/loads/",
-        json=valid_load_data
-    )
+    response = client.post("/api/v1/loads/", json=valid_load_data)
 
     assert response.status_code == 201
     data = response.json()
@@ -90,10 +85,7 @@ def test_create_load_missing_required_field_fails(client, valid_load_data):
     """Test that missing required fields fail."""
     del valid_load_data["origin"]
 
-    response = client.post(
-        "/api/v1/loads/",
-        json=valid_load_data
-    )
+    response = client.post("/api/v1/loads/", json=valid_load_data)
 
     assert response.status_code == 422  # Validation error
 
@@ -105,7 +97,7 @@ def test_list_loads_with_filters(client):
         "equipment_type": "53-foot van",
         "page": 1,
         "limit": 10,
-        "sort_by": "created_at_desc"
+        "sort_by": "created_at_desc",
     }
 
     response = client.get("/api/v1/loads/", params=params)

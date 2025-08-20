@@ -306,7 +306,8 @@ class TestUpdateLoadUseCase:
         mock_load_repository.get_active_by_id.return_value = sample_load
 
         request = UpdateLoadRequest(
-            load_id=sample_load.load_id, loadboard_rate=0.0  # Invalid rate
+            load_id=sample_load.load_id,
+            loadboard_rate=0.0,  # Invalid rate
         )
 
         # Act & Assert
@@ -355,7 +356,8 @@ class TestUpdateLoadUseCase:
         mock_load_repository.update.return_value = updated_load
 
         request = UpdateLoadRequest(
-            load_id=sample_load.load_id, notes="Updated notes"  # Only updating notes
+            load_id=sample_load.load_id,
+            notes="Updated notes",  # Only updating notes
         )
 
         # Act

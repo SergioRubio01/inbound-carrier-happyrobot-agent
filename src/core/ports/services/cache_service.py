@@ -6,8 +6,8 @@ Created: 2024-11-15
 """
 
 from abc import ABC, abstractmethod
-from typing import Optional, Any
 from datetime import timedelta
+from typing import Any, Optional
 
 
 class CacheServicePort(ABC):
@@ -27,12 +27,7 @@ class CacheServicePort(ABC):
         pass
 
     @abstractmethod
-    async def set(
-        self,
-        key: str,
-        value: Any,
-        ttl: Optional[timedelta] = None
-    ) -> bool:
+    async def set(self, key: str, value: Any, ttl: Optional[timedelta] = None) -> bool:
         """
         Store value in cache.
 

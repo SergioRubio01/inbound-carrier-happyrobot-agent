@@ -168,7 +168,6 @@ def list_loads_use_case(mock_repository):
 
 
 class TestListLoadsUseCase:
-
     @pytest.mark.asyncio
     async def test_list_all_loads_success(self, list_loads_use_case):
         """Test successful load listing without filters."""

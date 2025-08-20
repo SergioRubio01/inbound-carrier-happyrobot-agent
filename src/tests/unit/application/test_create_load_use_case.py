@@ -134,7 +134,6 @@ def valid_create_request():
 
 
 class TestCreateLoadUseCase:
-
     @pytest.mark.asyncio
     async def test_create_load_success(
         self, create_load_use_case, valid_create_request
