@@ -32,3 +32,19 @@ repos:
       - id: ruff
         args: [--fix]
         files: ^(src|scripts|migrations)/.*\.py$|^main\.py$
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.8.0
+    hooks:
+      - id: mypy
+        name: mypy
+        additional_dependencies: [
+          types-python-dateutil,
+          types-requests,
+          sqlalchemy-stubs,
+          types-PyYAML,
+          pytest,
+          pytest-asyncio
+        ]
+        files: ^(src|scripts|migrations)/.*\.py$|^main\.py$
+        args: [--ignore-missing-imports, --no-strict-optional]

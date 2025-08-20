@@ -1,7 +1,7 @@
 """Unit tests for domain entities."""
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
 
@@ -32,8 +32,8 @@ class TestCarrier:
             operating_status="AUTHORIZED_FOR_HIRE",
             status="ACTIVE",
             insurance_on_file=True,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
 
         assert carrier.mc_number == MCNumber.from_string("MC123456")
@@ -51,8 +51,8 @@ class TestCarrier:
             operating_status="AUTHORIZED_FOR_HIRE",
             status="ACTIVE",
             insurance_on_file=True,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
         assert eligible_carrier.is_eligible
 
@@ -65,8 +65,8 @@ class TestCarrier:
             operating_status="AUTHORIZED_FOR_HIRE",
             status="ACTIVE",
             insurance_on_file=False,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
         assert not ineligible_carrier.is_eligible
 
@@ -81,8 +81,8 @@ class TestLoad:
             reference_number="LOAD001",
             origin=Location("Chicago", "IL", "60601"),
             destination=Location("Atlanta", "GA", "30301"),
-            pickup_date=datetime.utcnow().date(),
-            delivery_date=datetime.utcnow().date(),
+            pickup_date=datetime.now(timezone.utc).date(),
+            delivery_date=datetime.now(timezone.utc).date(),
             equipment_type=EquipmentType.from_name("DRY_VAN"),
             weight=35000,
             miles=716,
@@ -90,8 +90,8 @@ class TestLoad:
             status=LoadStatus.AVAILABLE,
             urgency=UrgencyLevel.NORMAL,
             is_active=True,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
 
         assert load.reference_number == "LOAD001"
@@ -108,8 +108,8 @@ class TestLoad:
             load_id=uuid.uuid4(),
             origin=Location("Chicago", "IL", "60601"),
             destination=Location("Atlanta", "GA", "30301"),
-            pickup_date=datetime.utcnow().date(),
-            delivery_date=datetime.utcnow().date(),
+            pickup_date=datetime.now(timezone.utc).date(),
+            delivery_date=datetime.now(timezone.utc).date(),
             equipment_type=EquipmentType.from_name("DRY_VAN"),
             weight=35000,
             miles=500,
@@ -117,8 +117,8 @@ class TestLoad:
             status=LoadStatus.AVAILABLE,
             urgency=UrgencyLevel.NORMAL,
             is_active=True,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
 
         rate_per_mile = load.rate_per_mile
@@ -139,7 +139,7 @@ class TestNegotiation:
             carrier_id=uuid.uuid4(),
             mc_number=MCNumber.from_string("MC123456"),
             session_id="session123",
-            session_start=datetime.utcnow(),
+            session_start=datetime.now(timezone.utc),
             is_active=True,
             round_number=1,
             max_rounds=3,
@@ -147,8 +147,8 @@ class TestNegotiation:
             system_response=SystemResponse.COUNTER_OFFER,
             counter_offer=Rate.from_float(2600),
             loadboard_rate=Rate.from_float(2500),
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
 
         assert negotiation.round_number == 1
@@ -168,7 +168,7 @@ class TestNegotiation:
             negotiation_id=uuid.uuid4(),
             load_id=uuid.uuid4(),
             session_id="session123",
-            session_start=datetime.utcnow(),
+            session_start=datetime.now(timezone.utc),
             is_active=False,
             round_number=2,
             max_rounds=3,
@@ -177,8 +177,8 @@ class TestNegotiation:
             loadboard_rate=Rate.from_float(2500),
             final_status=NegotiationStatus.DEAL_ACCEPTED,
             agreed_rate=Rate.from_float(2600),
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
 
         assert not negotiation.is_active
