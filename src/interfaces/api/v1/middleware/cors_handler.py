@@ -5,7 +5,7 @@ Ensures proper handling of CORS preflight requests, especially for admin endpoin
 """
 
 import logging
-from typing import Callable
+from typing import Callable, cast
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -30,7 +30,9 @@ class CORSHandlerMiddleware(BaseHTTPMiddleware):
         if request.method == "OPTIONS":
             response = StarletteResponse(status_code=200)
             response.headers["Access-Control-Allow-Origin"] = "*"
-            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+            response.headers["Access-Control-Allow-Methods"] = (
+                "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+            )
             response.headers["Access-Control-Allow-Headers"] = "*"
             response.headers["Access-Control-Allow-Credentials"] = "true"
             response.headers["Access-Control-Max-Age"] = "3600"
@@ -40,7 +42,7 @@ class CORSHandlerMiddleware(BaseHTTPMiddleware):
             return response
 
         # For other requests, proceed normally
-        response = await call_next(request)
+        response = cast(Response, await call_next(request))
 
         # Ensure CORS headers are present on all responses
         if "access-control-allow-origin" not in response.headers:

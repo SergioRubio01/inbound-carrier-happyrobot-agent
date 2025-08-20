@@ -6,27 +6,31 @@ Created: 2024-08-14
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Optional, Dict, Any
-from uuid import UUID, uuid4
+from datetime import datetime, timezone
 from enum import Enum
+from functools import partial
+from typing import Any, Dict, Optional
+from uuid import UUID, uuid4
 
-from ..value_objects import MCNumber, Rate
 from ..exceptions.base import DomainException
+from ..value_objects import MCNumber, Rate
 
 
 class NegotiationLimitExceededException(DomainException):
     """Exception raised when negotiation rounds exceed limit."""
+
     pass
 
 
 class InvalidNegotiationStateException(DomainException):
     """Exception raised when negotiation state is invalid."""
+
     pass
 
 
 class SystemResponse(Enum):
     """System response to carrier offer."""
+
     ACCEPTED = "ACCEPTED"
     COUNTER_OFFER = "COUNTER_OFFER"
     REJECTED = "REJECTED"
@@ -34,6 +38,7 @@ class SystemResponse(Enum):
 
 class NegotiationStatus(Enum):
     """Final negotiation status."""
+
     DEAL_ACCEPTED = "DEAL_ACCEPTED"
     DEAL_REJECTED = "DEAL_REJECTED"
     ABANDONED = "ABANDONED"
@@ -49,13 +54,13 @@ class Negotiation:
 
     # Association
     call_id: Optional[UUID] = None
-    load_id: UUID = field(default=None)
+    load_id: Optional[UUID] = field(default=None)
     carrier_id: Optional[UUID] = None
     mc_number: Optional[MCNumber] = None
 
     # Session Management
     session_id: str = ""
-    session_start: datetime = field(default_factory=datetime.utcnow)
+    session_start: datetime = field(default_factory=partial(datetime.now, timezone.utc))
     session_end: Optional[datetime] = None
     is_active: bool = True
 
@@ -64,12 +69,12 @@ class Negotiation:
     max_rounds: int = 3
 
     # Offer Details
-    carrier_offer: Rate = field(default=None)
+    carrier_offer: Optional[Rate] = field(default=None)
     system_response: Optional[SystemResponse] = None
     counter_offer: Optional[Rate] = None
 
     # Context
-    loadboard_rate: Rate = field(default=None)
+    loadboard_rate: Optional[Rate] = field(default=None)
     minimum_acceptable: Optional[Rate] = None
     maximum_acceptable: Optional[Rate] = None
 
@@ -89,28 +94,32 @@ class Negotiation:
     total_duration_seconds: Optional[int] = None
 
     # Metadata
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    updated_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=partial(datetime.now, timezone.utc))
+    updated_at: datetime = field(default_factory=partial(datetime.now, timezone.utc))
     created_by: Optional[str] = None
     version: int = 1
 
     @property
-    def offer_difference(self) -> Rate:
+    def offer_difference(self) -> Optional[Rate]:
         """Calculate difference between carrier offer and loadboard rate."""
+        if self.carrier_offer is None or self.loadboard_rate is None:
+            return None
         return self.carrier_offer.subtract(self.loadboard_rate)
 
     @property
     def percentage_over(self) -> float:
         """Calculate percentage over loadboard rate."""
-        return self.carrier_offer.percentage_difference(self.loadboard_rate)
+        if self.carrier_offer is None or self.loadboard_rate is None:
+            return 0.0
+        return float(self.carrier_offer.percentage_difference(self.loadboard_rate))
 
     @property
     def can_continue_negotiation(self) -> bool:
         """Check if negotiation can continue (within round limits)."""
         return (
-            self.is_active and
-            self.round_number < self.max_rounds and
-            self.final_status is None
+            self.is_active
+            and self.round_number < self.max_rounds
+            and self.final_status is None
         )
 
     @property
@@ -118,16 +127,23 @@ class Negotiation:
         """Check if negotiation is completed."""
         return self.final_status is not None
 
-    def evaluate_offer(self,
-                      urgency_factor: float = 1.0,
-                      history_factor: float = 1.0,
-                      market_factor: float = 1.0) -> SystemResponse:
+    def evaluate_offer(
+        self,
+        urgency_factor: float = 1.0,
+        history_factor: float = 1.0,
+        market_factor: float = 1.0,
+    ) -> SystemResponse:
         """Evaluate carrier offer and determine system response."""
         if not self.is_active:
             raise InvalidNegotiationStateException("Negotiation is not active")
 
         if self.is_completed:
             raise InvalidNegotiationStateException("Negotiation is already completed")
+
+        if self.loadboard_rate is None or self.carrier_offer is None:
+            raise InvalidNegotiationStateException(
+                "Missing loadboard rate or carrier offer"
+            )
 
         # Calculate acceptable range
         if not self.minimum_acceptable:
@@ -151,7 +167,9 @@ class Negotiation:
             # Accept if within maximum acceptable range
             response = SystemResponse.ACCEPTED
             self.message_to_carrier = "Offer accepted. Proceeding with booking."
-            self.justification = f"Offer within acceptable range (max: {self.maximum_acceptable})"
+            self.justification = (
+                f"Offer within acceptable range (max: {self.maximum_acceptable})"
+            )
         elif self.can_continue_negotiation:
             # Counter-offer if we can continue negotiating
             response = SystemResponse.COUNTER_OFFER
@@ -167,7 +185,9 @@ class Negotiation:
             # Reject if we've reached max rounds or offer is too high
             response = SystemResponse.REJECTED
             self.message_to_carrier = f"I'm sorry, but ${self.carrier_offer} is beyond our budget. Our maximum for this load is ${self.maximum_acceptable}."
-            self.justification = f"Offer exceeds maximum acceptable rate or max rounds reached"
+            self.justification = (
+                "Offer exceeds maximum acceptable rate or max rounds reached"
+            )
 
         # Record decision factors
         self.decision_factors = {
@@ -177,11 +197,11 @@ class Negotiation:
             "auto_accept_threshold": auto_accept_threshold.to_float(),
             "minimum_acceptable": self.minimum_acceptable.to_float(),
             "maximum_acceptable": self.maximum_acceptable.to_float(),
-            "offer_percentage_over": self.percentage_over
+            "offer_percentage_over": self.percentage_over,
         }
 
         self.system_response = response
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
 
         return response
 
@@ -192,7 +212,7 @@ class Negotiation:
 
         self.final_status = NegotiationStatus.DEAL_ACCEPTED
         self.agreed_rate = agreed_rate or self.carrier_offer
-        self.session_end = datetime.utcnow()
+        self.session_end = datetime.now(timezone.utc)
         self.is_active = False
 
         # Calculate total duration
@@ -200,7 +220,7 @@ class Negotiation:
             duration = self.session_end - self.session_start
             self.total_duration_seconds = int(duration.total_seconds())
 
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
 
     def reject_deal(self, reason: Optional[str] = None) -> None:
         """Reject the deal and finalize negotiation."""
@@ -208,7 +228,7 @@ class Negotiation:
             raise InvalidNegotiationStateException("Negotiation is already completed")
 
         self.final_status = NegotiationStatus.DEAL_REJECTED
-        self.session_end = datetime.utcnow()
+        self.session_end = datetime.now(timezone.utc)
         self.is_active = False
 
         if reason:
@@ -222,7 +242,7 @@ class Negotiation:
             duration = self.session_end - self.session_start
             self.total_duration_seconds = int(duration.total_seconds())
 
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
 
     def advance_round(self, new_carrier_offer: Rate) -> None:
         """Advance to the next round of negotiation."""
@@ -237,12 +257,12 @@ class Negotiation:
         self.counter_offer = None
         self.message_to_carrier = None
         self.justification = None
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
 
     def abandon_negotiation(self, reason: Optional[str] = None) -> None:
         """Abandon the negotiation (e.g., carrier hung up)."""
         self.final_status = NegotiationStatus.ABANDONED
-        self.session_end = datetime.utcnow()
+        self.session_end = datetime.now(timezone.utc)
         self.is_active = False
 
         if reason:
@@ -253,12 +273,12 @@ class Negotiation:
             duration = self.session_end - self.session_start
             self.total_duration_seconds = int(duration.total_seconds())
 
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
 
     def timeout_negotiation(self) -> None:
         """Mark negotiation as timed out."""
         self.final_status = NegotiationStatus.TIMEOUT
-        self.session_end = datetime.utcnow()
+        self.session_end = datetime.now(timezone.utc)
         self.is_active = False
         self.justification = "Negotiation timed out"
 
@@ -267,7 +287,7 @@ class Negotiation:
             duration = self.session_end - self.session_start
             self.total_duration_seconds = int(duration.total_seconds())
 
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
 
     def __eq__(self, other) -> bool:
         if isinstance(other, Negotiation):

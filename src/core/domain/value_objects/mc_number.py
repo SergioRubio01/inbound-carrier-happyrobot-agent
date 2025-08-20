@@ -14,6 +14,7 @@ from ..exceptions.base import DomainException
 
 class InvalidMCNumberException(DomainException):
     """Exception raised when MC number is invalid."""
+
     pass
 
 
@@ -29,7 +30,7 @@ class MCNumber:
             raise InvalidMCNumberException("MC number cannot be empty")
 
         # Remove any non-digit characters for validation
-        digits_only = re.sub(r'\D', '', self.value)
+        digits_only = re.sub(r"\D", "", self.value)
 
         if not digits_only:
             raise InvalidMCNumberException("MC number must contain digits")
@@ -38,10 +39,10 @@ class MCNumber:
             raise InvalidMCNumberException("MC number must be 6-8 digits")
 
         # Store the normalized value (digits only)
-        object.__setattr__(self, 'value', digits_only)
+        object.__setattr__(self, "value", digits_only)
 
     @classmethod
-    def from_string(cls, value: Union[str, int]) -> 'MCNumber':
+    def from_string(cls, value: Union[str, int]) -> "MCNumber":
         """Create MCNumber from string or integer."""
         if isinstance(value, int):
             value = str(value)

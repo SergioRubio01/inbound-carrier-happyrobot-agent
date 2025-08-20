@@ -8,9 +8,7 @@ on:
     paths:
       - 'infrastructure/pulumi/**'
       - 'src/**'
-      - 'web_client/**'
       - 'Dockerfile.api'
-      - 'web_client/Dockerfile.prod'
       - '.github/workflows/deploy.yml'
 
   pull_request:
@@ -20,9 +18,7 @@ on:
     paths:
       - 'infrastructure/pulumi/**'
       - 'src/**'
-      - 'web_client/**'
       - 'Dockerfile.api'
-      - 'web_client/Dockerfile.prod'
 
   workflow_dispatch:
     inputs:
@@ -38,8 +34,7 @@ on:
 
 env:
   AWS_REGION: eu-south-2  # Spain region for compliance
-  ECR_API_REPOSITORY: happyrobot-api
-  ECR_WEB_REPOSITORY: happyrobot-frontend
+  ECR_API_REPOSITORY: happyrobot-dev-containers-api
   PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
 
 jobs:
@@ -57,50 +52,35 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install Python dependencies
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: latest
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Cache Poetry dependencies
+        uses: actions/cache@v3
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-python-3.12-${{ hashFiles('**/pyproject.toml') }}
+
+      - name: Install Python dependencies with Poetry
         run: |
-          python -m pip install --upgrade pip
-          pip install -r pyproject.toml || pip install fastapi uvicorn pytest ruff mypy
+          poetry install --with dev --no-interaction --no-ansi
 
       - name: Run Python linting
         run: |
-          ruff check .
-          ruff format --check .
+          poetry run ruff check .
+          poetry run ruff format --check .
 
       - name: Run Python type checking
         run: |
-          mypy .
+          poetry run mypy .
 
       - name: Run Python tests
         run: |
-          pytest
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: web_client/package-lock.json
-
-      - name: Install Node.js dependencies
-        run: |
-          cd web_client
-          npm ci
-
-      - name: Run frontend linting
-        run: |
-          cd web_client
-          npm run lint
-
-      - name: Run frontend type checking
-        run: |
-          cd web_client
-          npm run type-check
-
-      - name: Run frontend tests
-        run: |
-          cd web_client
-          npm run test
+          poetry run pytest
 
   # Build and push Docker images
   build:
@@ -111,7 +91,6 @@ jobs:
 
     outputs:
       api-image-tag: ${{ steps.meta.outputs.api-tag }}
-      web-image-tag: ${{ steps.meta.outputs.web-tag }}
 
     steps:
       - name: Checkout code
@@ -138,14 +117,11 @@ jobs:
           SHORT_SHA=${GITHUB_SHA::8}
 
           API_TAG="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_API_REPOSITORY }}:${TIMESTAMP}-${SHORT_SHA}"
-          WEB_TAG="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_WEB_REPOSITORY }}:${TIMESTAMP}-${SHORT_SHA}"
 
           echo "api-tag=${API_TAG}" >> $GITHUB_OUTPUT
-          echo "web-tag=${WEB_TAG}" >> $GITHUB_OUTPUT
 
           # Also tag as latest for convenience
           echo "api-latest=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_API_REPOSITORY }}:latest" >> $GITHUB_OUTPUT
-          echo "web-latest=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_WEB_REPOSITORY }}:latest" >> $GITHUB_OUTPUT
 
       - name: Build and push API image
         uses: docker/build-push-action@v5
@@ -156,19 +132,6 @@ jobs:
           tags: |
             ${{ steps.meta.outputs.api-tag }}
             ${{ steps.meta.outputs.api-latest }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          platforms: linux/amd64
-
-      - name: Build and push Web image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./web_client
-          file: ./web_client/Dockerfile.prod
-          push: true
-          tags: |
-            ${{ steps.meta.outputs.web-tag }}
-            ${{ steps.meta.outputs.web-latest }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64
@@ -232,46 +195,50 @@ jobs:
         run: |
           # Update API service
           aws ecs update-service \
-            --cluster happyrobot-fde \
-            --service happyrobot-api \
+            --cluster happyrobot-dev-containers-cluster \
+            --service happyrobot-dev-containers-api-service \
             --force-new-deployment \
             --region ${{ env.AWS_REGION }}
 
-          # Update Web service
-          aws ecs update-service \
-            --cluster happyrobot-fde \
-            --service happyrobot-frontend \
-            --force-new-deployment \
-            --region ${{ env.AWS_REGION }}
+          # Note: Frontend service not deployed yet
+          # # Update Web service
+          # aws ecs update-service \
+          #   --cluster happyrobot-dev-containers-cluster \
+          #   --service happyrobot-frontend \
+          #   --force-new-deployment \
+          #   --region ${{ env.AWS_REGION }}
 
       - name: Wait for services to stabilize
         run: |
           echo "Waiting for API service to stabilize..."
           aws ecs wait services-stable \
-            --cluster happyrobot-fde \
-            --services happyrobot-api \
+            --cluster happyrobot-dev-containers-cluster \
+            --services happyrobot-dev-containers-api-service \
             --region ${{ env.AWS_REGION }}
 
-          echo "Waiting for Web service to stabilize..."
-          aws ecs wait services-stable \
-            --cluster happyrobot-fde \
-            --services happyrobot-frontend \
-            --region ${{ env.AWS_REGION }}
+          # Note: Frontend service not deployed yet
+          # echo "Waiting for Web service to stabilize..."
+          # aws ecs wait services-stable \
+          #   --cluster happyrobot-dev-containers-cluster \
+          #   --services happyrobot-frontend \
+          #   --region ${{ env.AWS_REGION }}
 
       - name: Run health checks
         run: |
           # Get ALB DNS name from Pulumi outputs
+          cd infrastructure/pulumi
           ALB_DNS=$(pulumi stack output loadBalancerDnsName -s happyrobot-fde)
 
-          echo "Running health checks against https://${ALB_DNS}"
+          echo "Running health checks against http://${ALB_DNS}"
 
           # Check API health
-          curl -f "https://${ALB_DNS}/api/v1/health" || exit 1
+          curl -f "http://${ALB_DNS}/api/v1/health" || exit 1
           echo "✅ API health check passed"
 
-          # Check Web health (basic connectivity)
-          curl -f "https://${ALB_DNS}/" -I || exit 1
-          echo "✅ Web health check passed"
+          # Note: Frontend not deployed yet
+          # # Check Web health (basic connectivity)
+          # curl -f "http://${ALB_DNS}/" -I || exit 1
+          # echo "✅ Web health check passed"
 
   # Deploy to staging after successful dev deployment
   deploy-staging:
@@ -279,10 +246,6 @@ jobs:
     needs: deploy
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/master' && github.event_name == 'push'
-
-    environment:
-      name: staging
-      url: ${{ steps.pulumi.outputs.loadbalancer-dns-name }}
 
     steps:
       - name: Checkout code

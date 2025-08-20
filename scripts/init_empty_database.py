@@ -7,23 +7,21 @@ but needs to be initialized with all the AutoAudit tables and proper
 alembic migration tracking.
 """
 
-import sys
-import os
-import asyncio
 import logging
+import sys
 from pathlib import Path
 
 # Add the project root to Python path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from sqlalchemy import create_engine, text
-from alembic.config import Config
-from alembic import command
+from alembic import command  # noqa: E402
+from alembic.config import Config  # noqa: E402
+from sqlalchemy import create_engine, text  # noqa: E402
 
-from src.config.settings import settings
-from src.infrastructure.database.base import Base
-from src.infrastructure.database.models import *  # noqa: F401,F403
+from src.config.settings import settings  # noqa: E402
+from src.infrastructure.database.base import Base  # noqa: E402
+from src.infrastructure.database.models import *  # noqa: F401,F403,E402
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -34,7 +32,7 @@ def init_database():
 
     # Get sync database URL
     database_url = settings.get_sync_database_url
-    logger.info(f"Connecting to database...")
+    logger.info("Connecting to database...")
 
     # Create engine
     engine = create_engine(database_url)
@@ -43,10 +41,12 @@ def init_database():
         # First, check if alembic_version table exists and clear it
         with engine.begin() as conn:
             # Check if alembic_version exists
-            result = conn.execute(text(
-                "SELECT EXISTS (SELECT 1 FROM information_schema.tables "
-                "WHERE table_name = 'alembic_version')"
-            ))
+            result = conn.execute(
+                text(
+                    "SELECT EXISTS (SELECT 1 FROM information_schema.tables "
+                    "WHERE table_name = 'alembic_version')"
+                )
+            )
             alembic_exists = result.scalar()
 
             if alembic_exists:
@@ -54,10 +54,12 @@ def init_database():
                 conn.execute(text("DELETE FROM alembic_version"))
 
             # Check if any tables exist
-            result = conn.execute(text(
-                "SELECT COUNT(*) FROM information_schema.tables "
-                "WHERE table_schema = 'public' AND table_type = 'BASE TABLE'"
-            ))
+            result = conn.execute(
+                text(
+                    "SELECT COUNT(*) FROM information_schema.tables "
+                    "WHERE table_schema = 'public' AND table_type = 'BASE TABLE'"
+                )
+            )
             table_count = result.scalar()
             logger.info(f"Found {table_count} existing tables")
 
@@ -81,10 +83,12 @@ def init_database():
             logger.info(f"Current alembic version: {version}")
 
             # Count tables again
-            result = conn.execute(text(
-                "SELECT COUNT(*) FROM information_schema.tables "
-                "WHERE table_schema = 'public' AND table_type = 'BASE TABLE'"
-            ))
+            result = conn.execute(
+                text(
+                    "SELECT COUNT(*) FROM information_schema.tables "
+                    "WHERE table_schema = 'public' AND table_type = 'BASE TABLE'"
+                )
+            )
             final_table_count = result.scalar()
             logger.info(f"Total tables after initialization: {final_table_count}")
 

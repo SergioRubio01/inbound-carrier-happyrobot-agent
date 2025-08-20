@@ -5,7 +5,6 @@ Author: HappyRobot Team
 Created: 2025-05-30
 """
 
-import json
 from urllib.parse import quote_plus
 
 from pydantic import Field
@@ -15,7 +14,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     # Application settings
     app_name: str = "HappyRobot FDE"
-    app_description: str = "AI-powered workflow automation platform for audit and compliance"
+    app_description: str = (
+        "AI-powered workflow automation platform for audit and compliance"
+    )
     app_version: str = "1.0.0"
 
     # Environment settings

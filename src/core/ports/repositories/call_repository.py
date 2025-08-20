@@ -6,9 +6,9 @@ Created: 2024-08-14
 """
 
 from abc import ABC, abstractmethod
-from typing import Optional, List, Dict, Any
-from uuid import UUID
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+from uuid import UUID
 
 from src.core.domain.entities import Call, CallOutcome, Sentiment
 from src.core.domain.value_objects import MCNumber
@@ -17,18 +17,20 @@ from src.core.domain.value_objects import MCNumber
 class CallSearchCriteria:
     """Search criteria for calls."""
 
-    def __init__(self,
-                 mc_number: Optional[MCNumber] = None,
-                 carrier_id: Optional[UUID] = None,
-                 load_id: Optional[UUID] = None,
-                 outcome: Optional[CallOutcome] = None,
-                 sentiment: Optional[Sentiment] = None,
-                 start_date: Optional[datetime] = None,
-                 end_date: Optional[datetime] = None,
-                 transferred_to_human: Optional[bool] = None,
-                 follow_up_required: Optional[bool] = None,
-                 limit: int = 100,
-                 offset: int = 0):
+    def __init__(
+        self,
+        mc_number: Optional[MCNumber] = None,
+        carrier_id: Optional[UUID] = None,
+        load_id: Optional[UUID] = None,
+        outcome: Optional[CallOutcome] = None,
+        sentiment: Optional[Sentiment] = None,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+        transferred_to_human: Optional[bool] = None,
+        follow_up_required: Optional[bool] = None,
+        limit: int = 100,
+        offset: int = 0,
+    ):
         self.mc_number = mc_number
         self.carrier_id = carrier_id
         self.load_id = load_id
@@ -76,17 +78,23 @@ class ICallRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_calls_by_carrier(self, carrier_id: UUID, limit: int = 100, offset: int = 0) -> List[Call]:
+    async def get_calls_by_carrier(
+        self, carrier_id: UUID, limit: int = 100, offset: int = 0
+    ) -> List[Call]:
         """Get calls by carrier."""
         pass
 
     @abstractmethod
-    async def get_calls_by_outcome(self, outcome: CallOutcome, limit: int = 100, offset: int = 0) -> List[Call]:
+    async def get_calls_by_outcome(
+        self, outcome: CallOutcome, limit: int = 100, offset: int = 0
+    ) -> List[Call]:
         """Get calls by outcome."""
         pass
 
     @abstractmethod
-    async def get_calls_requiring_follow_up(self, limit: int = 100, offset: int = 0) -> List[Call]:
+    async def get_calls_requiring_follow_up(
+        self, limit: int = 100, offset: int = 0
+    ) -> List[Call]:
         """Get calls that require follow-up."""
         pass
 
@@ -96,7 +104,9 @@ class ICallRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_call_metrics(self, start_date: datetime, end_date: datetime) -> Dict[str, Any]:
+    async def get_call_metrics(
+        self, start_date: datetime, end_date: datetime
+    ) -> Dict[str, Any]:
         """Get aggregated call metrics for date range."""
         pass
 

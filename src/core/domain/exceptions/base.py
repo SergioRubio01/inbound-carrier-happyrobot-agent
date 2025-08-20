@@ -71,7 +71,7 @@ class EntityNotFoundException(DomainException):
         super().__init__(
             message=message,
             code=f"{entity_type}_not_found",
-            details={"entity_type": entity_type, "entity_id": entity_id},
+            details={"entity_type": entity_type, "entity_id": str(entity_id)},
         )
 
 
@@ -136,7 +136,7 @@ class AuthorizationException(DomainException):
             details["resource_type"] = resource_type
 
         if resource_id is not None:
-            details["resource_id"] = resource_id
+            details["resource_id"] = str(resource_id)
 
         super().__init__(message=message, code="authorization_error", details=details)
 
@@ -185,7 +185,7 @@ class ConcurrencyException(DomainException):
             details["entity_type"] = entity_type
 
         if entity_id is not None:
-            details["entity_id"] = entity_id
+            details["entity_id"] = str(entity_id)
 
         super().__init__(message=message, code="concurrency_error", details=details)
 

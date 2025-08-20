@@ -5,16 +5,18 @@ Author: HappyRobot Team
 Created: 2024-08-14
 """
 
-from typing import Optional, List, Dict, Any
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
 from uuid import UUID
-from datetime import datetime, date
+
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, func, or_
 
 from src.core.domain.entities import Load, LoadStatus, UrgencyLevel
 from src.core.domain.value_objects import EquipmentType, Location, Rate
 from src.core.ports.repositories import ILoadRepository, LoadSearchCriteria
 from src.infrastructure.database.models import LoadModel
+
 from .base_repository import BaseRepository
 
 
@@ -24,26 +26,26 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
     def __init__(self, session: AsyncSession):
         super().__init__(session, LoadModel)
 
-    def _model_to_entity(self, model: LoadModel) -> Load:
+    def _model_to_entity(self, model: Optional[LoadModel]) -> Optional[Load]:
         """Convert database model to domain entity."""
         if not model:
             return None
 
         origin = Location(
-            city=model.origin_city,
-            state=model.origin_state,
-            zip_code=model.origin_zip
+            city=model.origin_city, state=model.origin_state, zip_code=model.origin_zip
         )
 
         destination = Location(
             city=model.destination_city,
             state=model.destination_state,
-            zip_code=model.destination_zip
+            zip_code=model.destination_zip,
         )
 
         equipment_type = EquipmentType.from_name(model.equipment_type)
         loadboard_rate = Rate.from_float(model.loadboard_rate)
-        fuel_surcharge = Rate.from_float(model.fuel_surcharge) if model.fuel_surcharge else None
+        fuel_surcharge = (
+            Rate.from_float(model.fuel_surcharge) if model.fuel_surcharge else None
+        )
 
         return Load(
             load_id=model.load_id,
@@ -73,11 +75,27 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
             route_notes=model.route_notes,
             loadboard_rate=loadboard_rate,
             fuel_surcharge=fuel_surcharge,
-            accessorials=model.accessorials,
-            minimum_rate=Rate.from_float(model.minimum_rate) if model.minimum_rate else None,
-            maximum_rate=Rate.from_float(model.maximum_rate) if model.maximum_rate else None,
-            target_rate=Rate.from_float(model.target_rate) if model.target_rate else None,
-            auto_accept_threshold=Rate.from_float(model.auto_accept_threshold) if model.auto_accept_threshold else None,
+            accessorials=(
+                [model.accessorials]
+                if model.accessorials and isinstance(model.accessorials, dict)
+                else (
+                    model.accessorials if isinstance(model.accessorials, list) else None
+                )
+            ),
+            minimum_rate=(
+                Rate.from_float(model.minimum_rate) if model.minimum_rate else None
+            ),
+            maximum_rate=(
+                Rate.from_float(model.maximum_rate) if model.maximum_rate else None
+            ),
+            target_rate=(
+                Rate.from_float(model.target_rate) if model.target_rate else None
+            ),
+            auto_accept_threshold=(
+                Rate.from_float(model.auto_accept_threshold)
+                if model.auto_accept_threshold
+                else None
+            ),
             broker_company=model.broker_company,
             broker_contact=model.broker_contact,
             customer_name=model.customer_name,
@@ -97,7 +115,7 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
             updated_at=model.updated_at,
             created_by=model.created_by,
             deleted_at=model.deleted_at,
-            version=model.version
+            version=model.version,
         )
 
     def _entity_to_model(self, entity: Load) -> LoadModel:
@@ -106,12 +124,12 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
             load_id=entity.load_id,
             reference_number=entity.reference_number,
             external_id=entity.external_id,
-            origin_city=entity.origin.city,
-            origin_state=entity.origin.state,
-            origin_zip=entity.origin.zip_code,
-            destination_city=entity.destination.city,
-            destination_state=entity.destination.state,
-            destination_zip=entity.destination.zip_code,
+            origin_city=entity.origin.city if entity.origin else None,
+            origin_state=entity.origin.state if entity.origin else None,
+            origin_zip=entity.origin.zip_code if entity.origin else None,
+            destination_city=entity.destination.city if entity.destination else None,
+            destination_state=entity.destination.state if entity.destination else None,
+            destination_zip=entity.destination.zip_code if entity.destination else None,
             pickup_date=entity.pickup_date,
             pickup_time_start=entity.pickup_time_start,
             pickup_time_end=entity.pickup_time_end,
@@ -120,7 +138,9 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
             delivery_time_start=entity.delivery_time_start,
             delivery_time_end=entity.delivery_time_end,
             delivery_appointment_required=entity.delivery_appointment_required,
-            equipment_type=entity.equipment_type.name,
+            equipment_type=(
+                entity.equipment_type.name if entity.equipment_type else None
+            ),
             equipment_requirements=entity.equipment_requirements,
             weight=entity.weight,
             pieces=entity.pieces,
@@ -132,13 +152,25 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
             miles=entity.miles,
             estimated_transit_hours=entity.estimated_transit_hours,
             route_notes=entity.route_notes,
-            loadboard_rate=entity.loadboard_rate.to_float(),
-            fuel_surcharge=entity.fuel_surcharge.to_float() if entity.fuel_surcharge else 0,
+            loadboard_rate=(
+                entity.loadboard_rate.to_float() if entity.loadboard_rate else 0.0
+            ),
+            fuel_surcharge=(
+                entity.fuel_surcharge.to_float() if entity.fuel_surcharge else 0
+            ),
             accessorials=entity.accessorials,
-            minimum_rate=entity.minimum_rate.to_float() if entity.minimum_rate else None,
-            maximum_rate=entity.maximum_rate.to_float() if entity.maximum_rate else None,
+            minimum_rate=(
+                entity.minimum_rate.to_float() if entity.minimum_rate else None
+            ),
+            maximum_rate=(
+                entity.maximum_rate.to_float() if entity.maximum_rate else None
+            ),
             target_rate=entity.target_rate.to_float() if entity.target_rate else None,
-            auto_accept_threshold=entity.auto_accept_threshold.to_float() if entity.auto_accept_threshold else None,
+            auto_accept_threshold=(
+                entity.auto_accept_threshold.to_float()
+                if entity.auto_accept_threshold
+                else None
+            ),
             broker_company=entity.broker_company,
             broker_contact=entity.broker_contact,
             customer_name=entity.customer_name,
@@ -158,16 +190,19 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
             updated_at=entity.updated_at,
             created_by=entity.created_by,
             deleted_at=entity.deleted_at,
-            version=entity.version
+            version=entity.version,
         )
 
-    async def create(self, load: Load) -> Load:
+    async def create(self, load: Load) -> Load:  # type: ignore[override]
         """Create a new load."""
         model = self._entity_to_model(load)
         created_model = await super().create(model)
-        return self._model_to_entity(created_model)
+        result = self._model_to_entity(created_model)
+        if result is None:
+            raise RuntimeError("Failed to create load")
+        return result
 
-    async def get_by_id(self, load_id: UUID) -> Optional[Load]:
+    async def get_by_id(self, load_id: UUID) -> Optional[Load]:  # type: ignore[override]
         """Get load by ID."""
         stmt = select(LoadModel).where(LoadModel.load_id == load_id)
         result = await self.session.execute(stmt)
@@ -181,13 +216,16 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
         model = result.scalar_one_or_none()
         return self._model_to_entity(model) if model else None
 
-    async def update(self, load: Load) -> Load:
+    async def update(self, load: Load) -> Load:  # type: ignore[override]
         """Update existing load."""
         model = self._entity_to_model(load)
-        model.updated_at = datetime.utcnow()
+        model.updated_at = datetime.now(timezone.utc)
         model.version += 1
         updated_model = await super().update(model)
-        return self._model_to_entity(updated_model)
+        result = self._model_to_entity(updated_model)
+        if result is None:
+            raise RuntimeError("Failed to update load")
+        return result
 
     async def delete(self, load_id: UUID) -> bool:
         """Delete load (soft delete)."""
@@ -196,12 +234,26 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
         model = result.scalar_one_or_none()
 
         if model:
-            model.deleted_at = datetime.utcnow()
+            model.deleted_at = datetime.now(timezone.utc)
             model.is_active = False
-            model.updated_at = datetime.utcnow()
+            model.updated_at = datetime.now(timezone.utc)
             await self.session.flush()
             return True
         return False
+
+    def _build_order_clause(self, sort_by: Optional[str] = None):
+        """Build order clause for sorting."""
+        if not sort_by:
+            return LoadModel.created_at.desc()
+
+        # Add mapping for different sort options
+        sort_mapping = {
+            "rate": LoadModel.loadboard_rate.desc(),
+            "miles": LoadModel.miles.asc(),
+            "pickup_date": LoadModel.pickup_date.asc(),
+            "created_at": LoadModel.created_at.desc(),
+        }
+        return sort_mapping.get(sort_by, LoadModel.created_at.desc())
 
     async def search_loads(self, criteria: LoadSearchCriteria) -> List[Load]:
         """Search loads by criteria."""
@@ -220,9 +272,13 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
         if criteria.pickup_date_end:
             conditions.append(LoadModel.pickup_date <= criteria.pickup_date_end)
         if criteria.minimum_rate:
-            conditions.append(LoadModel.loadboard_rate >= criteria.minimum_rate.to_float())
+            conditions.append(
+                LoadModel.loadboard_rate >= criteria.minimum_rate.to_float()
+            )
         if criteria.maximum_rate:
-            conditions.append(LoadModel.loadboard_rate <= criteria.maximum_rate.to_float())
+            conditions.append(
+                LoadModel.loadboard_rate <= criteria.maximum_rate.to_float()
+            )
         if criteria.maximum_miles:
             conditions.append(LoadModel.miles <= criteria.maximum_miles)
         if criteria.weight_min:
@@ -232,7 +288,7 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
         if criteria.status:
             conditions.append(LoadModel.status == criteria.status.value)
         if criteria.is_active:
-            conditions.append(LoadModel.is_active == True)
+            conditions.append(LoadModel.is_active.is_(True))  # noqa: E712
             conditions.append(LoadModel.deleted_at.is_(None))
 
         if conditions:
@@ -248,17 +304,20 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
 
         result = await self.session.execute(stmt)
         models = result.scalars().all()
-        return [self._model_to_entity(model) for model in models]
+        entities = [self._model_to_entity(model) for model in models]
+        return [e for e in entities if e is not None]
 
-    async def get_available_loads(self, limit: int = 100, offset: int = 0) -> List[Load]:
+    async def get_available_loads(
+        self, limit: int = 100, offset: int = 0
+    ) -> List[Load]:
         """Get list of available loads."""
         stmt = (
             select(LoadModel)
             .where(
                 and_(
-                    LoadModel.status == 'AVAILABLE',
-                    LoadModel.is_active == True,
-                    LoadModel.deleted_at.is_(None)
+                    LoadModel.status == "AVAILABLE",
+                    LoadModel.is_active.is_(True),
+                    LoadModel.deleted_at.is_(None),
                 )
             )
             .limit(limit)
@@ -267,9 +326,12 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
 
         result = await self.session.execute(stmt)
         models = result.scalars().all()
-        return [self._model_to_entity(model) for model in models]
+        entities = [self._model_to_entity(model) for model in models]
+        return [e for e in entities if e is not None]
 
-    async def get_loads_by_status(self, status: LoadStatus, limit: int = 100, offset: int = 0) -> List[Load]:
+    async def get_loads_by_status(
+        self, status: LoadStatus, limit: int = 100, offset: int = 0
+    ) -> List[Load]:
         """Get loads by status."""
         stmt = (
             select(LoadModel)
@@ -280,9 +342,12 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
 
         result = await self.session.execute(stmt)
         models = result.scalars().all()
-        return [self._model_to_entity(model) for model in models]
+        entities = [self._model_to_entity(model) for model in models]
+        return [e for e in entities if e is not None]
 
-    async def get_loads_by_carrier(self, carrier_id: UUID, limit: int = 100, offset: int = 0) -> List[Load]:
+    async def get_loads_by_carrier(
+        self, carrier_id: UUID, limit: int = 100, offset: int = 0
+    ) -> List[Load]:
         """Get loads booked by specific carrier."""
         stmt = (
             select(LoadModel)
@@ -293,11 +358,12 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
 
         result = await self.session.execute(stmt)
         models = result.scalars().all()
-        return [self._model_to_entity(model) for model in models]
+        entities = [self._model_to_entity(model) for model in models]
+        return [e for e in entities if e is not None]
 
     async def count_loads_by_criteria(self, criteria: LoadSearchCriteria) -> int:
         """Count loads matching criteria."""
-        stmt = select(func.count()).select_from(LoadModel)
+        stmt = select(func.count(LoadModel.load_id))
 
         conditions = []
         if criteria.equipment_type:
@@ -308,36 +374,36 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
             stmt = stmt.where(and_(*conditions))
 
         result = await self.session.execute(stmt)
-        return result.scalar()
+        return int(result.scalar() or 0)
 
     async def get_loads_expiring_soon(self, hours: int = 24) -> List[Load]:
         """Get loads expiring within specified hours."""
         from sqlalchemy import text
 
-        stmt = (
-            select(LoadModel)
-            .where(
-                and_(
-                    LoadModel.expires_at.isnot(None),
-                    LoadModel.expires_at <= text(f"NOW() + INTERVAL '{hours} hours'"),
-                    LoadModel.status == 'AVAILABLE',
-                    LoadModel.is_active == True
-                )
+        stmt = select(LoadModel).where(
+            and_(
+                LoadModel.expires_at.isnot(None),
+                LoadModel.expires_at <= text(f"NOW() + INTERVAL '{hours} hours'"),
+                LoadModel.status == "AVAILABLE",
+                LoadModel.is_active.is_(True),
             )
         )
 
         result = await self.session.execute(stmt)
         models = result.scalars().all()
-        return [self._model_to_entity(model) for model in models]
+        entities = [self._model_to_entity(model) for model in models]
+        return [e for e in entities if e is not None]
 
-    async def get_load_metrics(self, start_date: datetime, end_date: datetime) -> Dict[str, Any]:
+    async def get_load_metrics(  # type: ignore[override]
+        self, start_date: datetime, end_date: datetime
+    ) -> Dict[str, Any]:
         """Get aggregated load metrics for date range."""
         # Total booked revenue
         total_revenue_stmt = select(func.sum(LoadModel.loadboard_rate)).where(
             and_(
-                LoadModel.status == 'BOOKED',
+                LoadModel.status == "BOOKED",
                 LoadModel.created_at >= start_date,
-                LoadModel.created_at <= end_date
+                LoadModel.created_at <= end_date,
             )
         )
         total_revenue_result = await self.session.execute(total_revenue_stmt)
@@ -348,7 +414,7 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
             and_(
                 LoadModel.created_at >= start_date,
                 LoadModel.created_at <= end_date,
-                LoadModel.is_active == True
+                LoadModel.is_active.is_(True),
             )
         )
         avg_value_result = await self.session.execute(avg_value_stmt)
@@ -359,14 +425,14 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
             and_(
                 LoadModel.created_at >= start_date,
                 LoadModel.created_at <= end_date,
-                LoadModel.is_active == True
+                LoadModel.is_active.is_(True),
             )
         )
         avg_rate_result = await self.session.execute(avg_rate_stmt)
         average_loadboard_rate = float(avg_rate_result.scalar() or 0)
 
         return {
-            'total_booked_revenue': total_booked_revenue,
-            'average_load_value': average_load_value,
-            'average_loadboard_rate': average_loadboard_rate
+            "total_booked_revenue": total_booked_revenue,
+            "average_load_value": average_load_value,
+            "average_loadboard_rate": average_loadboard_rate,
         }

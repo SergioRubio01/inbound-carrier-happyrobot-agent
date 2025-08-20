@@ -5,26 +5,30 @@ Author: HappyRobot Team
 Created: 2024-08-14
 """
 
-from typing import Optional, List, Dict, Any
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
 from uuid import UUID
-from datetime import datetime
+
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, func
 
 from src.core.domain.entities import Carrier
-from src.core.domain.value_objects import MCNumber, Location, Rate
+from src.core.domain.value_objects import Location, MCNumber
 from src.core.ports.repositories import ICarrierRepository
 from src.infrastructure.database.models import CarrierModel
+
 from .base_repository import BaseRepository
 
 
-class PostgresCarrierRepository(BaseRepository[CarrierModel, Carrier], ICarrierRepository):
+class PostgresCarrierRepository(
+    BaseRepository[CarrierModel, Carrier], ICarrierRepository
+):
     """PostgreSQL implementation of carrier repository."""
 
     def __init__(self, session: AsyncSession):
         super().__init__(session, CarrierModel)
 
-    def _model_to_entity(self, model: CarrierModel) -> Carrier:
+    def _model_to_entity(self, model: Optional[CarrierModel]) -> Optional[Carrier]:
         """Convert database model to domain entity."""
         if not model:
             return None
@@ -33,11 +37,11 @@ class PostgresCarrierRepository(BaseRepository[CarrierModel, Carrier], ICarrierR
         address = None
         if model.address:
             address = Location(
-                city=model.address.get('city', ''),
-                state=model.address.get('state', ''),
-                zip_code=model.address.get('zip'),
-                latitude=model.address.get('lat'),
-                longitude=model.address.get('lng')
+                city=model.address.get("city", ""),
+                state=model.address.get("state", ""),
+                zip_code=model.address.get("zip"),
+                latitude=model.address.get("lat"),
+                longitude=model.address.get("lng"),
             )
 
         return Carrier(
@@ -57,7 +61,11 @@ class PostgresCarrierRepository(BaseRepository[CarrierModel, Carrier], ICarrierR
             bond_required=model.bond_required,
             bond_on_file=model.bond_on_file,
             safety_rating=model.safety_rating,
-            safety_rating_date=model.safety_rating_date,
+            safety_rating_date=(
+                datetime.combine(model.safety_rating_date, datetime.min.time())
+                if model.safety_rating_date
+                else None
+            ),
             safety_scores=model.safety_scores,
             primary_contact=model.primary_contact,
             address=address,
@@ -67,7 +75,7 @@ class PostgresCarrierRepository(BaseRepository[CarrierModel, Carrier], ICarrierR
             created_at=model.created_at,
             updated_at=model.updated_at,
             created_by=model.created_by,
-            version=model.version
+            version=model.version,
         )
 
     def _entity_to_model(self, entity: Carrier) -> CarrierModel:
@@ -76,11 +84,11 @@ class PostgresCarrierRepository(BaseRepository[CarrierModel, Carrier], ICarrierR
         address_dict = None
         if entity.address:
             address_dict = {
-                'city': entity.address.city,
-                'state': entity.address.state,
-                'zip': entity.address.zip_code,
-                'lat': entity.address.latitude,
-                'lng': entity.address.longitude
+                "city": entity.address.city,
+                "state": entity.address.state,
+                "zip": entity.address.zip_code,
+                "lat": entity.address.latitude,
+                "lng": entity.address.longitude,
             }
 
         model = CarrierModel(
@@ -110,18 +118,21 @@ class PostgresCarrierRepository(BaseRepository[CarrierModel, Carrier], ICarrierR
             created_at=entity.created_at,
             updated_at=entity.updated_at,
             created_by=entity.created_by,
-            version=entity.version
+            version=entity.version,
         )
 
         return model
 
-    async def create(self, carrier: Carrier) -> Carrier:
+    async def create(self, carrier: Carrier) -> Carrier:  # type: ignore[override]
         """Create a new carrier."""
         model = self._entity_to_model(carrier)
         created_model = await super().create(model)
-        return self._model_to_entity(created_model)
+        result = self._model_to_entity(created_model)
+        if result is None:
+            raise RuntimeError("Failed to create carrier")
+        return result
 
-    async def get_by_id(self, carrier_id: UUID) -> Optional[Carrier]:
+    async def get_by_id(self, carrier_id: UUID) -> Optional[Carrier]:  # type: ignore[override]
         """Get carrier by ID."""
         stmt = select(CarrierModel).where(CarrierModel.carrier_id == carrier_id)
         result = await self.session.execute(stmt)
@@ -135,14 +146,17 @@ class PostgresCarrierRepository(BaseRepository[CarrierModel, Carrier], ICarrierR
         model = result.scalar_one_or_none()
         return self._model_to_entity(model) if model else None
 
-    async def update(self, carrier: Carrier) -> Carrier:
+    async def update(self, carrier: Carrier) -> Carrier:  # type: ignore[override]
         """Update existing carrier."""
         model = self._entity_to_model(carrier)
-        model.updated_at = datetime.utcnow()
+        model.updated_at = datetime.now(timezone.utc)
         model.version += 1
 
         updated_model = await super().update(model)
-        return self._model_to_entity(updated_model)
+        result = self._model_to_entity(updated_model)
+        if result is None:
+            raise RuntimeError("Failed to update carrier")
+        return result
 
     async def delete(self, carrier_id: UUID) -> bool:
         """Delete carrier (soft delete)."""
@@ -152,22 +166,24 @@ class PostgresCarrierRepository(BaseRepository[CarrierModel, Carrier], ICarrierR
         model = result.scalar_one_or_none()
 
         if model:
-            model.status = 'INACTIVE'
-            model.updated_at = datetime.utcnow()
+            model.status = "INACTIVE"
+            model.updated_at = datetime.now(timezone.utc)
             await self.session.flush()
             return True
 
         return False
 
-    async def get_eligible_carriers(self, limit: int = 100, offset: int = 0) -> List[Carrier]:
+    async def get_eligible_carriers(
+        self, limit: int = 100, offset: int = 0
+    ) -> List[Carrier]:
         """Get list of eligible carriers."""
         stmt = (
             select(CarrierModel)
             .where(
                 and_(
-                    CarrierModel.operating_status == 'AUTHORIZED_FOR_HIRE',
-                    CarrierModel.status == 'ACTIVE',
-                    CarrierModel.insurance_on_file == True
+                    CarrierModel.operating_status == "AUTHORIZED_FOR_HIRE",
+                    CarrierModel.status == "ACTIVE",
+                    CarrierModel.insurance_on_file.is_(True),
                 )
             )
             .limit(limit)
@@ -176,17 +192,20 @@ class PostgresCarrierRepository(BaseRepository[CarrierModel, Carrier], ICarrierR
 
         result = await self.session.execute(stmt)
         models = result.scalars().all()
-        return [self._model_to_entity(model) for model in models]
+        entities = [self._model_to_entity(model) for model in models]
+        return [e for e in entities if e is not None]
 
-    async def search_carriers(self,
-                            legal_name: Optional[str] = None,
-                            operating_status: Optional[str] = None,
-                            limit: int = 100,
-                            offset: int = 0) -> List[Carrier]:
+    async def search_carriers(
+        self,
+        legal_name: Optional[str] = None,
+        operating_status: Optional[str] = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> List[Carrier]:
         """Search carriers by criteria."""
         stmt = select(CarrierModel)
 
-        conditions = []
+        conditions: List[Any] = []
         if legal_name:
             conditions.append(CarrierModel.legal_name.ilike(f"%{legal_name}%"))
         if operating_status:
@@ -199,15 +218,19 @@ class PostgresCarrierRepository(BaseRepository[CarrierModel, Carrier], ICarrierR
 
         result = await self.session.execute(stmt)
         models = result.scalars().all()
-        return [self._model_to_entity(model) for model in models]
+        entities = [self._model_to_entity(model) for model in models]
+        return [e for e in entities if e is not None]
 
     async def exists_by_mc_number(self, mc_number: MCNumber) -> bool:
         """Check if carrier exists by MC number."""
         stmt = select(func.count()).where(CarrierModel.mc_number == str(mc_number))
         result = await self.session.execute(stmt)
-        return result.scalar() > 0
+        count = result.scalar() or 0
+        return bool(count > 0)
 
-    async def get_carrier_metrics(self, start_date: datetime, end_date: datetime) -> Dict[str, Any]:
+    async def get_carrier_metrics(  # type: ignore[override]
+        self, start_date: datetime, end_date: datetime
+    ) -> Dict[str, Any]:
         """Get aggregated carrier metrics for date range."""
         # Count of carriers that called multiple times (repeat callers)
         # This would need to join with calls table to get accurate data
@@ -217,7 +240,7 @@ class PostgresCarrierRepository(BaseRepository[CarrierModel, Carrier], ICarrierR
         new_carriers_stmt = select(func.count()).where(
             and_(
                 CarrierModel.created_at >= start_date,
-                CarrierModel.created_at <= end_date
+                CarrierModel.created_at <= end_date,
             )
         )
         new_carriers_result = await self.session.execute(new_carriers_stmt)
@@ -230,15 +253,15 @@ class PostgresCarrierRepository(BaseRepository[CarrierModel, Carrier], ICarrierR
         top_equipment_types = [
             {"type": "53-foot van", "count": 0},
             {"type": "Reefer", "count": 0},
-            {"type": "Flatbed", "count": 0}
+            {"type": "Flatbed", "count": 0},
         ]
 
         # Average verification time - placeholder
         avg_verification_time_ms = 450
 
         return {
-            'repeat_callers': repeat_callers,
-            'new_carriers': new_carriers,
-            'top_equipment_types': top_equipment_types,
-            'avg_verification_time_ms': avg_verification_time_ms
+            "repeat_callers": repeat_callers,
+            "new_carriers": new_carriers,
+            "top_equipment_types": top_equipment_types,
+            "avg_verification_time_ms": avg_verification_time_ms,
         }

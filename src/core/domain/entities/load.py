@@ -6,22 +6,25 @@ Created: 2024-08-14
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime, date, time
-from typing import Optional, Dict, Any, List
-from uuid import UUID, uuid4
+from datetime import date, datetime, time, timezone
 from enum import Enum
+from functools import partial
+from typing import Any, Dict, List, Optional
+from uuid import UUID, uuid4
 
-from ..value_objects import Rate, Location, EquipmentType
 from ..exceptions.base import DomainException
+from ..value_objects import EquipmentType, Location, Rate
 
 
 class LoadNotAvailableException(DomainException):
     """Exception raised when load is not available."""
+
     pass
 
 
 class LoadStatus(Enum):
     """Load status enumeration."""
+
     AVAILABLE = "AVAILABLE"
     PENDING = "PENDING"
     BOOKED = "BOOKED"
@@ -32,6 +35,7 @@ class LoadStatus(Enum):
 
 class UrgencyLevel(Enum):
     """Load urgency level enumeration."""
+
     LOW = "LOW"
     NORMAL = "NORMAL"
     HIGH = "HIGH"
@@ -48,22 +52,22 @@ class Load:
     external_id: Optional[str] = None
 
     # Location Information
-    origin: Location = field(default=None)
-    destination: Location = field(default=None)
+    origin: Optional[Location] = field(default=None)
+    destination: Optional[Location] = field(default=None)
 
     # Schedule
-    pickup_date: date = field(default=None)
+    pickup_date: Optional[date] = field(default=None)
     pickup_time_start: Optional[time] = None
     pickup_time_end: Optional[time] = None
     pickup_appointment_required: bool = False
 
-    delivery_date: date = field(default=None)
+    delivery_date: Optional[date] = field(default=None)
     delivery_time_start: Optional[time] = None
     delivery_time_end: Optional[time] = None
     delivery_appointment_required: bool = False
 
     # Equipment Requirements
-    equipment_type: EquipmentType = field(default=None)
+    equipment_type: Optional[EquipmentType] = field(default=None)
     equipment_requirements: Optional[Dict[str, Any]] = None
 
     # Load Details
@@ -81,7 +85,7 @@ class Load:
     route_notes: Optional[str] = None
 
     # Pricing
-    loadboard_rate: Rate = field(default=None)
+    loadboard_rate: Optional[Rate] = field(default=None)
     fuel_surcharge: Optional[Rate] = None
     accessorials: Optional[List[Dict[str, Any]]] = None
 
@@ -98,7 +102,9 @@ class Load:
 
     # Status
     status: LoadStatus = LoadStatus.AVAILABLE
-    status_changed_at: datetime = field(default_factory=datetime.utcnow)
+    status_changed_at: datetime = field(
+        default_factory=partial(datetime.now, timezone.utc)
+    )
     booked_by_carrier_id: Optional[UUID] = None
     booked_at: Optional[datetime] = None
 
@@ -117,65 +123,82 @@ class Load:
 
     # Metadata
     source: Optional[str] = None  # DAT, MANUAL, API, etc.
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    updated_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=partial(datetime.now, timezone.utc))
+    updated_at: datetime = field(default_factory=partial(datetime.now, timezone.utc))
     created_by: Optional[str] = None
     deleted_at: Optional[datetime] = None
     version: int = 1
 
     @property
-    def total_rate(self) -> Rate:
+    def total_rate(self) -> Optional[Rate]:
         """Calculate total rate including fuel surcharge."""
+        if self.loadboard_rate is None:
+            return None
         if self.fuel_surcharge:
             return self.loadboard_rate.add(self.fuel_surcharge)
         return self.loadboard_rate
 
     @property
-    def rate_per_mile(self) -> Rate:
+    def rate_per_mile(self) -> Optional[Rate]:
         """Calculate rate per mile."""
-        if self.miles and self.miles > 0:
-            return self.total_rate.divide(self.miles)
+        total_rate = self.total_rate
+        if total_rate and self.miles and self.miles > 0:
+            return total_rate.divide(self.miles)
         return Rate.from_float(0)
 
     @property
-    def lane_key(self) -> str:
+    def lane_key(self) -> Optional[str]:
         """Get lane key for rate history."""
+        if self.origin is None or self.destination is None:
+            return None
         return f"{self.origin.state}-{self.destination.state}"
 
     @property
     def is_available(self) -> bool:
         """Check if load is available for booking."""
         return (
-            self.status == LoadStatus.AVAILABLE and
-            self.is_active and
-            (self.expires_at is None or self.expires_at > datetime.utcnow()) and
-            self.deleted_at is None
+            self.status == LoadStatus.AVAILABLE
+            and self.is_active
+            and (
+                self.expires_at is None or self.expires_at > datetime.now(timezone.utc)
+            )
+            and self.deleted_at is None
         )
 
     def verify_availability(self) -> None:
         """Verify load availability and raise exception if not available."""
         if not self.is_available:
             if self.status != LoadStatus.AVAILABLE:
-                raise LoadNotAvailableException(f"Load {self.reference_number} status is {self.status.value}")
+                raise LoadNotAvailableException(
+                    f"Load {self.reference_number} status is {self.status.value}"
+                )
 
             if not self.is_active:
-                raise LoadNotAvailableException(f"Load {self.reference_number} is not active")
+                raise LoadNotAvailableException(
+                    f"Load {self.reference_number} is not active"
+                )
 
-            if self.expires_at and self.expires_at <= datetime.utcnow():
-                raise LoadNotAvailableException(f"Load {self.reference_number} has expired")
+            if self.expires_at and self.expires_at <= datetime.now(timezone.utc):
+                raise LoadNotAvailableException(
+                    f"Load {self.reference_number} has expired"
+                )
 
             if self.deleted_at:
-                raise LoadNotAvailableException(f"Load {self.reference_number} has been deleted")
+                raise LoadNotAvailableException(
+                    f"Load {self.reference_number} has been deleted"
+                )
 
-    def book_by_carrier(self, carrier_id: UUID, agreed_rate: Optional[Rate] = None) -> None:
+    def book_by_carrier(
+        self, carrier_id: UUID, agreed_rate: Optional[Rate] = None
+    ) -> None:
         """Book the load by a carrier."""
         self.verify_availability()
 
         self.status = LoadStatus.BOOKED
-        self.status_changed_at = datetime.utcnow()
+        self.status_changed_at = datetime.now(timezone.utc)
         self.booked_by_carrier_id = carrier_id
-        self.booked_at = datetime.utcnow()
-        self.updated_at = datetime.utcnow()
+        self.booked_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(timezone.utc)
 
         # Update the loadboard rate if a different rate was agreed upon
         if agreed_rate and agreed_rate != self.loadboard_rate:
@@ -184,8 +207,8 @@ class Load:
     def cancel_booking(self, reason: Optional[str] = None) -> None:
         """Cancel the load booking."""
         self.status = LoadStatus.CANCELLED
-        self.status_changed_at = datetime.utcnow()
-        self.updated_at = datetime.utcnow()
+        self.status_changed_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(timezone.utc)
 
         if reason and self.internal_notes:
             self.internal_notes += f" | Cancelled: {reason}"
@@ -196,19 +219,26 @@ class Load:
         """Update load status."""
         if self.status != new_status:
             self.status = new_status
-            self.status_changed_at = datetime.utcnow()
-            self.updated_at = datetime.utcnow()
+            self.status_changed_at = datetime.now(timezone.utc)
+            self.updated_at = datetime.now(timezone.utc)
 
     def matches_equipment(self, equipment_type: EquipmentType) -> bool:
         """Check if load matches the given equipment type."""
+        if self.equipment_type is None:
+            return False
         return self.equipment_type.name.lower() == equipment_type.name.lower()
 
     def matches_weight_capacity(self, equipment_type: EquipmentType) -> bool:
         """Check if equipment can handle the load weight."""
         return equipment_type.can_haul_weight(self.weight)
 
-    def calculate_negotiation_thresholds(self, urgency_factor: float = 1.0, history_factor: float = 1.0) -> Dict[str, Rate]:
+    def calculate_negotiation_thresholds(
+        self, urgency_factor: float = 1.0, history_factor: float = 1.0
+    ) -> Optional[Dict[str, Rate]]:
         """Calculate negotiation thresholds based on various factors."""
+        if self.loadboard_rate is None:
+            return None
+
         base_rate = self.loadboard_rate
 
         # Calculate thresholds
@@ -220,7 +250,7 @@ class Load:
             "minimum_rate": min_rate,
             "maximum_rate": max_rate,
             "auto_accept_threshold": auto_accept,
-            "loadboard_rate": base_rate
+            "loadboard_rate": base_rate,
         }
 
     def __eq__(self, other) -> bool:

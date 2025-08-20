@@ -6,22 +6,25 @@ Created: 2024-08-14
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Optional, Dict, Any, List
-from uuid import UUID, uuid4
+from datetime import datetime, timezone
 from enum import Enum
+from functools import partial
+from typing import Any, Dict, List, Optional
+from uuid import UUID, uuid4
 
-from ..value_objects import MCNumber, Rate
 from ..exceptions.base import DomainException
+from ..value_objects import MCNumber, Rate
 
 
 class InvalidCallStateException(DomainException):
     """Exception raised when call state is invalid."""
+
     pass
 
 
 class CallType(Enum):
     """Call type enumeration."""
+
     INBOUND = "INBOUND"
     OUTBOUND = "OUTBOUND"
     CALLBACK = "CALLBACK"
@@ -29,6 +32,7 @@ class CallType(Enum):
 
 class CallChannel(Enum):
     """Call channel enumeration."""
+
     VOICE = "VOICE"
     WEB_CALL = "WEB_CALL"
     API_TRIGGERED = "API_TRIGGERED"
@@ -36,6 +40,7 @@ class CallChannel(Enum):
 
 class AgentType(Enum):
     """Agent type enumeration."""
+
     AI = "AI"
     HUMAN = "HUMAN"
     HYBRID = "HYBRID"
@@ -43,6 +48,7 @@ class AgentType(Enum):
 
 class CallOutcome(Enum):
     """Call outcome enumeration."""
+
     ACCEPTED = "ACCEPTED"
     DECLINED = "DECLINED"
     NEGOTIATION_FAILED = "NEGOTIATION_FAILED"
@@ -55,6 +61,7 @@ class CallOutcome(Enum):
 
 class Sentiment(Enum):
     """Sentiment enumeration."""
+
     POSITIVE = "POSITIVE"
     NEUTRAL = "NEUTRAL"
     NEGATIVE = "NEGATIVE"
@@ -80,7 +87,7 @@ class Call:
     multiple_loads_discussed: Optional[List[UUID]] = None
 
     # Call Metadata
-    start_time: datetime = field(default_factory=datetime.utcnow)
+    start_time: datetime = field(default_factory=partial(datetime.now, timezone.utc))
     end_time: Optional[datetime] = None
     duration_seconds: Optional[int] = None
 
@@ -133,8 +140,8 @@ class Call:
     quality_issues: Optional[List[str]] = None
 
     # Metadata
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    updated_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=partial(datetime.now, timezone.utc))
+    updated_at: datetime = field(default_factory=partial(datetime.now, timezone.utc))
     created_by: Optional[str] = None
     version: int = 1
 
@@ -153,12 +160,14 @@ class Call:
         """Check if call needs follow-up."""
         return self.follow_up_required and not self.follow_up_completed
 
-    def end_call(self, outcome: CallOutcome, end_time: Optional[datetime] = None) -> None:
+    def end_call(
+        self, outcome: CallOutcome, end_time: Optional[datetime] = None
+    ) -> None:
         """End the call with an outcome."""
         if not self.is_active:
             raise InvalidCallStateException("Call is already ended")
 
-        self.end_time = end_time or datetime.utcnow()
+        self.end_time = end_time or datetime.now(timezone.utc)
         self.outcome = outcome
 
         # Calculate duration if we have start time
@@ -166,7 +175,7 @@ class Call:
             duration = self.end_time - self.start_time
             self.duration_seconds = int(duration.total_seconds())
 
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
 
     def transfer_to_human(self, rep_id: str, reason: Optional[str] = None) -> None:
         """Transfer call to human representative."""
@@ -175,10 +184,10 @@ class Call:
 
         self.transferred_to_human = True
         self.transfer_reason = reason
-        self.transferred_at = datetime.utcnow()
+        self.transferred_at = datetime.now(timezone.utc)
         self.assigned_rep_id = rep_id
         self.agent_type = AgentType.HYBRID
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
 
     def add_extracted_data(self, data: Dict[str, Any]) -> None:
         """Add or update extracted data."""
@@ -186,16 +195,26 @@ class Call:
             self.extracted_data = {}
 
         self.extracted_data.update(data)
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
 
-    def set_sentiment(self, sentiment: Sentiment, score: Optional[float] = None, breakdown: Optional[Dict[str, float]] = None) -> None:
+    def set_sentiment(
+        self,
+        sentiment: Sentiment,
+        score: Optional[float] = None,
+        breakdown: Optional[Dict[str, float]] = None,
+    ) -> None:
         """Set sentiment analysis results."""
         self.sentiment = sentiment
         self.sentiment_score = score
         self.sentiment_breakdown = breakdown
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
 
-    def set_financial_info(self, initial_offer: Optional[Rate] = None, final_rate: Optional[Rate] = None, accepted: Optional[bool] = None) -> None:
+    def set_financial_info(
+        self,
+        initial_offer: Optional[Rate] = None,
+        final_rate: Optional[Rate] = None,
+        accepted: Optional[bool] = None,
+    ) -> None:
         """Set financial information."""
         if initial_offer:
             self.initial_offer = initial_offer
@@ -204,7 +223,7 @@ class Call:
         if accepted is not None:
             self.rate_accepted = accepted
 
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
 
     def schedule_follow_up(self, reason: str, deadline: datetime) -> None:
         """Schedule a follow-up for this call."""
@@ -212,12 +231,12 @@ class Call:
         self.follow_up_reason = reason
         self.follow_up_deadline = deadline
         self.follow_up_completed = False
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
 
     def complete_follow_up(self) -> None:
         """Mark follow-up as completed."""
         self.follow_up_completed = True
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
 
     def add_quality_issue(self, issue: str) -> None:
         """Add a quality issue to the call."""
@@ -225,7 +244,7 @@ class Call:
             self.quality_issues = []
 
         self.quality_issues.append(issue)
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
 
     def __eq__(self, other) -> bool:
         if isinstance(other, Call):
