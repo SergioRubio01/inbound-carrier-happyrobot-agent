@@ -7,17 +7,17 @@ but needs to be initialized with all the AutoAudit tables and proper
 alembic migration tracking.
 """
 
-import sys
 import logging
+import sys
 from pathlib import Path
 
 # Add the project root to Python path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from sqlalchemy import create_engine, text  # noqa: E402
-from alembic.config import Config  # noqa: E402
 from alembic import command  # noqa: E402
+from alembic.config import Config  # noqa: E402
+from sqlalchemy import create_engine, text  # noqa: E402
 
 from src.config.settings import settings  # noqa: E402
 from src.infrastructure.database.base import Base  # noqa: E402

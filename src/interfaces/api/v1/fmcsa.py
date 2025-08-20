@@ -5,16 +5,18 @@ Author: HappyRobot Team
 Created: 2024-08-14
 """
 
-from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
-from typing import Optional, Dict, Any
-from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
+from typing import Any, Dict, Optional
+
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.core.domain.value_objects import MCNumber
+from src.infrastructure.database.postgres import PostgresCarrierRepository
 
 # Database dependencies
 from src.interfaces.api.v1.dependencies.database import get_database_session
-from src.infrastructure.database.postgres import PostgresCarrierRepository
-from src.core.domain.value_objects import MCNumber
 
 router = APIRouter(prefix="/fmcsa", tags=["FMCSA"])
 
@@ -79,63 +81,81 @@ async def verify_carrier(
                 carrier_info={
                     "legal_name": carrier.legal_name,
                     "dba_name": carrier.dba_name or carrier.legal_name,
-                    "physical_address": f"{carrier.address.city}, {carrier.address.state}"
-                    if carrier.address
-                    else "Address not available",
-                    "phone": carrier.primary_contact.get("phone", "(555) 123-4567")
-                    if carrier.primary_contact
-                    else "(555) 123-4567",
+                    "physical_address": (
+                        f"{carrier.address.city}, {carrier.address.state}"
+                        if carrier.address
+                        else "Address not available"
+                    ),
+                    "phone": (
+                        carrier.primary_contact.get("phone", "(555) 123-4567")
+                        if carrier.primary_contact
+                        else "(555) 123-4567"
+                    ),
                     "entity_type": carrier.entity_type,
                     "operating_status": carrier.operating_status,
                     "out_of_service_date": None,
                     "mcs_150_date": "2024-01-15",
                     "mcs_150_mileage": 125000,
                 },
-                safety_score={
-                    "basic_score": carrier.safety_scores.get("basic_score", 75)
-                    if carrier.safety_scores
-                    else 75,
-                    "crash_indicator": carrier.safety_scores.get(
-                        "crash_indicator", "None"
-                    )
-                    if carrier.safety_scores
-                    else "None",
-                    "hazmat_indicator": carrier.safety_scores.get(
-                        "hazmat_indicator", "None"
-                    )
-                    if carrier.safety_scores
-                    else "None",
-                    "vehicle_maintenance": carrier.safety_scores.get(
-                        "vehicle_maintenance", "Satisfactory"
-                    )
-                    if carrier.safety_scores
-                    else "Satisfactory",
-                    "driver_fitness": carrier.safety_scores.get(
-                        "driver_fitness", "Satisfactory"
-                    )
-                    if carrier.safety_scores
-                    else "Satisfactory",
-                    "hours_of_service": carrier.safety_scores.get(
-                        "hours_of_service", "Satisfactory"
-                    )
-                    if carrier.safety_scores
-                    else "Satisfactory",
-                    "vehicle_inspection": carrier.safety_scores.get(
-                        "vehicle_inspection", "Satisfactory"
-                    )
-                    if carrier.safety_scores
-                    else "Satisfactory",
-                    "controlled_substances": carrier.safety_scores.get(
-                        "controlled_substances", "Satisfactory"
-                    )
-                    if carrier.safety_scores
-                    else "Satisfactory",
-                }
-                if request.include_safety_score
-                else None,
-                reason="Valid and active carrier"
-                if carrier.is_eligible
-                else "Carrier eligibility check failed",
+                safety_score=(
+                    {
+                        "basic_score": (
+                            carrier.safety_scores.get("basic_score", 75)
+                            if carrier.safety_scores
+                            else 75
+                        ),
+                        "crash_indicator": (
+                            carrier.safety_scores.get("crash_indicator", "None")
+                            if carrier.safety_scores
+                            else "None"
+                        ),
+                        "hazmat_indicator": (
+                            carrier.safety_scores.get("hazmat_indicator", "None")
+                            if carrier.safety_scores
+                            else "None"
+                        ),
+                        "vehicle_maintenance": (
+                            carrier.safety_scores.get(
+                                "vehicle_maintenance", "Satisfactory"
+                            )
+                            if carrier.safety_scores
+                            else "Satisfactory"
+                        ),
+                        "driver_fitness": (
+                            carrier.safety_scores.get("driver_fitness", "Satisfactory")
+                            if carrier.safety_scores
+                            else "Satisfactory"
+                        ),
+                        "hours_of_service": (
+                            carrier.safety_scores.get(
+                                "hours_of_service", "Satisfactory"
+                            )
+                            if carrier.safety_scores
+                            else "Satisfactory"
+                        ),
+                        "vehicle_inspection": (
+                            carrier.safety_scores.get(
+                                "vehicle_inspection", "Satisfactory"
+                            )
+                            if carrier.safety_scores
+                            else "Satisfactory"
+                        ),
+                        "controlled_substances": (
+                            carrier.safety_scores.get(
+                                "controlled_substances", "Satisfactory"
+                            )
+                            if carrier.safety_scores
+                            else "Satisfactory"
+                        ),
+                    }
+                    if request.include_safety_score
+                    else None
+                ),
+                reason=(
+                    "Valid and active carrier"
+                    if carrier.is_eligible
+                    else "Carrier eligibility check failed"
+                ),
                 details="Verification completed successfully",
                 verification_timestamp=datetime.utcnow().isoformat(),
             )

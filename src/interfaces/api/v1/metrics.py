@@ -5,20 +5,22 @@ Author: HappyRobot Team
 Created: 2024-08-14
 """
 
-from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
-from typing import Dict, Any
 from datetime import datetime, timedelta
+from typing import Any, Dict
+
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.infrastructure.database.postgres import (
+    PostgresCallRepository,
+    PostgresCarrierRepository,
+    PostgresLoadRepository,
+    PostgresNegotiationRepository,
+)
 
 # Database dependencies
 from src.interfaces.api.v1.dependencies.database import get_database_session
-from src.infrastructure.database.postgres import (
-    PostgresCallRepository,
-    PostgresNegotiationRepository,
-    PostgresLoadRepository,
-    PostgresCarrierRepository,
-)
 
 router = APIRouter(prefix="/metrics", tags=["Metrics"])
 

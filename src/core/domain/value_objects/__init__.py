@@ -5,14 +5,14 @@ Author: HappyRobot Team
 Created: 2024-08-14
 """
 
-from .mc_number import MCNumber, InvalidMCNumberException
-from .rate import Rate, InvalidRateException
-from .location import Location, InvalidLocationException
 from .equipment_type import (
-    EquipmentType,
     EquipmentCategory,
+    EquipmentType,
     InvalidEquipmentTypeException,
 )
+from .location import InvalidLocationException, Location
+from .mc_number import InvalidMCNumberException, MCNumber
+from .rate import InvalidRateException, Rate
 
 __all__ = [
     "MCNumber",

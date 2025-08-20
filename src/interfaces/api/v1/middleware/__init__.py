@@ -15,7 +15,7 @@ Dependencies:
 """
 
 from .auth_middleware import AuthenticationMiddleware
-from .rate_limiter import RateLimiterMiddleware
 from .cors_handler import CORSHandlerMiddleware
+from .rate_limiter import RateLimiterMiddleware
 
 __all__ = ["AuthenticationMiddleware", "RateLimiterMiddleware", "CORSHandlerMiddleware"]

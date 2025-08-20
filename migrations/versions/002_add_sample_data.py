@@ -6,11 +6,12 @@ Create Date: 2024-08-15 14:00:00.000000
 
 """
 
-from alembic import op
-import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
 import uuid
-from datetime import datetime, date, time
+from datetime import date, datetime, time
+
+import sqlalchemy as sa
+from alembic import op
+from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = "002_add_sample_data"

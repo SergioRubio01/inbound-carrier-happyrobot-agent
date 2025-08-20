@@ -6,13 +6,13 @@ Created: 2024-08-14
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime, date, time
-from typing import Optional, Dict, Any, List
-from uuid import UUID, uuid4
+from datetime import date, datetime, time
 from enum import Enum
+from typing import Any, Dict, List, Optional
+from uuid import UUID, uuid4
 
-from ..value_objects import Rate, Location, EquipmentType
 from ..exceptions.base import DomainException
+from ..value_objects import EquipmentType, Location, Rate
 
 
 class LoadNotAvailableException(DomainException):

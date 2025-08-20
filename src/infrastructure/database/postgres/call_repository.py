@@ -5,16 +5,18 @@ Author: HappyRobot Team
 Created: 2024-08-14
 """
 
-from typing import Optional, List, Dict, Any
-from uuid import UUID
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+from uuid import UUID
+
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, func
 
 from src.core.domain.entities import Call, CallOutcome, Sentiment
 from src.core.domain.value_objects import MCNumber
-from src.core.ports.repositories import ICallRepository, CallSearchCriteria
+from src.core.ports.repositories import CallSearchCriteria, ICallRepository
 from src.infrastructure.database.models import CallModel
+
 from .base_repository import BaseRepository
 
 
@@ -33,9 +35,9 @@ class PostgresCallRepository(BaseRepository[CallModel, Call], ICallRepository):
             call_id=model.call_id,
             external_call_id=model.external_call_id,
             session_id=model.session_id,
-            mc_number=MCNumber.from_string(model.mc_number)
-            if model.mc_number
-            else None,
+            mc_number=(
+                MCNumber.from_string(model.mc_number) if model.mc_number else None
+            ),
             carrier_id=model.carrier_id,
             caller_phone=model.caller_phone,
             caller_name=model.caller_name,

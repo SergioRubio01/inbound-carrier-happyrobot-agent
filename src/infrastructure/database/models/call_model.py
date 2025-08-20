@@ -5,10 +5,11 @@ Author: HappyRobot Team
 Created: 2024-08-14
 """
 
-from sqlalchemy import Column, String, Integer, Boolean, Text, TIMESTAMP, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID, JSONB, NUMERIC, ARRAY
-from sqlalchemy.orm import relationship
 import uuid
+
+from sqlalchemy import TIMESTAMP, Boolean, Column, ForeignKey, Integer, String, Text
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, NUMERIC, UUID
+from sqlalchemy.orm import relationship
 
 from src.infrastructure.database.base import Base, TimestampMixin
 

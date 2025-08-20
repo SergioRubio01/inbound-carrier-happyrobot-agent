@@ -5,16 +5,18 @@ Author: HappyRobot Team
 Created: 2024-08-14
 """
 
-from typing import Optional, List, Dict, Any
-from uuid import UUID
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+from uuid import UUID
+
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, func
 
 from src.core.domain.entities import Load, LoadStatus, UrgencyLevel
 from src.core.domain.value_objects import EquipmentType, Location, Rate
 from src.core.ports.repositories import ILoadRepository, LoadSearchCriteria
 from src.infrastructure.database.models import LoadModel
+
 from .base_repository import BaseRepository
 
 
@@ -74,18 +76,20 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
             loadboard_rate=loadboard_rate,
             fuel_surcharge=fuel_surcharge,
             accessorials=model.accessorials,
-            minimum_rate=Rate.from_float(model.minimum_rate)
-            if model.minimum_rate
-            else None,
-            maximum_rate=Rate.from_float(model.maximum_rate)
-            if model.maximum_rate
-            else None,
-            target_rate=Rate.from_float(model.target_rate)
-            if model.target_rate
-            else None,
-            auto_accept_threshold=Rate.from_float(model.auto_accept_threshold)
-            if model.auto_accept_threshold
-            else None,
+            minimum_rate=(
+                Rate.from_float(model.minimum_rate) if model.minimum_rate else None
+            ),
+            maximum_rate=(
+                Rate.from_float(model.maximum_rate) if model.maximum_rate else None
+            ),
+            target_rate=(
+                Rate.from_float(model.target_rate) if model.target_rate else None
+            ),
+            auto_accept_threshold=(
+                Rate.from_float(model.auto_accept_threshold)
+                if model.auto_accept_threshold
+                else None
+            ),
             broker_company=model.broker_company,
             broker_contact=model.broker_contact,
             customer_name=model.customer_name,
@@ -141,20 +145,22 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
             estimated_transit_hours=entity.estimated_transit_hours,
             route_notes=entity.route_notes,
             loadboard_rate=entity.loadboard_rate.to_float(),
-            fuel_surcharge=entity.fuel_surcharge.to_float()
-            if entity.fuel_surcharge
-            else 0,
+            fuel_surcharge=(
+                entity.fuel_surcharge.to_float() if entity.fuel_surcharge else 0
+            ),
             accessorials=entity.accessorials,
-            minimum_rate=entity.minimum_rate.to_float()
-            if entity.minimum_rate
-            else None,
-            maximum_rate=entity.maximum_rate.to_float()
-            if entity.maximum_rate
-            else None,
+            minimum_rate=(
+                entity.minimum_rate.to_float() if entity.minimum_rate else None
+            ),
+            maximum_rate=(
+                entity.maximum_rate.to_float() if entity.maximum_rate else None
+            ),
             target_rate=entity.target_rate.to_float() if entity.target_rate else None,
-            auto_accept_threshold=entity.auto_accept_threshold.to_float()
-            if entity.auto_accept_threshold
-            else None,
+            auto_accept_threshold=(
+                entity.auto_accept_threshold.to_float()
+                if entity.auto_accept_threshold
+                else None
+            ),
             broker_company=entity.broker_company,
             broker_contact=entity.broker_contact,
             customer_name=entity.customer_name,

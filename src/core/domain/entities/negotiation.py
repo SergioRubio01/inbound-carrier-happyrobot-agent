@@ -7,12 +7,12 @@ Created: 2024-08-14
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional, Dict, Any
-from uuid import UUID, uuid4
 from enum import Enum
+from typing import Any, Dict, Optional
+from uuid import UUID, uuid4
 
-from ..value_objects import MCNumber, Rate
 from ..exceptions.base import DomainException
+from ..value_objects import MCNumber, Rate
 
 
 class NegotiationLimitExceededException(DomainException):

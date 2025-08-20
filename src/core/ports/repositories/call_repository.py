@@ -6,9 +6,9 @@ Created: 2024-08-14
 """
 
 from abc import ABC, abstractmethod
-from typing import Optional, List, Dict, Any
-from uuid import UUID
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+from uuid import UUID
 
 from src.core.domain.entities import Call, CallOutcome, Sentiment
 from src.core.domain.value_objects import MCNumber

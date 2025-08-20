@@ -5,11 +5,12 @@ Author: HappyRobot Team
 Created: 2024-08-14
 """
 
-from typing import Optional, List, Dict, Any
-from uuid import UUID
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+from uuid import UUID
+
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, func
 
 from src.core.domain.entities import Negotiation, NegotiationStatus, SystemResponse
 from src.core.domain.value_objects import MCNumber, Rate
@@ -18,6 +19,7 @@ from src.core.ports.repositories import (
     NegotiationSearchCriteria,
 )
 from src.infrastructure.database.models import NegotiationModel
+
 from .base_repository import BaseRepository
 
 
@@ -39,9 +41,9 @@ class PostgresNegotiationRepository(
             call_id=model.call_id,
             load_id=model.load_id,
             carrier_id=model.carrier_id,
-            mc_number=MCNumber.from_string(model.mc_number)
-            if model.mc_number
-            else None,
+            mc_number=(
+                MCNumber.from_string(model.mc_number) if model.mc_number else None
+            ),
             session_id=model.session_id,
             session_start=model.session_start,
             session_end=model.session_end,
@@ -49,28 +51,32 @@ class PostgresNegotiationRepository(
             round_number=model.round_number,
             max_rounds=model.max_rounds,
             carrier_offer=Rate.from_float(model.carrier_offer),
-            system_response=SystemResponse(model.system_response)
-            if model.system_response
-            else None,
-            counter_offer=Rate.from_float(model.counter_offer)
-            if model.counter_offer
-            else None,
+            system_response=(
+                SystemResponse(model.system_response) if model.system_response else None
+            ),
+            counter_offer=(
+                Rate.from_float(model.counter_offer) if model.counter_offer else None
+            ),
             loadboard_rate=Rate.from_float(model.loadboard_rate),
-            minimum_acceptable=Rate.from_float(model.minimum_acceptable)
-            if model.minimum_acceptable
-            else None,
-            maximum_acceptable=Rate.from_float(model.maximum_acceptable)
-            if model.maximum_acceptable
-            else None,
+            minimum_acceptable=(
+                Rate.from_float(model.minimum_acceptable)
+                if model.minimum_acceptable
+                else None
+            ),
+            maximum_acceptable=(
+                Rate.from_float(model.maximum_acceptable)
+                if model.maximum_acceptable
+                else None
+            ),
             decision_factors=model.decision_factors,
             message_to_carrier=model.message_to_carrier,
             justification=model.justification,
-            final_status=NegotiationStatus(model.final_status)
-            if model.final_status
-            else None,
-            agreed_rate=Rate.from_float(model.agreed_rate)
-            if model.agreed_rate
-            else None,
+            final_status=(
+                NegotiationStatus(model.final_status) if model.final_status else None
+            ),
+            agreed_rate=(
+                Rate.from_float(model.agreed_rate) if model.agreed_rate else None
+            ),
             response_time_seconds=model.response_time_seconds,
             total_duration_seconds=model.total_duration_seconds,
             created_at=model.created_at,
@@ -94,19 +100,23 @@ class PostgresNegotiationRepository(
             round_number=entity.round_number,
             max_rounds=entity.max_rounds,
             carrier_offer=entity.carrier_offer.to_float(),
-            system_response=entity.system_response.value
-            if entity.system_response
-            else None,
-            counter_offer=entity.counter_offer.to_float()
-            if entity.counter_offer
-            else None,
+            system_response=(
+                entity.system_response.value if entity.system_response else None
+            ),
+            counter_offer=(
+                entity.counter_offer.to_float() if entity.counter_offer else None
+            ),
             loadboard_rate=entity.loadboard_rate.to_float(),
-            minimum_acceptable=entity.minimum_acceptable.to_float()
-            if entity.minimum_acceptable
-            else None,
-            maximum_acceptable=entity.maximum_acceptable.to_float()
-            if entity.maximum_acceptable
-            else None,
+            minimum_acceptable=(
+                entity.minimum_acceptable.to_float()
+                if entity.minimum_acceptable
+                else None
+            ),
+            maximum_acceptable=(
+                entity.maximum_acceptable.to_float()
+                if entity.maximum_acceptable
+                else None
+            ),
             decision_factors=entity.decision_factors,
             message_to_carrier=entity.message_to_carrier,
             justification=entity.justification,

@@ -6,14 +6,14 @@ Created: 2024-08-14
 """
 
 from dataclasses import dataclass
-from typing import Optional, Dict, Any
 from datetime import datetime
+from typing import Any, Dict, Optional
 from uuid import UUID
 
 from src.core.domain.entities import Negotiation, SystemResponse
-from src.core.domain.value_objects import MCNumber, Rate
-from src.core.ports.repositories import ILoadRepository, ICarrierRepository
 from src.core.domain.exceptions.base import DomainException
+from src.core.domain.value_objects import MCNumber, Rate
+from src.core.ports.repositories import ICarrierRepository, ILoadRepository
 
 
 class NegotiationEvaluationException(DomainException):
@@ -179,9 +179,11 @@ class EvaluateNegotiationUseCase:
             status="COUNTER_OFFER",
             load_id=str(negotiation.load_id),
             carrier_offer=negotiation.carrier_offer.to_float(),
-            counter_offer=negotiation.counter_offer.to_float()
-            if negotiation.counter_offer
-            else None,
+            counter_offer=(
+                negotiation.counter_offer.to_float()
+                if negotiation.counter_offer
+                else None
+            ),
             negotiation_round=negotiation.round_number,
             remaining_rounds=negotiation.max_rounds - negotiation.round_number,
             message=negotiation.message_to_carrier,
@@ -198,9 +200,11 @@ class EvaluateNegotiationUseCase:
             status="REJECTED",
             load_id=str(negotiation.load_id),
             carrier_offer=negotiation.carrier_offer.to_float(),
-            maximum_rate=negotiation.maximum_acceptable.to_float()
-            if negotiation.maximum_acceptable
-            else None,
+            maximum_rate=(
+                negotiation.maximum_acceptable.to_float()
+                if negotiation.maximum_acceptable
+                else None
+            ),
             negotiation_round=negotiation.round_number,
             message=negotiation.message_to_carrier,
             timestamp=datetime.utcnow(),

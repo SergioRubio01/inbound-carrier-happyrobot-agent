@@ -5,10 +5,11 @@ Author: HappyRobot Team
 Created: 2024-08-14
 """
 
-from typing import TypeVar, Generic, Type, Optional, List, Dict, Any
+from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
 from uuid import UUID
+
+from sqlalchemy import and_, asc, delete, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, and_, desc, asc, func
 
 from src.infrastructure.database.base import Base
 

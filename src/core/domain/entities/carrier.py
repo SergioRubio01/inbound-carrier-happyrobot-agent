@@ -7,11 +7,11 @@ Created: 2024-08-14
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 from uuid import UUID, uuid4
 
-from ..value_objects import MCNumber, Location
 from ..exceptions.base import DomainException
+from ..value_objects import Location, MCNumber
 
 
 class CarrierNotEligibleException(DomainException):

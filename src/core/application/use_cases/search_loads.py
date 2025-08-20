@@ -6,13 +6,13 @@ Created: 2024-08-14
 """
 
 from dataclasses import dataclass
-from typing import Optional, List, Dict, Any
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 from src.core.domain.entities import Load
+from src.core.domain.exceptions.base import DomainException
 from src.core.domain.value_objects import EquipmentType, Rate
 from src.core.ports.repositories import ILoadRepository, LoadSearchCriteria
-from src.core.domain.exceptions.base import DomainException
 
 
 class LoadSearchException(DomainException):
@@ -152,23 +152,27 @@ class SearchLoadsUseCase:
                 "city": load.origin.city,
                 "state": load.origin.state,
                 "zip": load.origin.zip_code,
-                "coordinates": {
-                    "lat": load.origin.latitude,
-                    "lng": load.origin.longitude,
-                }
-                if load.origin.latitude and load.origin.longitude
-                else None,
+                "coordinates": (
+                    {
+                        "lat": load.origin.latitude,
+                        "lng": load.origin.longitude,
+                    }
+                    if load.origin.latitude and load.origin.longitude
+                    else None
+                ),
             },
             "destination": {
                 "city": load.destination.city,
                 "state": load.destination.state,
                 "zip": load.destination.zip_code,
-                "coordinates": {
-                    "lat": load.destination.latitude,
-                    "lng": load.destination.longitude,
-                }
-                if load.destination.latitude and load.destination.longitude
-                else None,
+                "coordinates": (
+                    {
+                        "lat": load.destination.latitude,
+                        "lng": load.destination.longitude,
+                    }
+                    if load.destination.latitude and load.destination.longitude
+                    else None
+                ),
             },
             "pickup_datetime": f"{load.pickup_date}T{load.pickup_time_start or '10:00:00'}Z",
             "delivery_datetime": f"{load.delivery_date}T{load.delivery_time_start or '18:00:00'}Z",
@@ -181,20 +185,26 @@ class SearchLoadsUseCase:
             "num_of_pieces": load.pieces,
             "dimensions": load.dimensions,
             "special_requirements": load.special_requirements or [],
-            "broker_info": {
-                "company": load.broker_company,
-                "contact_name": load.broker_contact.get("name")
-                if load.broker_contact
-                else None,
-                "phone": load.broker_contact.get("phone")
-                if load.broker_contact
-                else None,
-                "email": load.broker_contact.get("email")
-                if load.broker_contact
-                else None,
-            }
-            if load.broker_company or load.broker_contact
-            else None,
+            "broker_info": (
+                {
+                    "company": load.broker_company,
+                    "contact_name": (
+                        load.broker_contact.get("name") if load.broker_contact else None
+                    ),
+                    "phone": (
+                        load.broker_contact.get("phone")
+                        if load.broker_contact
+                        else None
+                    ),
+                    "email": (
+                        load.broker_contact.get("email")
+                        if load.broker_contact
+                        else None
+                    ),
+                }
+                if load.broker_company or load.broker_contact
+                else None
+            ),
             "urgency": load.urgency.value,
             "created_at": load.created_at.isoformat(),
         }

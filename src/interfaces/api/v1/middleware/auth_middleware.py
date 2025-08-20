@@ -1,9 +1,8 @@
-from typing import Callable, Iterable
 import os
+from typing import Callable, Iterable
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
-
 
 EXEMPT_PATH_PREFIXES: Iterable[str] = (
     "/health",

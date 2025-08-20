@@ -6,13 +6,13 @@ Created: 2024-08-14
 """
 
 from dataclasses import dataclass
-from typing import Optional, Dict, Any
 from datetime import datetime
+from typing import Any, Dict, Optional
 
 from src.core.domain.entities import Carrier, CarrierNotEligibleException
+from src.core.domain.exceptions.base import DomainException
 from src.core.domain.value_objects import MCNumber
 from src.core.ports.repositories import ICarrierRepository
-from src.core.domain.exceptions.base import DomainException
 
 
 class FMCSAVerificationException(DomainException):
@@ -200,19 +200,19 @@ class VerifyCarrierUseCase:
             "entity_type": carrier.entity_type,
             "operating_status": carrier.operating_status,
             "insurance_on_file": carrier.insurance_on_file,
-            "bipd_required": str(carrier.bipd_required)
-            if carrier.bipd_required
-            else None,
+            "bipd_required": (
+                str(carrier.bipd_required) if carrier.bipd_required else None
+            ),
             "bipd_on_file": str(carrier.bipd_on_file) if carrier.bipd_on_file else None,
-            "cargo_required": str(carrier.cargo_required)
-            if carrier.cargo_required
-            else None,
-            "cargo_on_file": str(carrier.cargo_on_file)
-            if carrier.cargo_on_file
-            else None,
-            "bond_required": str(carrier.bond_required)
-            if carrier.bond_required
-            else None,
+            "cargo_required": (
+                str(carrier.cargo_required) if carrier.cargo_required else None
+            ),
+            "cargo_on_file": (
+                str(carrier.cargo_on_file) if carrier.cargo_on_file else None
+            ),
+            "bond_required": (
+                str(carrier.bond_required) if carrier.bond_required else None
+            ),
             "bond_on_file": str(carrier.bond_on_file) if carrier.bond_on_file else None,
         }
 
@@ -221,9 +221,11 @@ class VerifyCarrierUseCase:
             response_safety_score = {
                 "basics_scores": safety_score or carrier.safety_scores,
                 "safety_rating": carrier.safety_rating,
-                "rating_date": carrier.safety_rating_date.isoformat()
-                if carrier.safety_rating_date
-                else None,
+                "rating_date": (
+                    carrier.safety_rating_date.isoformat()
+                    if carrier.safety_rating_date
+                    else None
+                ),
             }
 
         return VerifyCarrierResponse(

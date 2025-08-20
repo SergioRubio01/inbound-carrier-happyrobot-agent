@@ -5,21 +5,22 @@ Author: HappyRobot Team
 Created: 2024-08-14
 """
 
-from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
-from typing import Optional, Dict, Any
 from datetime import datetime
-from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Any, Dict, Optional
 from uuid import UUID
 
-from src.interfaces.api.v1.dependencies.database import get_database_session
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.core.domain.entities import Call
+from src.core.domain.value_objects import MCNumber
 from src.infrastructure.database.postgres import (
     PostgresCallRepository,
-    PostgresLoadRepository,
     PostgresCarrierRepository,
+    PostgresLoadRepository,
 )
-from src.core.domain.value_objects import MCNumber
-from src.core.domain.entities import Call
+from src.interfaces.api.v1.dependencies.database import get_database_session
 
 router = APIRouter(prefix="/calls", tags=["Calls"])
 
@@ -300,9 +301,11 @@ async def finalize_call(
             analytics={
                 "call_value_score": call_value_score,
                 "conversion_probability": conversion_probability,
-                "recommended_follow_up": "Send rate confirmation"
-                if request.outcome == "ACCEPTED"
-                else "Standard follow-up",
+                "recommended_follow_up": (
+                    "Send rate confirmation"
+                    if request.outcome == "ACCEPTED"
+                    else "Standard follow-up"
+                ),
             },
             next_actions=next_actions,
             message="Call data successfully logged and processed",

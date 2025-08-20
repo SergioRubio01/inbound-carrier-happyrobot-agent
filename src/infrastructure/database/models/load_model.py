@@ -5,21 +5,22 @@ Author: HappyRobot Team
 Created: 2024-08-14
 """
 
-from sqlalchemy import (
-    Column,
-    String,
-    Integer,
-    Date,
-    Time,
-    Boolean,
-    Text,
-    TIMESTAMP,
-    ForeignKey,
-)
-from sqlalchemy.dialects.postgresql import UUID, JSONB, NUMERIC, ARRAY
-from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
 import uuid
+
+from sqlalchemy import (
+    TIMESTAMP,
+    Boolean,
+    Column,
+    Date,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    Time,
+)
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, NUMERIC, UUID
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 
 from src.infrastructure.database.base import Base, TimestampMixin
 

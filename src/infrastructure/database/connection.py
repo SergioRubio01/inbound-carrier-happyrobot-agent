@@ -66,9 +66,9 @@ class DatabaseConnection:
             connect_args={
                 "command_timeout": 30,
                 "server_settings": {
-                    "application_name": self.settings.app_name
-                    if self.settings
-                    else "HappyRobot",
+                    "application_name": (
+                        self.settings.app_name if self.settings else "HappyRobot"
+                    ),
                     "timezone": "UTC",
                 },
             },

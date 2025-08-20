@@ -5,20 +5,22 @@ Author: HappyRobot Team
 Created: 2024-08-14
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from typing import Any, Dict, Optional
+
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from typing import Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.core.domain.entities import Negotiation, SystemResponse
+from src.core.domain.value_objects import MCNumber, Rate
+from src.infrastructure.database.postgres import (
+    PostgresCarrierRepository,
+    PostgresLoadRepository,
+    PostgresNegotiationRepository,
+)
 
 # Database dependencies
 from src.interfaces.api.v1.dependencies.database import get_database_session
-from src.infrastructure.database.postgres import (
-    PostgresLoadRepository,
-    PostgresCarrierRepository,
-    PostgresNegotiationRepository,
-)
-from src.core.domain.value_objects import MCNumber, Rate
-from src.core.domain.entities import Negotiation, SystemResponse
 
 router = APIRouter(prefix="/negotiations", tags=["Negotiations"])
 

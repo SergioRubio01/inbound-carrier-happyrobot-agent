@@ -5,16 +5,18 @@ Author: HappyRobot Team
 Created: 2024-08-14
 """
 
-from typing import Optional, List, Dict, Any
-from uuid import UUID
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+from uuid import UUID
+
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, func
 
 from src.core.domain.entities import Carrier
-from src.core.domain.value_objects import MCNumber, Location
+from src.core.domain.value_objects import Location, MCNumber
 from src.core.ports.repositories import ICarrierRepository
 from src.infrastructure.database.models import CarrierModel
+
 from .base_repository import BaseRepository
 
 

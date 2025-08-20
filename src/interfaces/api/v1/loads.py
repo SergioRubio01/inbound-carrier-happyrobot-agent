@@ -5,17 +5,19 @@ Author: HappyRobot Team
 Created: 2024-08-14
 """
 
-from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
-from typing import Optional, Dict, Any, List
-from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.core.domain.value_objects import EquipmentType, Rate
+from src.core.ports.repositories import LoadSearchCriteria
+from src.infrastructure.database.postgres import PostgresLoadRepository
 
 # Database dependencies
 from src.interfaces.api.v1.dependencies.database import get_database_session
-from src.infrastructure.database.postgres import PostgresLoadRepository
-from src.core.domain.value_objects import EquipmentType, Rate
-from src.core.ports.repositories import LoadSearchCriteria
 
 router = APIRouter(prefix="/loads", tags=["Loads"])
 
@@ -87,12 +89,12 @@ async def search_loads(
         criteria = LoadSearchCriteria(
             equipment_type=EquipmentType.from_name(request.equipment_type),
             origin_state=request.origin.state if request.origin else None,
-            destination_state=request.destination.state
-            if request.destination
-            else None,
-            minimum_rate=Rate.from_float(request.minimum_rate)
-            if request.minimum_rate
-            else None,
+            destination_state=(
+                request.destination.state if request.destination else None
+            ),
+            minimum_rate=(
+                Rate.from_float(request.minimum_rate) if request.minimum_rate else None
+            ),
             maximum_miles=request.maximum_miles,
             weight_min=request.weight_range.min if request.weight_range else None,
             weight_max=request.weight_range.max if request.weight_range else None,
@@ -122,12 +124,12 @@ async def search_loads(
                     "state": load.destination.state,
                     "zip": load.destination.zip_code,
                 },
-                "pickup_date": load.pickup_date.isoformat()
-                if load.pickup_date
-                else None,
-                "delivery_date": load.delivery_date.isoformat()
-                if load.delivery_date
-                else None,
+                "pickup_date": (
+                    load.pickup_date.isoformat() if load.pickup_date else None
+                ),
+                "delivery_date": (
+                    load.delivery_date.isoformat() if load.delivery_date else None
+                ),
                 "equipment_type": load.equipment_type.name,
                 "weight": load.weight,
                 "commodity": load.commodity_type,
@@ -148,9 +150,9 @@ async def search_loads(
             search_criteria={
                 "equipment_type": request.equipment_type,
                 "origin_state": request.origin.state if request.origin else None,
-                "destination_state": request.destination.state
-                if request.destination
-                else None,
+                "destination_state": (
+                    request.destination.state if request.destination else None
+                ),
                 "minimum_rate": request.minimum_rate,
                 "maximum_miles": request.maximum_miles,
                 "applied_filters": len(
@@ -169,19 +171,21 @@ async def search_loads(
             total_matches=total_count,
             returned_count=len(load_data),
             loads=load_data,
-            suggestions={
-                "alternative_equipment": [
-                    "53-foot van",
-                    "Reefer",
-                    "Flatbed",
-                    "Power Only",
-                    "Step Deck",
-                ],
-                "rate_analysis": "No matches found with current criteria",
-                "recommendations": "Consider expanding search radius or adjusting rate requirements",
-            }
-            if len(load_data) == 0
-            else None,
+            suggestions=(
+                {
+                    "alternative_equipment": [
+                        "53-foot van",
+                        "Reefer",
+                        "Flatbed",
+                        "Power Only",
+                        "Step Deck",
+                    ],
+                    "rate_analysis": "No matches found with current criteria",
+                    "recommendations": "Consider expanding search radius or adjusting rate requirements",
+                }
+                if len(load_data) == 0
+                else None
+            ),
             search_timestamp=datetime.utcnow().isoformat(),
         )
 
