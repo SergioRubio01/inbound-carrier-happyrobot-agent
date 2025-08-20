@@ -14,7 +14,8 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.domain.entities import Call
-from src.core.domain.value_objects import MCNumber
+from src.core.domain.entities.call import CallOutcome, CallType, Sentiment
+from src.core.domain.value_objects import MCNumber, Rate
 from src.infrastructure.database.postgres import (
     PostgresCallRepository,
     PostgresCarrierRepository,
@@ -116,13 +117,13 @@ async def handoff_call(
 
         # Create call record for handoff
         call = Call(
-            mc_number=str(mc_number),
+            mc_number=mc_number,
             carrier_id=carrier.carrier_id,
             load_id=load.load_id,
             start_time=datetime.utcnow(),
-            call_type="INBOUND",
-            outcome="HANDOFF_REQUESTED",
-            final_rate=request.agreed_rate,
+            call_type=CallType.INBOUND,
+            outcome=CallOutcome.ACCEPTED,
+            final_rate=Rate.from_float(request.agreed_rate),
             rate_accepted=True,
             extracted_data={
                 "carrier_contact": request.carrier_contact,
@@ -199,14 +200,18 @@ async def finalize_call(
             carrier = await carrier_repo.get_by_mc_number(mc_number)
 
             call = Call(
-                mc_number=request.mc_number,
+                mc_number=mc_number,
                 carrier_id=carrier.carrier_id if carrier else None,
                 load_id=UUID(request.load_id) if request.load_id else None,
                 start_time=datetime.utcnow(),
-                call_type="INBOUND",
-                outcome=request.outcome,
-                sentiment=request.sentiment,
-                final_rate=request.agreed_rate,
+                call_type=CallType.INBOUND,
+                outcome=CallOutcome(request.outcome),
+                sentiment=Sentiment(request.sentiment),
+                final_rate=(
+                    Rate.from_float(request.agreed_rate)
+                    if request.agreed_rate
+                    else None
+                ),
                 rate_accepted=request.agreed_rate is not None,
                 extracted_data=request.extracted_data,
                 transcript=request.transcript,
@@ -217,14 +222,14 @@ async def finalize_call(
 
         # Update call with finalization data
         call.end_time = datetime.utcnow()
-        call.outcome = request.outcome
-        call.sentiment = request.sentiment
+        call.outcome = CallOutcome(request.outcome)
+        call.sentiment = Sentiment(request.sentiment)
         call.extracted_data = request.extracted_data
         call.transcript = request.transcript
         call.follow_up_required = request.follow_up_required
 
         if request.agreed_rate:
-            call.final_rate = request.agreed_rate
+            call.final_rate = Rate.from_float(request.agreed_rate)
             call.rate_accepted = True
 
         # Calculate analytics based on extracted data

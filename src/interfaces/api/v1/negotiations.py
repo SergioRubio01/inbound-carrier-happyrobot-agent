@@ -118,10 +118,25 @@ async def evaluate_negotiation(
                 message="Maximum negotiation rounds reached",
                 justification="Exceeded maximum allowed negotiation rounds for this load",
                 rate_difference=request.carrier_offer
-                - float(load.loadboard_rate.to_float()),
+                - (
+                    float(load.loadboard_rate.to_float())
+                    if load.loadboard_rate
+                    else 0.0
+                ),
                 percentage_over_loadboard=(
-                    (request.carrier_offer - float(load.loadboard_rate.to_float()))
-                    / float(load.loadboard_rate.to_float())
+                    (
+                        request.carrier_offer
+                        - (
+                            float(load.loadboard_rate.to_float())
+                            if load.loadboard_rate
+                            else 0.0
+                        )
+                    )
+                    / (
+                        float(load.loadboard_rate.to_float())
+                        if load.loadboard_rate
+                        else 1.0
+                    )
                 )
                 * 100,
                 next_steps={
@@ -133,6 +148,11 @@ async def evaluate_negotiation(
 
         # Create negotiation entity
         carrier_offer_rate = Rate.from_float(request.carrier_offer)
+
+        if not load.loadboard_rate:
+            raise HTTPException(
+                status_code=400, detail="Load has no loadboard rate set"
+            )
 
         negotiation = Negotiation(
             load_id=load.load_id,
@@ -166,9 +186,12 @@ async def evaluate_negotiation(
         saved_negotiation = await negotiation_repo.create(negotiation)
 
         # Build response based on system decision
-        rate_difference = request.carrier_offer - float(load.loadboard_rate.to_float())
+        rate_difference = request.carrier_offer - (
+            float(load.loadboard_rate.to_float()) if load.loadboard_rate else 0.0
+        )
         percentage_over_loadboard = (
-            rate_difference / float(load.loadboard_rate.to_float())
+            rate_difference
+            / (float(load.loadboard_rate.to_float()) if load.loadboard_rate else 1.0)
         ) * 100
 
         if system_response == SystemResponse.ACCEPTED:
@@ -200,7 +223,11 @@ async def evaluate_negotiation(
                 timestamp=datetime.utcnow().isoformat(),
             )
         elif system_response == SystemResponse.COUNTER_OFFER:
-            counter_rate = negotiation.counter_offer.to_float()
+            counter_rate = (
+                negotiation.counter_offer.to_float()
+                if negotiation.counter_offer
+                else None
+            )
             await negotiation_repo.update(negotiation)
 
             return EvaluateNegotiationResponseModel(
@@ -212,7 +239,7 @@ async def evaluate_negotiation(
                 agreed_rate=None,
                 negotiation_round=request.negotiation_round,
                 remaining_rounds=max(0, 3 - request.negotiation_round),
-                message=negotiation.message_to_carrier,
+                message=negotiation.message_to_carrier or "",
                 justification=negotiation.justification,
                 rate_difference=rate_difference,
                 percentage_over_loadboard=percentage_over_loadboard,
@@ -232,7 +259,7 @@ async def evaluate_negotiation(
                 agreed_rate=None,
                 negotiation_round=request.negotiation_round,
                 remaining_rounds=0,
-                message=negotiation.message_to_carrier,
+                message=negotiation.message_to_carrier or "",
                 justification=negotiation.justification,
                 rate_difference=rate_difference,
                 percentage_over_loadboard=percentage_over_loadboard,

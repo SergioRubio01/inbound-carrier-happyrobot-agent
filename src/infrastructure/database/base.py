@@ -13,11 +13,13 @@ Dependencies:
 """
 
 from sqlalchemy import Column, DateTime
-from sqlalchemy.orm import declarative_base, declared_attr
+from sqlalchemy.orm import DeclarativeBase, declared_attr
 from sqlalchemy.sql import func
 
+
 # Create the base class for declarative models
-Base = declarative_base()
+class Base(DeclarativeBase):
+    pass
 
 
 # Mixin for created_at and updated_at timestamps

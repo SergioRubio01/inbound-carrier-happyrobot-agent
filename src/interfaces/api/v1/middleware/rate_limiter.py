@@ -1,6 +1,6 @@
 import time
 from collections import defaultdict, deque
-from typing import Callable
+from typing import Awaitable, Callable, DefaultDict, Deque
 
 from fastapi import HTTPException, Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -15,10 +15,12 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, requests_per_minute: int = 100):
         super().__init__(app)
         self.requests_per_minute = requests_per_minute
-        self.client_requests = defaultdict(deque)
+        self.client_requests: DefaultDict[str, Deque[float]] = defaultdict(deque)
         self.window_size = 60  # 60 seconds
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         # Get client IP
         client_ip = request.client.host if request.client else "unknown"
 

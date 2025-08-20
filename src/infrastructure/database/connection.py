@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+from typing import AsyncGenerator, Optional
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -135,12 +135,15 @@ def initialize_database_connection(settings: Settings) -> DatabaseConnection:
     return _db_connection
 
 
-async def get_database_session() -> AsyncSession:
+async def get_database_session() -> AsyncGenerator[AsyncSession, None]:
     """Dependency function for FastAPI to get database session"""
     if _db_connection is None:
         from src.config.settings import settings
 
         initialize_database_connection(settings)
+
+    if _db_connection is None:
+        raise RuntimeError("Failed to initialize database connection")
 
     session = await _db_connection.get_session()
     try:

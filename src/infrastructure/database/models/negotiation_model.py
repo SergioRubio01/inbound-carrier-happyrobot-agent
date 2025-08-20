@@ -6,13 +6,19 @@ Created: 2024-08-14
 """
 
 import uuid
+from typing import TYPE_CHECKING
 
 from sqlalchemy import TIMESTAMP, Boolean, Column, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, NUMERIC, UUID
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, relationship
 from sqlalchemy.sql import func
 
 from src.infrastructure.database.base import Base, TimestampMixin
+
+if TYPE_CHECKING:
+    from .call_model import CallModel
+    from .carrier_model import CarrierModel
+    from .load_model import LoadModel
 
 
 class NegotiationModel(Base, TimestampMixin):
@@ -84,9 +90,11 @@ class NegotiationModel(Base, TimestampMixin):
     version = Column(Integer, default=1)
 
     # Relationships
-    call = relationship("CallModel", foreign_keys=[call_id])
-    load = relationship("LoadModel", foreign_keys=[load_id])
-    carrier = relationship("CarrierModel", foreign_keys=[carrier_id])
+    call: Mapped["CallModel"] = relationship("CallModel", foreign_keys=[call_id])
+    load: Mapped["LoadModel"] = relationship("LoadModel", foreign_keys=[load_id])
+    carrier: Mapped["CarrierModel"] = relationship(
+        "CarrierModel", foreign_keys=[carrier_id]
+    )
 
     @property
     def offer_difference(self) -> float:

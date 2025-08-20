@@ -1,5 +1,5 @@
 import os
-from typing import Callable, Iterable
+from typing import Awaitable, Callable, Iterable
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -23,7 +23,9 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.expected_key = os.getenv("API_KEY", "dev-local-api-key")
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         path = request.url.path
         if any(path.startswith(prefix) for prefix in EXEMPT_PATH_PREFIXES):
             return await call_next(request)

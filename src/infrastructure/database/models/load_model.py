@@ -6,6 +6,7 @@ Created: 2024-08-14
 """
 
 import uuid
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     TIMESTAMP,
@@ -19,10 +20,13 @@ from sqlalchemy import (
     Time,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, NUMERIC, UUID
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, relationship
 from sqlalchemy.sql import func
 
 from src.infrastructure.database.base import Base, TimestampMixin
+
+if TYPE_CHECKING:
+    from .carrier_model import CarrierModel
 
 
 class LoadModel(Base, TimestampMixin):
@@ -123,7 +127,7 @@ class LoadModel(Base, TimestampMixin):
     version = Column(Integer, default=1)
 
     # Relationships
-    booked_by_carrier = relationship(
+    booked_by_carrier: Mapped["CarrierModel"] = relationship(
         "CarrierModel", foreign_keys=[booked_by_carrier_id]
     )
 

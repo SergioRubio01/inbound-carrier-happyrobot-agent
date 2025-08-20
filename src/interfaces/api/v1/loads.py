@@ -115,14 +115,14 @@ async def search_loads(
                 "load_id": str(load.load_id),
                 "reference_number": load.reference_number,
                 "origin": {
-                    "city": load.origin.city,
-                    "state": load.origin.state,
-                    "zip": load.origin.zip_code,
+                    "city": load.origin.city if load.origin else None,
+                    "state": load.origin.state if load.origin else None,
+                    "zip": load.origin.zip_code if load.origin else None,
                 },
                 "destination": {
-                    "city": load.destination.city,
-                    "state": load.destination.state,
-                    "zip": load.destination.zip_code,
+                    "city": load.destination.city if load.destination else None,
+                    "state": load.destination.state if load.destination else None,
+                    "zip": load.destination.zip_code if load.destination else None,
                 },
                 "pickup_date": (
                     load.pickup_date.isoformat() if load.pickup_date else None
@@ -130,12 +130,20 @@ async def search_loads(
                 "delivery_date": (
                     load.delivery_date.isoformat() if load.delivery_date else None
                 ),
-                "equipment_type": load.equipment_type.name,
+                "equipment_type": (
+                    load.equipment_type.name if load.equipment_type else None
+                ),
                 "weight": load.weight,
                 "commodity": load.commodity_type,
                 "distance_miles": load.miles,
-                "loadboard_rate": float(load.loadboard_rate.to_float()),
-                "rate_per_mile": load.rate_per_mile,
+                "loadboard_rate": (
+                    float(load.loadboard_rate.to_float())
+                    if load.loadboard_rate
+                    else None
+                ),
+                "rate_per_mile": (
+                    load.rate_per_mile.to_float() if load.rate_per_mile else None
+                ),
                 "broker_company": load.broker_company,
                 "status": load.status.value,
                 "urgency": load.urgency.value,

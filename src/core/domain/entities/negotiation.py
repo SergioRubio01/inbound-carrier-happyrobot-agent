@@ -53,7 +53,7 @@ class Negotiation:
 
     # Association
     call_id: Optional[UUID] = None
-    load_id: UUID = field(default=None)
+    load_id: Optional[UUID] = field(default=None)
     carrier_id: Optional[UUID] = None
     mc_number: Optional[MCNumber] = None
 
@@ -68,12 +68,12 @@ class Negotiation:
     max_rounds: int = 3
 
     # Offer Details
-    carrier_offer: Rate = field(default=None)
+    carrier_offer: Optional[Rate] = field(default=None)
     system_response: Optional[SystemResponse] = None
     counter_offer: Optional[Rate] = None
 
     # Context
-    loadboard_rate: Rate = field(default=None)
+    loadboard_rate: Optional[Rate] = field(default=None)
     minimum_acceptable: Optional[Rate] = None
     maximum_acceptable: Optional[Rate] = None
 
@@ -99,14 +99,18 @@ class Negotiation:
     version: int = 1
 
     @property
-    def offer_difference(self) -> Rate:
+    def offer_difference(self) -> Optional[Rate]:
         """Calculate difference between carrier offer and loadboard rate."""
+        if self.carrier_offer is None or self.loadboard_rate is None:
+            return None
         return self.carrier_offer.subtract(self.loadboard_rate)
 
     @property
     def percentage_over(self) -> float:
         """Calculate percentage over loadboard rate."""
-        return self.carrier_offer.percentage_difference(self.loadboard_rate)
+        if self.carrier_offer is None or self.loadboard_rate is None:
+            return 0.0
+        return float(self.carrier_offer.percentage_difference(self.loadboard_rate))
 
     @property
     def can_continue_negotiation(self) -> bool:
@@ -134,6 +138,11 @@ class Negotiation:
 
         if self.is_completed:
             raise InvalidNegotiationStateException("Negotiation is already completed")
+
+        if self.loadboard_rate is None or self.carrier_offer is None:
+            raise InvalidNegotiationStateException(
+                "Missing loadboard rate or carrier offer"
+            )
 
         # Calculate acceptable range
         if not self.minimum_acceptable:

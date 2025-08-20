@@ -50,7 +50,7 @@ class EvaluateNegotiationResponse:
     rate_difference: Optional[float] = None
     percentage_over_loadboard: Optional[float] = None
     next_steps: Optional[Dict[str, Any]] = None
-    timestamp: datetime = None
+    timestamp: Optional[datetime] = None
 
 
 class EvaluateNegotiationUseCase:
@@ -91,6 +91,11 @@ class EvaluateNegotiationUseCase:
 
             # Create negotiation entity
             carrier_offer = Rate.from_float(request.carrier_offer)
+
+            if not load.loadboard_rate:
+                raise NegotiationEvaluationException(
+                    f"Load {request.load_id} has no loadboard rate set"
+                )
 
             negotiation = Negotiation(
                 load_id=load.load_id,
@@ -152,19 +157,35 @@ class EvaluateNegotiationUseCase:
         return EvaluateNegotiationResponse(
             negotiation_id=str(negotiation.negotiation_id),
             status="ACCEPTED",
-            load_id=str(negotiation.load_id),
-            carrier_offer=negotiation.carrier_offer.to_float(),
-            agreed_rate=negotiation.agreed_rate.to_float(),
+            load_id=str(negotiation.load_id or ""),
+            carrier_offer=(
+                negotiation.carrier_offer.to_float()
+                if negotiation.carrier_offer
+                else 0.0
+            ),
+            agreed_rate=(
+                negotiation.agreed_rate.to_float() if negotiation.agreed_rate else 0.0
+            ),
             negotiation_round=negotiation.round_number,
-            rate_difference=negotiation.offer_difference.to_float(),
+            rate_difference=(
+                negotiation.offer_difference.to_float()
+                if negotiation.offer_difference
+                else 0.0
+            ),
             percentage_over_loadboard=negotiation.percentage_over,
             message="Offer accepted. Proceeding with booking.",
             next_steps={
                 "action": "PROCEED_TO_HANDOFF",
                 "handoff_data": {
                     "load_id": str(load.load_id),
-                    "agreed_rate": negotiation.agreed_rate.to_float(),
-                    "carrier_mc": str(negotiation.mc_number),
+                    "agreed_rate": (
+                        negotiation.agreed_rate.to_float()
+                        if negotiation.agreed_rate
+                        else 0.0
+                    ),
+                    "carrier_mc": (
+                        str(negotiation.mc_number) if negotiation.mc_number else ""
+                    ),
                 },
             },
             timestamp=datetime.utcnow(),
@@ -177,8 +198,12 @@ class EvaluateNegotiationUseCase:
         return EvaluateNegotiationResponse(
             negotiation_id=str(negotiation.negotiation_id),
             status="COUNTER_OFFER",
-            load_id=str(negotiation.load_id),
-            carrier_offer=negotiation.carrier_offer.to_float(),
+            load_id=str(negotiation.load_id or ""),
+            carrier_offer=(
+                negotiation.carrier_offer.to_float()
+                if negotiation.carrier_offer
+                else 0.0
+            ),
             counter_offer=(
                 negotiation.counter_offer.to_float()
                 if negotiation.counter_offer
@@ -186,7 +211,7 @@ class EvaluateNegotiationUseCase:
             ),
             negotiation_round=negotiation.round_number,
             remaining_rounds=negotiation.max_rounds - negotiation.round_number,
-            message=negotiation.message_to_carrier,
+            message=negotiation.message_to_carrier or "",
             justification=negotiation.justification,
             timestamp=datetime.utcnow(),
         )
@@ -198,14 +223,13 @@ class EvaluateNegotiationUseCase:
         return EvaluateNegotiationResponse(
             negotiation_id=str(negotiation.negotiation_id),
             status="REJECTED",
-            load_id=str(negotiation.load_id),
-            carrier_offer=negotiation.carrier_offer.to_float(),
-            maximum_rate=(
-                negotiation.maximum_acceptable.to_float()
-                if negotiation.maximum_acceptable
-                else None
+            load_id=str(negotiation.load_id or ""),
+            carrier_offer=(
+                negotiation.carrier_offer.to_float()
+                if negotiation.carrier_offer
+                else 0.0
             ),
             negotiation_round=negotiation.round_number,
-            message=negotiation.message_to_carrier,
+            message=negotiation.message_to_carrier or "",
             timestamp=datetime.utcnow(),
         )

@@ -148,37 +148,49 @@ class SearchLoadsUseCase:
         """Convert load entity to dictionary for API response."""
         return {
             "load_id": str(load.load_id),
-            "origin": {
-                "city": load.origin.city,
-                "state": load.origin.state,
-                "zip": load.origin.zip_code,
-                "coordinates": (
-                    {
-                        "lat": load.origin.latitude,
-                        "lng": load.origin.longitude,
-                    }
-                    if load.origin.latitude and load.origin.longitude
-                    else None
-                ),
-            },
-            "destination": {
-                "city": load.destination.city,
-                "state": load.destination.state,
-                "zip": load.destination.zip_code,
-                "coordinates": (
-                    {
-                        "lat": load.destination.latitude,
-                        "lng": load.destination.longitude,
-                    }
-                    if load.destination.latitude and load.destination.longitude
-                    else None
-                ),
-            },
+            "origin": (
+                {
+                    "city": load.origin.city,
+                    "state": load.origin.state,
+                    "zip": load.origin.zip_code,
+                    "coordinates": (
+                        {
+                            "lat": load.origin.latitude,
+                            "lng": load.origin.longitude,
+                        }
+                        if load.origin.latitude and load.origin.longitude
+                        else None
+                    ),
+                }
+                if load.origin
+                else None
+            ),
+            "destination": (
+                {
+                    "city": load.destination.city,
+                    "state": load.destination.state,
+                    "zip": load.destination.zip_code,
+                    "coordinates": (
+                        {
+                            "lat": load.destination.latitude,
+                            "lng": load.destination.longitude,
+                        }
+                        if load.destination.latitude and load.destination.longitude
+                        else None
+                    ),
+                }
+                if load.destination
+                else None
+            ),
             "pickup_datetime": f"{load.pickup_date}T{load.pickup_time_start or '10:00:00'}Z",
             "delivery_datetime": f"{load.delivery_date}T{load.delivery_time_start or '18:00:00'}Z",
-            "equipment_type": load.equipment_type.name,
-            "loadboard_rate": load.loadboard_rate.to_float(),
-            "rate_per_mile": load.rate_per_mile.to_float(),
+            "equipment_type": load.equipment_type.name if load.equipment_type else None,
+            "loadboard_rate": (
+                load.loadboard_rate.to_float() if load.loadboard_rate else 0.0
+            ),
+            "rate_per_mile": (
+                load.rate_per_mile.to_float() if load.rate_per_mile else 0.0
+            ),
             "miles": load.miles,
             "weight": load.weight,
             "commodity_type": load.commodity_type,

@@ -26,7 +26,7 @@ class Carrier:
 
     # Identity
     carrier_id: UUID = field(default_factory=uuid4)
-    mc_number: MCNumber = field(default=None)
+    mc_number: Optional[MCNumber] = field(default=None)
     dot_number: Optional[str] = None
 
     # Company Information

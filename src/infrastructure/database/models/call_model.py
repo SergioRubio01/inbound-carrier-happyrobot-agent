@@ -6,12 +6,17 @@ Created: 2024-08-14
 """
 
 import uuid
+from typing import TYPE_CHECKING
 
 from sqlalchemy import TIMESTAMP, Boolean, Column, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, NUMERIC, UUID
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, relationship
 
 from src.infrastructure.database.base import Base, TimestampMixin
+
+if TYPE_CHECKING:
+    from .carrier_model import CarrierModel
+    from .load_model import LoadModel
 
 
 class CallModel(Base, TimestampMixin):
@@ -120,8 +125,10 @@ class CallModel(Base, TimestampMixin):
     version = Column(Integer, default=1)
 
     # Relationships
-    carrier = relationship("CarrierModel", foreign_keys=[carrier_id])
-    load = relationship("LoadModel", foreign_keys=[load_id])
+    carrier: Mapped["CarrierModel"] = relationship(
+        "CarrierModel", foreign_keys=[carrier_id]
+    )
+    load: Mapped["LoadModel"] = relationship("LoadModel", foreign_keys=[load_id])
 
     def __repr__(self) -> str:
         return f"<CallModel(call_id='{self.call_id}', mc_number='{self.mc_number}', outcome='{self.outcome}')>"

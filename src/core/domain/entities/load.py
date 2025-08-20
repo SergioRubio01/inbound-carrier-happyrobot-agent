@@ -51,22 +51,22 @@ class Load:
     external_id: Optional[str] = None
 
     # Location Information
-    origin: Location = field(default=None)
-    destination: Location = field(default=None)
+    origin: Optional[Location] = field(default=None)
+    destination: Optional[Location] = field(default=None)
 
     # Schedule
-    pickup_date: date = field(default=None)
+    pickup_date: Optional[date] = field(default=None)
     pickup_time_start: Optional[time] = None
     pickup_time_end: Optional[time] = None
     pickup_appointment_required: bool = False
 
-    delivery_date: date = field(default=None)
+    delivery_date: Optional[date] = field(default=None)
     delivery_time_start: Optional[time] = None
     delivery_time_end: Optional[time] = None
     delivery_appointment_required: bool = False
 
     # Equipment Requirements
-    equipment_type: EquipmentType = field(default=None)
+    equipment_type: Optional[EquipmentType] = field(default=None)
     equipment_requirements: Optional[Dict[str, Any]] = None
 
     # Load Details
@@ -84,7 +84,7 @@ class Load:
     route_notes: Optional[str] = None
 
     # Pricing
-    loadboard_rate: Rate = field(default=None)
+    loadboard_rate: Optional[Rate] = field(default=None)
     fuel_surcharge: Optional[Rate] = None
     accessorials: Optional[List[Dict[str, Any]]] = None
 
@@ -127,22 +127,27 @@ class Load:
     version: int = 1
 
     @property
-    def total_rate(self) -> Rate:
+    def total_rate(self) -> Optional[Rate]:
         """Calculate total rate including fuel surcharge."""
+        if self.loadboard_rate is None:
+            return None
         if self.fuel_surcharge:
             return self.loadboard_rate.add(self.fuel_surcharge)
         return self.loadboard_rate
 
     @property
-    def rate_per_mile(self) -> Rate:
+    def rate_per_mile(self) -> Optional[Rate]:
         """Calculate rate per mile."""
-        if self.miles and self.miles > 0:
-            return self.total_rate.divide(self.miles)
+        total_rate = self.total_rate
+        if total_rate and self.miles and self.miles > 0:
+            return total_rate.divide(self.miles)
         return Rate.from_float(0)
 
     @property
-    def lane_key(self) -> str:
+    def lane_key(self) -> Optional[str]:
         """Get lane key for rate history."""
+        if self.origin is None or self.destination is None:
+            return None
         return f"{self.origin.state}-{self.destination.state}"
 
     @property
@@ -214,6 +219,8 @@ class Load:
 
     def matches_equipment(self, equipment_type: EquipmentType) -> bool:
         """Check if load matches the given equipment type."""
+        if self.equipment_type is None:
+            return False
         return self.equipment_type.name.lower() == equipment_type.name.lower()
 
     def matches_weight_capacity(self, equipment_type: EquipmentType) -> bool:
@@ -222,8 +229,11 @@ class Load:
 
     def calculate_negotiation_thresholds(
         self, urgency_factor: float = 1.0, history_factor: float = 1.0
-    ) -> Dict[str, Rate]:
+    ) -> Optional[Dict[str, Rate]]:
         """Calculate negotiation thresholds based on various factors."""
+        if self.loadboard_rate is None:
+            return None
+
         base_rate = self.loadboard_rate
 
         # Calculate thresholds
