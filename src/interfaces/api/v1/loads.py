@@ -101,7 +101,7 @@ class UpdateLoadResponseModel(BaseModel):
     """Response model for load update."""
 
     load_id: str = Field(..., description="Unique load ID")
-    reference_number: str = Field(..., description="Load reference number")
+    reference_number: Optional[str] = Field(None, description="Load reference number")
     status: str = Field(..., description="Load status")
     updated_at: datetime = Field(..., description="Update timestamp")
 

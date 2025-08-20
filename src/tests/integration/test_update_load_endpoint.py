@@ -211,8 +211,10 @@ class TestUpdateLoadEndpoint:
         session = await session_gen.__anext__()
         try:
             load_model = await session.get(LoadModel, sample_load_in_db.load_id)
+            if load_model is None:
+                raise ValueError(f"Load {sample_load_in_db.load_id} not found")
             load_model.status = "DELIVERED"
-            load_model.version = 2
+            setattr(load_model, "version", 2)
             await session.commit()
         finally:
             await session.close()
@@ -241,6 +243,8 @@ class TestUpdateLoadEndpoint:
         session = await session_gen.__anext__()
         try:
             load_model = await session.get(LoadModel, sample_load_in_db.load_id)
+            if load_model is None:
+                raise ValueError(f"Load {sample_load_in_db.load_id} not found")
             load_model.status = "DELIVERED"
             await session.commit()
         finally:
