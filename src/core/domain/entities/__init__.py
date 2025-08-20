@@ -6,7 +6,7 @@ Created: 2024-08-14
 """
 
 from .carrier import Carrier, CarrierNotEligibleException
-from .load import Load, LoadNotAvailableException, LoadStatus, UrgencyLevel
+from .load import Load, LoadNotAvailableException, LoadStatus
 from .call import Call, CallType, CallChannel, AgentType, CallOutcome, Sentiment, InvalidCallStateException
 from .negotiation import Negotiation, SystemResponse, NegotiationStatus, NegotiationLimitExceededException, InvalidNegotiationStateException
 
@@ -16,7 +16,6 @@ __all__ = [
     "Load",
     "LoadNotAvailableException",
     "LoadStatus",
-    "UrgencyLevel",
     "Call",
     "CallType",
     "CallChannel",

@@ -42,6 +42,12 @@ class MockLoadRepository(ILoadRepository):
     async def get_by_id(self, load_id):
         return self.loads.get(load_id)
 
+    async def get_active_by_id(self, load_id):
+        load = self.loads.get(load_id)
+        if load and load.is_active:
+            return load
+        return None
+
     async def update(self, load):
         self.loads[load.load_id] = load
         return load
@@ -62,7 +68,7 @@ class MockLoadRepository(ILoadRepository):
         return [load for load in self.loads.values() if load.status == status]
 
     async def get_loads_by_carrier(self, carrier_id, limit=100, offset=0):
-        return [load for load in self.loads.values() if load.booked_by_carrier_id == carrier_id]
+        return []  # This method is no longer applicable since we removed carrier booking tracking
 
     async def count_loads_by_criteria(self, criteria):
         return len(self.loads)
@@ -106,8 +112,7 @@ def valid_create_request():
         loadboard_rate=2500.00,
         weight=25000,
         commodity_type="Electronics",
-        notes="Handle with care",
-        broker_company="Test Broker LLC"
+        notes="Handle with care"
     )
 
 
@@ -223,38 +228,14 @@ class TestCreateLoadUseCase:
 
         assert "Invalid equipment type" in str(exc_info.value) or "Equipment type" in str(exc_info.value)
 
-    @pytest.mark.asyncio
-    async def test_create_load_hazmat_without_class_fails(self, create_load_use_case, valid_create_request):
-        """Test that hazmat load without class raises exception."""
-        valid_create_request.hazmat = True
-        valid_create_request.hazmat_class = None
+    # Hazmat fields are no longer supported - removed for compliance
 
-        with pytest.raises(LoadCreationException) as exc_info:
-            await create_load_use_case.execute(valid_create_request)
-
-        assert "Hazmat class is required" in str(exc_info.value)
+    # Fuel surcharge fields are no longer supported - removed for compliance
 
     @pytest.mark.asyncio
-    async def test_create_load_with_fuel_surcharge(self, create_load_use_case, valid_create_request):
-        """Test load creation with fuel surcharge."""
-        valid_create_request.fuel_surcharge = 150.0
-
-        response = await create_load_use_case.execute(valid_create_request)
-
-        assert response.load_id is not None
-        assert response.status == LoadStatus.AVAILABLE.value
-
-    @pytest.mark.asyncio
-    async def test_create_load_with_all_optional_fields(self, create_load_use_case, valid_create_request):
-        """Test load creation with all optional fields populated."""
-        valid_create_request.special_requirements = ["Tarps required", "Team drivers"]
-        valid_create_request.customer_name = "Test Customer"
-        valid_create_request.dimensions = "48x53x102"
-        valid_create_request.pieces = 20
-        valid_create_request.hazmat = True
-        valid_create_request.hazmat_class = "Class 3"
-        valid_create_request.miles = 2000
-        valid_create_request.fuel_surcharge = 200.0
+    async def test_create_load_with_notes(self, create_load_use_case, valid_create_request):
+        """Test load creation with notes - the only optional field now allowed."""
+        valid_create_request.notes = "Special handling required"
 
         response = await create_load_use_case.execute(valid_create_request)
 

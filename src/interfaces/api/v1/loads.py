@@ -24,6 +24,7 @@ from src.infrastructure.database.postgres import PostgresLoadRepository
 from src.core.application.use_cases.create_load_use_case import CreateLoadUseCase
 from src.core.application.use_cases.list_loads_use_case import ListLoadsUseCase
 from src.core.application.use_cases.delete_load_use_case import DeleteLoadUseCase
+from src.core.application.use_cases.update_load_use_case import UpdateLoadUseCase
 
 # Domain objects
 from src.core.domain.value_objects import Location
@@ -49,16 +50,6 @@ class CreateLoadRequestModel(BaseModel):
     weight: int = Field(..., gt=0, le=settings.max_load_weight_lbs, description="Weight in pounds")
     commodity_type: str = Field(..., description="Type of commodity")
     notes: Optional[str] = Field(None, description="Additional notes")
-    reference_number: Optional[str] = Field(None, description="Custom reference number")
-    broker_company: Optional[str] = Field(None, description="Broker company name")
-    special_requirements: Optional[List[str]] = Field(None, description="Special requirements")
-    customer_name: Optional[str] = Field(None, description="Customer name")
-    dimensions: Optional[str] = Field(None, description="Load dimensions")
-    pieces: Optional[int] = Field(None, gt=0, description="Number of pieces")
-    hazmat: bool = Field(False, description="Whether load is hazmat")
-    hazmat_class: Optional[str] = Field(None, description="Hazmat class if applicable")
-    miles: Optional[int] = Field(None, gt=0, description="Estimated miles")
-    fuel_surcharge: Optional[float] = Field(None, ge=0, description="Fuel surcharge")
 
 
 class CreateLoadResponseModel(BaseModel):
@@ -67,6 +58,28 @@ class CreateLoadResponseModel(BaseModel):
     reference_number: str = Field(..., description="Load reference number")
     status: str = Field(..., description="Load status")
     created_at: datetime = Field(..., description="Creation timestamp")
+
+
+class UpdateLoadRequestModel(BaseModel):
+    """Request model for updating an existing load."""
+    origin: Optional[LocationRequestModel] = Field(None, description="Load origin location")
+    destination: Optional[LocationRequestModel] = Field(None, description="Load destination location")
+    pickup_datetime: Optional[datetime] = Field(None, description="Pickup date and time")
+    delivery_datetime: Optional[datetime] = Field(None, description="Delivery date and time")
+    equipment_type: Optional[str] = Field(None, description="Required equipment type")
+    loadboard_rate: Optional[float] = Field(None, gt=0, description="Loadboard rate in USD")
+    weight: Optional[int] = Field(None, gt=0, le=settings.max_load_weight_lbs, description="Weight in pounds")
+    commodity_type: Optional[str] = Field(None, description="Type of commodity")
+    notes: Optional[str] = Field(None, description="Additional notes")
+    status: Optional[str] = Field(None, description="Load status")
+
+
+class UpdateLoadResponseModel(BaseModel):
+    """Response model for load update."""
+    load_id: str = Field(..., description="Unique load ID")
+    reference_number: str = Field(..., description="Load reference number")
+    status: str = Field(..., description="Load status")
+    updated_at: datetime = Field(..., description="Update timestamp")
 
 
 class LoadSummaryModel(BaseModel):
@@ -145,17 +158,7 @@ async def create_load(
             loadboard_rate=request.loadboard_rate,
             weight=request.weight,
             commodity_type=request.commodity_type,
-            notes=request.notes,
-            reference_number=request.reference_number,
-            broker_company=request.broker_company,
-            special_requirements=request.special_requirements,
-            customer_name=request.customer_name,
-            dimensions=request.dimensions,
-            pieces=request.pieces,
-            hazmat=request.hazmat,
-            hazmat_class=request.hazmat_class,
-            miles=request.miles,
-            fuel_surcharge=request.fuel_surcharge
+            notes=request.notes
         )
 
         # Execute use case
@@ -382,5 +385,106 @@ async def delete_load(
             raise HTTPException(status_code=404, detail=error_msg)
         elif any(phrase in error_msg.lower() for phrase in ["cannot delete", "in transit", "delivered", "already deleted", "not active"]):
             raise HTTPException(status_code=409, detail=error_msg)
+        else:
+            raise HTTPException(status_code=500, detail=f"Internal server error: {error_msg}")
+
+
+@router.put("/{load_id}", response_model=UpdateLoadResponseModel)
+async def update_load(
+    load_id: UUID = Path(..., description="Load ID"),
+    request: UpdateLoadRequestModel = ...,
+    session: AsyncSession = Depends(get_database_session)
+):
+    """
+    Update an existing load by its ID.
+
+    Updates an existing load with the provided details. Supports partial updates
+    where only specified fields are changed.
+
+    Business rules apply:
+    - Cannot update deleted or delivered loads
+    - Status transitions must follow valid patterns:
+      * AVAILABLE → PENDING, BOOKED, CANCELLED
+      * PENDING → AVAILABLE, BOOKED, CANCELLED
+      * BOOKED → IN_TRANSIT, CANCELLED
+      * IN_TRANSIT → DELIVERED
+      * CANCELLED/DELIVERED → Cannot be changed
+
+    Args:
+        load_id: The unique identifier of the load to update
+        request: Update request with optional field changes
+        session: Database session dependency
+
+    Returns:
+        UpdateLoadResponseModel: Updated load information
+
+    Raises:
+        HTTPException:
+            - 404 if load not found
+            - 409 for business rule violations
+            - 400 for validation errors
+            - 500 for server errors
+    """
+    try:
+        # Initialize repository and use case
+        load_repo = PostgresLoadRepository(session)
+        use_case = UpdateLoadUseCase(load_repo)
+
+        # Convert request model to use case request
+        from src.core.application.use_cases.update_load_use_case import UpdateLoadRequest
+
+        # Convert locations if provided
+        origin = None
+        if request.origin:
+            origin = Location(
+                city=request.origin.city,
+                state=request.origin.state,
+                zip_code=request.origin.zip
+            )
+
+        destination = None
+        if request.destination:
+            destination = Location(
+                city=request.destination.city,
+                state=request.destination.state,
+                zip_code=request.destination.zip
+            )
+
+        use_case_request = UpdateLoadRequest(
+            load_id=load_id,
+            origin=origin,
+            destination=destination,
+            pickup_datetime=request.pickup_datetime,
+            delivery_datetime=request.delivery_datetime,
+            equipment_type=request.equipment_type,
+            loadboard_rate=request.loadboard_rate,
+            weight=request.weight,
+            commodity_type=request.commodity_type,
+            notes=request.notes,
+            status=request.status
+        )
+
+        # Execute use case
+        response = await use_case.execute(use_case_request)
+
+        # Commit the transaction
+        await session.commit()
+
+        # Convert to API response
+        return UpdateLoadResponseModel(
+            load_id=response.load_id,
+            reference_number=response.reference_number,
+            status=response.status,
+            updated_at=response.updated_at
+        )
+
+    except Exception as e:
+        error_msg = str(e)
+        if "not found" in error_msg.lower():
+            raise HTTPException(status_code=404, detail=error_msg)
+        elif any(phrase in error_msg.lower() for phrase in ["cannot update", "invalid status transition", "has been deleted", "has been delivered"]):
+            raise HTTPException(status_code=409, detail=error_msg)
+        elif "validation" in error_msg.lower() or "required" in error_msg.lower() or "must be" in error_msg.lower():
+            raise HTTPException(status_code=400, detail=error_msg)
         else:
             raise HTTPException(status_code=500, detail=f"Internal server error: {error_msg}")

@@ -6,11 +6,11 @@ Created: 2024-08-20
 """
 
 from dataclasses import dataclass
-from typing import Optional, List
-from datetime import datetime, date, time
+from typing import Optional
+from datetime import datetime
 from uuid import uuid4
 
-from src.core.domain.entities import Load, LoadStatus, UrgencyLevel
+from src.core.domain.entities import Load, LoadStatus
 from src.core.domain.value_objects import Location, EquipmentType, Rate
 from src.core.ports.repositories import ILoadRepository
 from src.core.domain.exceptions.base import DomainException
@@ -45,17 +45,9 @@ class CreateLoadRequest:
     weight: int
     commodity_type: str
     notes: Optional[str] = None
-    reference_number: Optional[str] = None
-    broker_company: Optional[str] = None
-    special_requirements: Optional[List[str]] = None
-    customer_name: Optional[str] = None
     dimensions: Optional[str] = None
-    pieces: Optional[int] = None
-    hazmat: bool = False
-    hazmat_class: Optional[str] = None
+    num_of_pieces: Optional[int] = None
     miles: Optional[int] = None
-    fuel_surcharge: Optional[float] = None
-    source: str = "API"
 
 
 @dataclass
@@ -79,15 +71,8 @@ class CreateLoadUseCase:
             # Validate the request
             await self._validate_request(request)
 
-            # Generate reference number if not provided
-            reference_number = request.reference_number
-            if not reference_number:
-                reference_number = await self._generate_reference_number()
-            else:
-                # Check for duplicate reference numbers
-                existing_load = await self.load_repository.get_by_reference_number(reference_number)
-                if existing_load:
-                    raise DuplicateReferenceException(f"Load with reference number '{reference_number}' already exists")
+            # Generate reference number
+            reference_number = await self._generate_reference_number()
 
             # Extract date and time components from datetime
             pickup_date = request.pickup_datetime.date()
@@ -110,19 +95,8 @@ class CreateLoadUseCase:
                 weight=request.weight,
                 commodity_type=request.commodity_type,
                 notes=request.notes,
-                broker_company=request.broker_company,
-                special_requirements=request.special_requirements,
-                customer_name=request.customer_name,
-                dimensions=request.dimensions,
-                pieces=request.pieces,
-                hazmat=request.hazmat,
-                hazmat_class=request.hazmat_class,
-                miles=request.miles or self._calculate_estimated_miles(request.origin, request.destination),
-                fuel_surcharge=Rate.from_float(request.fuel_surcharge) if request.fuel_surcharge else None,
                 status=LoadStatus.AVAILABLE,
-                urgency=UrgencyLevel.NORMAL,
                 is_active=True,
-                source=request.source,
                 created_at=datetime.utcnow(),
                 updated_at=datetime.utcnow()
             )
@@ -195,20 +169,11 @@ class CreateLoadUseCase:
         except Exception:
             raise LoadCreationException(f"Invalid loadboard rate: {request.loadboard_rate}")
 
-        # Validate fuel surcharge if provided
-        if request.fuel_surcharge is not None:
-            try:
-                Rate.from_float(request.fuel_surcharge)
-            except Exception:
-                raise LoadCreationException(f"Invalid fuel surcharge: {request.fuel_surcharge}")
 
         # Validate weight limits
         if request.weight > settings.max_load_weight_lbs:
             raise LoadCreationException(f"Weight cannot exceed {settings.max_load_weight_lbs:,} pounds")
 
-        # Validate hazmat fields
-        if request.hazmat and not request.hazmat_class:
-            raise LoadCreationException("Hazmat class is required when load is hazmat")
 
     async def _generate_reference_number(self) -> str:
         """Generate a unique reference number."""
@@ -227,28 +192,3 @@ class CreateLoadUseCase:
             # Prevent infinite loops
             if counter > settings.max_reference_number_counter:
                 raise LoadCreationException("Unable to generate unique reference number")
-
-    def _calculate_estimated_miles(self, origin: Location, destination: Location) -> int:
-        """Calculate estimated miles between origin and destination."""
-        # If coordinates are available, calculate actual distance
-        distance = origin.distance_to(destination)
-        if distance:
-            return int(distance)
-
-        # Fallback: estimate based on state-to-state averages
-        state_distances = {
-            ("CA", "NY"): 2900, ("CA", "FL"): 2750, ("CA", "TX"): 1400,
-            ("TX", "NY"): 1600, ("TX", "FL"): 1200, ("FL", "NY"): 1100,
-            # Add more state pairs as needed
-        }
-
-        state_pair = (origin.state, destination.state)
-        reverse_pair = (destination.state, origin.state)
-
-        if state_pair in state_distances:
-            return state_distances[state_pair]
-        elif reverse_pair in state_distances:
-            return state_distances[reverse_pair]
-
-        # Default estimate for unknown routes
-        return 1000
