@@ -150,3 +150,8 @@ Each step uses HTTP POST to the API endpoints with appropriate JSON payloads.
 - PostgreSQL optimized with connection pooling (max 200 connections)
 - API uses async/await for I/O operations
 - Database indexes on frequently queried fields (MC number, load status)
+
+- We are not creating a frontend in this project. Only backend is needed
+- When user shows a screenshot with HappyRobot platform advancements, tell him in screen additional enhancements the user will manually apply, including settings of each new block
+- Use subagents when tasks are long, to preserve more context space
+- Never run a aws cli command to deploy changes. Use pulumi unless it is a permissions issue
