@@ -140,7 +140,7 @@ class LoadModel(Base, TimestampMixin):
     def rate_per_mile(self) -> float:
         """Calculate rate per mile."""
         if self.miles and self.miles > 0:
-            return self.total_rate / self.miles
+            return float(self.total_rate / self.miles)
         return 0.0
 
     def __repr__(self) -> str:

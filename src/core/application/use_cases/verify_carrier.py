@@ -39,7 +39,7 @@ class VerifyCarrierResponse:
     safety_score: Optional[Dict[str, Any]] = None
     reason: Optional[str] = None
     details: Optional[str] = None
-    verification_timestamp: datetime = None
+    verification_timestamp: Optional[datetime] = None
 
 
 class VerifyCarrierUseCase:
@@ -123,7 +123,7 @@ class VerifyCarrierUseCase:
         # - Real-time data fetching
 
         # Return None to indicate carrier not found in external system
-        return None
+        return {}  # type: ignore[return-value]
 
     def _create_carrier_from_fmcsa(
         self, mc_number: MCNumber, fmcsa_data: Dict[str, Any]

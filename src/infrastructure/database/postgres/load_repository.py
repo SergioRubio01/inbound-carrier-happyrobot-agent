@@ -26,7 +26,7 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
     def __init__(self, session: AsyncSession):
         super().__init__(session, LoadModel)
 
-    def _model_to_entity(self, model: LoadModel) -> Load:
+    def _model_to_entity(self, model: Optional[LoadModel]) -> Optional[Load]:
         """Convert database model to domain entity."""
         if not model:
             return None
@@ -118,12 +118,12 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
             load_id=entity.load_id,
             reference_number=entity.reference_number,
             external_id=entity.external_id,
-            origin_city=entity.origin.city,
-            origin_state=entity.origin.state,
-            origin_zip=entity.origin.zip_code,
-            destination_city=entity.destination.city,
-            destination_state=entity.destination.state,
-            destination_zip=entity.destination.zip_code,
+            origin_city=entity.origin.city if entity.origin else None,
+            origin_state=entity.origin.state if entity.origin else None,
+            origin_zip=entity.origin.zip_code if entity.origin else None,
+            destination_city=entity.destination.city if entity.destination else None,
+            destination_state=entity.destination.state if entity.destination else None,
+            destination_zip=entity.destination.zip_code if entity.destination else None,
             pickup_date=entity.pickup_date,
             pickup_time_start=entity.pickup_time_start,
             pickup_time_end=entity.pickup_time_end,
@@ -132,7 +132,9 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
             delivery_time_start=entity.delivery_time_start,
             delivery_time_end=entity.delivery_time_end,
             delivery_appointment_required=entity.delivery_appointment_required,
-            equipment_type=entity.equipment_type.name,
+            equipment_type=(
+                entity.equipment_type.name if entity.equipment_type else None
+            ),
             equipment_requirements=entity.equipment_requirements,
             weight=entity.weight,
             pieces=entity.pieces,
@@ -144,7 +146,9 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
             miles=entity.miles,
             estimated_transit_hours=entity.estimated_transit_hours,
             route_notes=entity.route_notes,
-            loadboard_rate=entity.loadboard_rate.to_float(),
+            loadboard_rate=(
+                entity.loadboard_rate.to_float() if entity.loadboard_rate else 0.0
+            ),
             fuel_surcharge=(
                 entity.fuel_surcharge.to_float() if entity.fuel_surcharge else 0
             ),
@@ -183,13 +187,13 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
             version=entity.version,
         )
 
-    async def create(self, load: Load) -> Load:
+    async def create(self, load: Load) -> Load:  # type: ignore[override]
         """Create a new load."""
         model = self._entity_to_model(load)
         created_model = await super().create(model)
         return self._model_to_entity(created_model)
 
-    async def get_by_id(self, load_id: UUID) -> Optional[Load]:
+    async def get_by_id(self, load_id: UUID) -> Optional[Load]:  # type: ignore[override]
         """Get load by ID."""
         stmt = select(LoadModel).where(LoadModel.load_id == load_id)
         result = await self.session.execute(stmt)
@@ -203,7 +207,7 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
         model = result.scalar_one_or_none()
         return self._model_to_entity(model) if model else None
 
-    async def update(self, load: Load) -> Load:
+    async def update(self, load: Load) -> Load:  # type: ignore[override]
         """Update existing load."""
         model = self._entity_to_model(load)
         model.updated_at = datetime.utcnow()
@@ -340,7 +344,7 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
             stmt = stmt.where(and_(*conditions))
 
         result = await self.session.execute(stmt)
-        return result.scalar()
+        return int(result.scalar() or 0)
 
     async def get_loads_expiring_soon(self, hours: int = 24) -> List[Load]:
         """Get loads expiring within specified hours."""
@@ -359,7 +363,7 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
         models = result.scalars().all()
         return [self._model_to_entity(model) for model in models]
 
-    async def get_load_metrics(
+    async def get_load_metrics(  # type: ignore[override]
         self, start_date: datetime, end_date: datetime
     ) -> Dict[str, Any]:
         """Get aggregated load metrics for date range."""

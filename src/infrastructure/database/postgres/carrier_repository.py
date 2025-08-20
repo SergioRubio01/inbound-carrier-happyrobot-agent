@@ -28,7 +28,7 @@ class PostgresCarrierRepository(
     def __init__(self, session: AsyncSession):
         super().__init__(session, CarrierModel)
 
-    def _model_to_entity(self, model: CarrierModel) -> Carrier:
+    def _model_to_entity(self, model: Optional[CarrierModel]) -> Optional[Carrier]:
         """Convert database model to domain entity."""
         if not model:
             return None
@@ -119,13 +119,13 @@ class PostgresCarrierRepository(
 
         return model
 
-    async def create(self, carrier: Carrier) -> Carrier:
+    async def create(self, carrier: Carrier) -> Carrier:  # type: ignore[override]
         """Create a new carrier."""
         model = self._entity_to_model(carrier)
         created_model = await super().create(model)
         return self._model_to_entity(created_model)
 
-    async def get_by_id(self, carrier_id: UUID) -> Optional[Carrier]:
+    async def get_by_id(self, carrier_id: UUID) -> Optional[Carrier]:  # type: ignore[override]
         """Get carrier by ID."""
         stmt = select(CarrierModel).where(CarrierModel.carrier_id == carrier_id)
         result = await self.session.execute(stmt)
@@ -139,7 +139,7 @@ class PostgresCarrierRepository(
         model = result.scalar_one_or_none()
         return self._model_to_entity(model) if model else None
 
-    async def update(self, carrier: Carrier) -> Carrier:
+    async def update(self, carrier: Carrier) -> Carrier:  # type: ignore[override]
         """Update existing carrier."""
         model = self._entity_to_model(carrier)
         model.updated_at = datetime.utcnow()
@@ -213,9 +213,10 @@ class PostgresCarrierRepository(
         """Check if carrier exists by MC number."""
         stmt = select(func.count()).where(CarrierModel.mc_number == str(mc_number))
         result = await self.session.execute(stmt)
-        return result.scalar() > 0
+        count = result.scalar() or 0
+        return bool(count > 0)
 
-    async def get_carrier_metrics(
+    async def get_carrier_metrics(  # type: ignore[override]
         self, start_date: datetime, end_date: datetime
     ) -> Dict[str, Any]:
         """Get aggregated carrier metrics for date range."""

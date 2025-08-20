@@ -46,7 +46,7 @@ class LoadSearchResponse:
     returned_count: int
     loads: List[Dict[str, Any]]
     suggestions: Optional[Dict[str, Any]] = None
-    search_timestamp: datetime = None
+    search_timestamp: Optional[datetime] = None
 
 
 class SearchLoadsUseCase:

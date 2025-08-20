@@ -114,7 +114,7 @@ class DatabaseConnection:
             engine = await self.get_engine()
             async with engine.begin() as conn:
                 result = await conn.execute(text("SELECT 1"))
-                return result.scalar() == 1
+                return bool(result.scalar() == 1)
         except Exception as e:
             logger.error(f"Database health check failed: {e}")
             return False

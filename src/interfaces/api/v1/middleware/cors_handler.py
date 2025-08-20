@@ -39,7 +39,7 @@ class CORSHandlerMiddleware(BaseHTTPMiddleware):
             response.headers["Access-Control-Expose-Headers"] = "*"
 
             logger.debug(f"Handled OPTIONS request for {request.url.path}")
-            return response
+            return response  # type: ignore[return-value]
 
         # For other requests, proceed normally
         response = await call_next(request)
@@ -50,4 +50,4 @@ class CORSHandlerMiddleware(BaseHTTPMiddleware):
             response.headers["Access-Control-Allow-Credentials"] = "true"
             response.headers["Access-Control-Expose-Headers"] = "*"
 
-        return response
+        return response  # type: ignore[return-value]

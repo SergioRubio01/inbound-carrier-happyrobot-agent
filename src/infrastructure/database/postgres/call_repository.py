@@ -26,7 +26,7 @@ class PostgresCallRepository(BaseRepository[CallModel, Call], ICallRepository):
     def __init__(self, session: AsyncSession):
         super().__init__(session, CallModel)
 
-    def _model_to_entity(self, model: CallModel) -> Call:
+    def _model_to_entity(self, model: Optional[CallModel]) -> Optional[Call]:
         """Convert database model to domain entity."""
         if not model:
             return None
@@ -129,13 +129,13 @@ class PostgresCallRepository(BaseRepository[CallModel, Call], ICallRepository):
             version=entity.version,
         )
 
-    async def create(self, call: Call) -> Call:
+    async def create(self, call: Call) -> Call:  # type: ignore[override]
         """Create a new call."""
         model = self._entity_to_model(call)
         created_model = await super().create(model)
         return self._model_to_entity(created_model)
 
-    async def get_by_id(self, call_id: UUID) -> Optional[Call]:
+    async def get_by_id(self, call_id: UUID) -> Optional[Call]:  # type: ignore[override]
         """Get call by ID."""
         stmt = select(CallModel).where(CallModel.call_id == call_id)
         result = await self.session.execute(stmt)
@@ -149,7 +149,7 @@ class PostgresCallRepository(BaseRepository[CallModel, Call], ICallRepository):
         model = result.scalar_one_or_none()
         return self._model_to_entity(model) if model else None
 
-    async def update(self, call: Call) -> Call:
+    async def update(self, call: Call) -> Call:  # type: ignore[override]
         """Update existing call."""
         model = self._entity_to_model(call)
         model.updated_at = datetime.utcnow()
@@ -353,4 +353,4 @@ class PostgresCallRepository(BaseRepository[CallModel, Call], ICallRepository):
             stmt = stmt.where(and_(*conditions))
 
         result = await self.session.execute(stmt)
-        return result.scalar()
+        return int(result.scalar() or 0)

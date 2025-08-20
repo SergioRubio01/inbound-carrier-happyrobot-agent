@@ -35,7 +35,7 @@ class BaseRepository(Generic[T, D]):
         """Get record by ID."""
         stmt = select(self.model_class).where(self.model_class.id == record_id)
         result = await self.session.execute(stmt)
-        return result.scalar_one_or_none()
+        return result.scalar_one_or_none()  # type: ignore[return-value]
 
     async def update(self, model: T) -> T:
         """Update existing record."""
@@ -48,25 +48,26 @@ class BaseRepository(Generic[T, D]):
         """Delete record by ID."""
         stmt = delete(self.model_class).where(self.model_class.id == record_id)
         result = await self.session.execute(stmt)
-        return result.rowcount > 0
+        return bool(result.rowcount > 0)  # type: ignore[attr-defined]
 
     async def exists(self, record_id: UUID) -> bool:
         """Check if record exists."""
         stmt = select(func.count()).where(self.model_class.id == record_id)
         result = await self.session.execute(stmt)
-        return result.scalar() > 0
+        count = result.scalar() or 0
+        return bool(count > 0)
 
     async def list_all(self, limit: int = 100, offset: int = 0) -> List[T]:
         """List all records with pagination."""
         stmt = select(self.model_class).limit(limit).offset(offset)
         result = await self.session.execute(stmt)
-        return result.scalars().all()
+        return list(result.scalars().all())  # type: ignore[arg-type]
 
     async def count_all(self) -> int:
         """Count all records."""
         stmt = select(func.count()).select_from(self.model_class)
         result = await self.session.execute(stmt)
-        return result.scalar()
+        return int(result.scalar() or 0)
 
     def _build_where_clause(self, filters: Dict[str, Any]):
         """Build WHERE clause from filters dictionary."""

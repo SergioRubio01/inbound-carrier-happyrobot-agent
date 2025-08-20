@@ -31,7 +31,9 @@ class PostgresNegotiationRepository(
     def __init__(self, session: AsyncSession):
         super().__init__(session, NegotiationModel)
 
-    def _model_to_entity(self, model: NegotiationModel) -> Negotiation:
+    def _model_to_entity(
+        self, model: Optional[NegotiationModel]
+    ) -> Optional[Negotiation]:
         """Convert database model to domain entity."""
         if not model:
             return None
@@ -99,14 +101,18 @@ class PostgresNegotiationRepository(
             is_active=entity.is_active,
             round_number=entity.round_number,
             max_rounds=entity.max_rounds,
-            carrier_offer=entity.carrier_offer.to_float(),
+            carrier_offer=(
+                entity.carrier_offer.to_float() if entity.carrier_offer else 0.0
+            ),
             system_response=(
                 entity.system_response.value if entity.system_response else None
             ),
             counter_offer=(
                 entity.counter_offer.to_float() if entity.counter_offer else None
             ),
-            loadboard_rate=entity.loadboard_rate.to_float(),
+            loadboard_rate=(
+                entity.loadboard_rate.to_float() if entity.loadboard_rate else 0.0
+            ),
             minimum_acceptable=(
                 entity.minimum_acceptable.to_float()
                 if entity.minimum_acceptable
@@ -130,13 +136,13 @@ class PostgresNegotiationRepository(
             version=entity.version,
         )
 
-    async def create(self, negotiation: Negotiation) -> Negotiation:
+    async def create(self, negotiation: Negotiation) -> Negotiation:  # type: ignore[override]
         """Create a new negotiation."""
         model = self._entity_to_model(negotiation)
         created_model = await super().create(model)
         return self._model_to_entity(created_model)
 
-    async def get_by_id(self, negotiation_id: UUID) -> Optional[Negotiation]:
+    async def get_by_id(self, negotiation_id: UUID) -> Optional[Negotiation]:  # type: ignore[override]
         """Get negotiation by ID."""
         stmt = select(NegotiationModel).where(
             NegotiationModel.negotiation_id == negotiation_id
@@ -162,7 +168,7 @@ class PostgresNegotiationRepository(
         model = result.first()
         return self._model_to_entity(model) if model else None
 
-    async def update(self, negotiation: Negotiation) -> Negotiation:
+    async def update(self, negotiation: Negotiation) -> Negotiation:  # type: ignore[override]
         """Update existing negotiation."""
         model = self._entity_to_model(negotiation)
         model.updated_at = datetime.utcnow()
