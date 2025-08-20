@@ -1,5 +1,5 @@
 config:
-  aws:region: eu-south-2  # Spain region for compliance
+  aws:region: eu-south-2 # Spain region for compliance
   happyrobot-fde:environment: dev
   happyrobot-fde:dbInstanceClass: db.t3.micro
   happyrobot-fde:dbAllocatedStorage: "20"
@@ -8,3 +8,8 @@ config:
   happyrobot-fde:maxLoadWeightLbs: "80000"
   happyrobot-fde:maxReferenceNumberCounter: "99999"
   happyrobot-fde:maxRateAmount: "999999.99"
+
+  happyrobot-fde:dbPassword:
+    secure: AAABAGE+8K1eEJtGzHjq7lWzT3tWNKDQ04OUbo694CVY/nLS9yInbM0ms6T5vGs=
+  happyrobot-fde:apiKey:
+    secure: AAABADiIsDw6lLl2rKsMYqiVrFP/nXyke8Fu3E2xVnSxoIcufcXF6+SZAuZSuzU4H5BPgjbaxS+e3sc=

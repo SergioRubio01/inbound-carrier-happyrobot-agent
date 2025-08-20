@@ -5,15 +5,16 @@ Author: HappyRobot Team
 Created: 2024-08-14
 """
 
-from typing import TypeVar, Generic, Type, Optional, List, Dict, Any
+from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
 from uuid import UUID
+
+from sqlalchemy import and_, asc, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, and_, desc, asc, func
 
 from src.infrastructure.database.base import Base
 
-T = TypeVar('T', bound=Base)
-D = TypeVar('D')  # Domain entity type
+T = TypeVar("T", bound=Base)
+D = TypeVar("D")  # Domain entity type
 
 
 class BaseRepository(Generic[T, D]):
@@ -32,9 +33,8 @@ class BaseRepository(Generic[T, D]):
 
     async def get_by_id(self, record_id: UUID) -> Optional[T]:
         """Get record by ID."""
-        stmt = select(self.model_class).where(self.model_class.id == record_id)
-        result = await self.session.execute(stmt)
-        return result.scalar_one_or_none()
+        # This is overridden in child classes with specific field names
+        raise NotImplementedError("get_by_id must be implemented in child classes")
 
     async def update(self, model: T) -> T:
         """Update existing record."""
@@ -45,27 +45,25 @@ class BaseRepository(Generic[T, D]):
 
     async def delete(self, record_id: UUID) -> bool:
         """Delete record by ID."""
-        stmt = delete(self.model_class).where(self.model_class.id == record_id)
-        result = await self.session.execute(stmt)
-        return result.rowcount > 0
+        # This is overridden in child classes with specific field names
+        raise NotImplementedError("delete must be implemented in child classes")
 
     async def exists(self, record_id: UUID) -> bool:
         """Check if record exists."""
-        stmt = select(func.count()).where(self.model_class.id == record_id)
-        result = await self.session.execute(stmt)
-        return result.scalar() > 0
+        # This is overridden in child classes with specific field names
+        raise NotImplementedError("exists must be implemented in child classes")
 
     async def list_all(self, limit: int = 100, offset: int = 0) -> List[T]:
         """List all records with pagination."""
         stmt = select(self.model_class).limit(limit).offset(offset)
         result = await self.session.execute(stmt)
-        return result.scalars().all()
+        return list(result.scalars().all())
 
     async def count_all(self) -> int:
         """Count all records."""
-        stmt = select(func.count()).select_from(self.model_class)
+        stmt = select(func.count(self.model_class.__table__.c[0]))
         result = await self.session.execute(stmt)
-        return result.scalar()
+        return int(result.scalar() or 0)
 
     def _build_where_clause(self, filters: Dict[str, Any]):
         """Build WHERE clause from filters dictionary."""
@@ -81,23 +79,23 @@ class BaseRepository(Generic[T, D]):
                 if isinstance(value, dict):
                     # Handle operators like {'>=': 100}, {'like': '%pattern%'}
                     for operator, operand in value.items():
-                        if operator == 'like':
+                        if operator == "like":
                             conditions.append(column.like(operand))
-                        elif operator == 'ilike':
+                        elif operator == "ilike":
                             conditions.append(column.ilike(operand))
-                        elif operator == 'in':
+                        elif operator == "in":
                             conditions.append(column.in_(operand))
-                        elif operator == 'not_in':
+                        elif operator == "not_in":
                             conditions.append(~column.in_(operand))
-                        elif operator == '>':
+                        elif operator == ">":
                             conditions.append(column > operand)
-                        elif operator == '>=':
+                        elif operator == ">=":
                             conditions.append(column >= operand)
-                        elif operator == '<':
+                        elif operator == "<":
                             conditions.append(column < operand)
-                        elif operator == '<=':
+                        elif operator == "<=":
                             conditions.append(column <= operand)
-                        elif operator == '!=':
+                        elif operator == "!=":
                             conditions.append(column != operand)
                 elif isinstance(value, list):
                     conditions.append(column.in_(value))
@@ -112,10 +110,10 @@ class BaseRepository(Generic[T, D]):
             return None
 
         # Handle format like "field_name_desc" or "field_name_asc"
-        if sort_by.endswith('_desc'):
+        if sort_by.endswith("_desc"):
             field_name = sort_by[:-5]
             direction = desc
-        elif sort_by.endswith('_asc'):
+        elif sort_by.endswith("_asc"):
             field_name = sort_by[:-4]
             direction = asc
         else:

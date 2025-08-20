@@ -10,7 +10,6 @@ import logging
 from src.config.settings import Settings
 from src.infrastructure.database.connection import DatabaseConnection
 
-
 logger = logging.getLogger(__name__)
 
 

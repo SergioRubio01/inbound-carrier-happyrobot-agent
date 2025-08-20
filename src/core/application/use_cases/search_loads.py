@@ -6,23 +6,25 @@ Created: 2024-08-14
 """
 
 from dataclasses import dataclass
-from typing import Optional, List, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
 
 from src.core.domain.entities import Load
+from src.core.domain.exceptions.base import DomainException
 from src.core.domain.value_objects import EquipmentType, Rate
 from src.core.ports.repositories import ILoadRepository, LoadSearchCriteria
-from src.core.domain.exceptions.base import DomainException
 
 
 class LoadSearchException(DomainException):
     """Exception raised when load search fails."""
+
     pass
 
 
 @dataclass
 class LoadSearchRequest:
     """Request for load search."""
+
     equipment_type: str
     origin: Optional[Dict[str, Any]] = None
     destination: Optional[Dict[str, Any]] = None
@@ -38,12 +40,13 @@ class LoadSearchRequest:
 @dataclass
 class LoadSearchResponse:
     """Response for load search."""
+
     search_criteria: Dict[str, Any]
     total_matches: int
     returned_count: int
     loads: List[Dict[str, Any]]
     suggestions: Optional[Dict[str, Any]] = None
-    search_timestamp: datetime = None
+    search_timestamp: Optional[datetime] = None
 
 
 class SearchLoadsUseCase:
@@ -79,7 +82,7 @@ class SearchLoadsUseCase:
                 returned_count=len(loads),
                 loads=load_dicts,
                 suggestions=suggestions,
-                search_timestamp=datetime.utcnow()
+                search_timestamp=datetime.now(timezone.utc),
             )
 
         except Exception as e:
@@ -91,25 +94,29 @@ class SearchLoadsUseCase:
 
         # Parse origin
         origin_state = None
-        if request.origin and 'state' in request.origin:
-            origin_state = request.origin['state']
+        if request.origin and "state" in request.origin:
+            origin_state = request.origin["state"]
 
         # Parse destination
         destination_state = None
-        if request.destination and 'state' in request.destination:
-            destination_state = request.destination['state']
+        if request.destination and "state" in request.destination:
+            destination_state = request.destination["state"]
 
         # Parse pickup date range
         pickup_date_start = None
         pickup_date_end = None
         if request.pickup_date_range:
-            start_str = request.pickup_date_range.get('start')
-            end_str = request.pickup_date_range.get('end')
+            start_str = request.pickup_date_range.get("start")
+            end_str = request.pickup_date_range.get("end")
 
             if start_str:
-                pickup_date_start = datetime.fromisoformat(start_str.replace('Z', '+00:00')).date()
+                pickup_date_start = datetime.fromisoformat(
+                    start_str.replace("Z", "+00:00")
+                ).date()
             if end_str:
-                pickup_date_end = datetime.fromisoformat(end_str.replace('Z', '+00:00')).date()
+                pickup_date_end = datetime.fromisoformat(
+                    end_str.replace("Z", "+00:00")
+                ).date()
 
         # Parse minimum rate
         minimum_rate = None
@@ -120,8 +127,8 @@ class SearchLoadsUseCase:
         weight_min = None
         weight_max = None
         if request.weight_range:
-            weight_min = request.weight_range.get('min')
-            weight_max = request.weight_range.get('max')
+            weight_min = request.weight_range.get("min")
+            weight_max = request.weight_range.get("max")
 
         return LoadSearchCriteria(
             equipment_type=equipment_type,
@@ -134,75 +141,107 @@ class SearchLoadsUseCase:
             weight_min=weight_min,
             weight_max=weight_max,
             sort_by=request.sort_by,
-            limit=request.limit
+            limit=request.limit,
         )
 
     def _load_to_dict(self, load: Load) -> Dict[str, Any]:
         """Convert load entity to dictionary for API response."""
         return {
             "load_id": str(load.load_id),
-            "origin": {
-                "city": load.origin.city,
-                "state": load.origin.state,
-                "zip": load.origin.zip_code,
-                "coordinates": {
-                    "lat": load.origin.latitude,
-                    "lng": load.origin.longitude
-                } if load.origin.latitude and load.origin.longitude else None
-            },
-            "destination": {
-                "city": load.destination.city,
-                "state": load.destination.state,
-                "zip": load.destination.zip_code,
-                "coordinates": {
-                    "lat": load.destination.latitude,
-                    "lng": load.destination.longitude
-                } if load.destination.latitude and load.destination.longitude else None
-            },
+            "origin": (
+                {
+                    "city": load.origin.city,
+                    "state": load.origin.state,
+                    "zip": load.origin.zip_code,
+                    "coordinates": (
+                        {
+                            "lat": load.origin.latitude,
+                            "lng": load.origin.longitude,
+                        }
+                        if load.origin.latitude and load.origin.longitude
+                        else None
+                    ),
+                }
+                if load.origin
+                else None
+            ),
+            "destination": (
+                {
+                    "city": load.destination.city,
+                    "state": load.destination.state,
+                    "zip": load.destination.zip_code,
+                    "coordinates": (
+                        {
+                            "lat": load.destination.latitude,
+                            "lng": load.destination.longitude,
+                        }
+                        if load.destination.latitude and load.destination.longitude
+                        else None
+                    ),
+                }
+                if load.destination
+                else None
+            ),
             "pickup_datetime": f"{load.pickup_date}T{load.pickup_time_start or '10:00:00'}Z",
             "delivery_datetime": f"{load.delivery_date}T{load.delivery_time_start or '18:00:00'}Z",
-            "equipment_type": load.equipment_type.name,
-            "loadboard_rate": load.loadboard_rate.to_float(),
-            "rate_per_mile": load.rate_per_mile.to_float(),
+            "equipment_type": load.equipment_type.name if load.equipment_type else None,
+            "loadboard_rate": (
+                load.loadboard_rate.to_float() if load.loadboard_rate else 0.0
+            ),
+            "rate_per_mile": (
+                load.rate_per_mile.to_float() if load.rate_per_mile else 0.0
+            ),
             "miles": load.miles,
             "weight": load.weight,
             "commodity_type": load.commodity_type,
             "num_of_pieces": load.pieces,
             "dimensions": load.dimensions,
             "special_requirements": load.special_requirements or [],
-            "broker_info": {
-                "company": load.broker_company,
-                "contact_name": load.broker_contact.get('name') if load.broker_contact else None,
-                "phone": load.broker_contact.get('phone') if load.broker_contact else None,
-                "email": load.broker_contact.get('email') if load.broker_contact else None
-            } if load.broker_company or load.broker_contact else None,
+            "broker_info": (
+                {
+                    "company": load.broker_company,
+                    "contact_name": (
+                        load.broker_contact.get("name") if load.broker_contact else None
+                    ),
+                    "phone": (
+                        load.broker_contact.get("phone")
+                        if load.broker_contact
+                        else None
+                    ),
+                    "email": (
+                        load.broker_contact.get("email")
+                        if load.broker_contact
+                        else None
+                    ),
+                }
+                if load.broker_company or load.broker_contact
+                else None
+            ),
             "urgency": load.urgency.value,
-            "created_at": load.created_at.isoformat()
+            "created_at": load.created_at.isoformat(),
         }
 
     def _build_search_summary(self, request: LoadSearchRequest) -> Dict[str, Any]:
         """Build search criteria summary for response."""
-        summary = {
-            "equipment_type": request.equipment_type
-        }
+        summary = {"equipment_type": request.equipment_type}
 
         if request.origin:
             origin_parts = []
-            if request.origin.get('city'):
-                origin_parts.append(request.origin['city'])
-            if request.origin.get('state'):
-                origin_parts.append(request.origin['state'])
-            if request.origin.get('radius_miles'):
+            if request.origin.get("city"):
+                origin_parts.append(request.origin["city"])
+            if request.origin.get("state"):
+                origin_parts.append(request.origin["state"])
+            if request.origin.get("radius_miles"):
                 origin_parts.append(f"({request.origin['radius_miles']} mi radius)")
             summary["origin"] = ", ".join(origin_parts)
 
         if request.destination:
             dest_parts = []
-            if request.destination.get('city'):
-                dest_parts.append(request.destination['city'])
-            if request.destination.get('state'):
-                dest_parts.append(request.destination['state'])
-            if request.destination.get('radius_miles'):
+            if request.destination.get("city"):
+                dest_parts.append(request.destination["city"])
+            if request.destination.get("state"):
+                dest_parts.append(request.destination["state"])
+            if request.destination.get("radius_miles"):
                 dest_parts.append(f"({request.destination['radius_miles']} mi radius)")
             summary["destination"] = ", ".join(dest_parts)
 
@@ -213,7 +252,7 @@ class SearchLoadsUseCase:
         suggestions = {
             "expand_radius": True,
             "alternative_equipment": [],
-            "alternative_dates": True
+            "alternative_dates": True,
         }
 
         # Suggest alternative equipment types

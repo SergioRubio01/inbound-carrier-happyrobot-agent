@@ -6,12 +6,12 @@ Created: 2024-08-20
 """
 
 from dataclasses import dataclass
-from typing import Optional, List, Dict, Any
-from datetime import datetime, date
+from datetime import date, datetime
+from typing import List, Optional
 
 from src.core.domain.entities import Load, LoadStatus
-from src.core.ports.repositories import ILoadRepository
 from src.core.domain.exceptions.base import DomainException
+from src.core.ports.repositories import ILoadRepository
 
 
 class LoadListException(DomainException):
@@ -25,6 +25,7 @@ class LoadListException(DomainException):
 @dataclass
 class ListLoadsRequest:
     """Request for listing loads."""
+
     status: Optional[str] = None
     equipment_type: Optional[str] = None
     start_date: Optional[date] = None
@@ -37,6 +38,7 @@ class ListLoadsRequest:
 @dataclass
 class LoadSummary:
     """Load summary for list response."""
+
     load_id: str
     origin: str
     destination: str
@@ -54,6 +56,7 @@ class LoadSummary:
 @dataclass
 class ListLoadsResponse:
     """Response for load listing."""
+
     loads: List[LoadSummary]
     total_count: int
     page: int
@@ -93,7 +96,7 @@ class ListLoadsUseCase:
                 end_date=request.end_date,
                 limit=request.limit,
                 offset=offset,
-                sort_by=request.sort_by
+                sort_by=request.sort_by,
             )
 
             # Convert to load summaries
@@ -109,7 +112,7 @@ class ListLoadsUseCase:
                 page=request.page,
                 limit=request.limit,
                 has_next=has_next,
-                has_previous=has_previous
+                has_previous=has_previous,
             )
 
         except Exception as e:
@@ -129,39 +132,62 @@ class ListLoadsUseCase:
 
         # Validate sort_by options
         valid_sorts = [
-            "created_at_desc", "created_at_asc",
-            "pickup_date_desc", "pickup_date_asc",
-            "rate_desc", "rate_asc",
-            "rate_per_mile_desc", "rate_per_mile_asc"
+            "created_at_desc",
+            "created_at_asc",
+            "pickup_date_desc",
+            "pickup_date_asc",
+            "rate_desc",
+            "rate_asc",
+            "rate_per_mile_desc",
+            "rate_per_mile_asc",
         ]
 
         if request.sort_by not in valid_sorts:
-            raise LoadListException(f"Invalid sort_by value. Valid options: {', '.join(valid_sorts)}")
+            raise LoadListException(
+                f"Invalid sort_by value. Valid options: {', '.join(valid_sorts)}"
+            )
 
     def _load_to_summary(self, load: Load) -> LoadSummary:
         """Convert load entity to summary for response."""
-        # Combine date and time for datetime fields
+        # Combine date and time for datetime fields with null safety
         pickup_datetime = datetime.combine(
-            load.pickup_date,
-            load.pickup_time_start or datetime.min.time()
+            load.pickup_date or date.today(),
+            load.pickup_time_start or datetime.min.time(),
         )
 
         delivery_datetime = datetime.combine(
-            load.delivery_date,
-            load.delivery_time_start or datetime.min.time()
+            load.delivery_date or date.today(),
+            load.delivery_time_start or datetime.min.time(),
         )
+
+        # Handle optional fields with safe access
+        origin_str = ""
+        if load.origin:
+            origin_str = f"{load.origin.city}, {load.origin.state}"
+
+        destination_str = ""
+        if load.destination:
+            destination_str = f"{load.destination.city}, {load.destination.state}"
+
+        equipment_type_name = ""
+        if load.equipment_type:
+            equipment_type_name = load.equipment_type.name
+
+        loadboard_rate_float = 0.0
+        if load.loadboard_rate:
+            loadboard_rate_float = load.loadboard_rate.to_float()
 
         return LoadSummary(
             load_id=str(load.load_id),
-            origin=f"{load.origin.city}, {load.origin.state}",
-            destination=f"{load.destination.city}, {load.destination.state}",
+            origin=origin_str,
+            destination=destination_str,
             pickup_datetime=pickup_datetime,
             delivery_datetime=delivery_datetime,
-            equipment_type=load.equipment_type.name,
-            loadboard_rate=load.loadboard_rate.to_float(),
+            equipment_type=equipment_type_name,
+            loadboard_rate=loadboard_rate_float,
             notes=load.notes,
             weight=load.weight,
-            commodity_type=load.commodity_type,
+            commodity_type=load.commodity_type or "",
             status=load.status.value,
-            created_at=load.created_at
+            created_at=load.created_at,
         )

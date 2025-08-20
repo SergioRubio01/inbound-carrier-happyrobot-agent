@@ -6,9 +6,9 @@ Created: 2024-08-14
 """
 
 from abc import ABC, abstractmethod
-from typing import Optional, List, Dict, Any
-from uuid import UUID
 from datetime import date
+from typing import Any, Dict, List, Optional
+from uuid import UUID
 
 from src.core.domain.entities import Carrier
 from src.core.domain.value_objects import MCNumber
@@ -43,16 +43,20 @@ class ICarrierRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_eligible_carriers(self, limit: int = 100, offset: int = 0) -> List[Carrier]:
+    async def get_eligible_carriers(
+        self, limit: int = 100, offset: int = 0
+    ) -> List[Carrier]:
         """Get list of eligible carriers."""
         pass
 
     @abstractmethod
-    async def search_carriers(self,
-                            legal_name: Optional[str] = None,
-                            operating_status: Optional[str] = None,
-                            limit: int = 100,
-                            offset: int = 0) -> List[Carrier]:
+    async def search_carriers(
+        self,
+        legal_name: Optional[str] = None,
+        operating_status: Optional[str] = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> List[Carrier]:
         """Search carriers by criteria."""
         pass
 
@@ -62,6 +66,8 @@ class ICarrierRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_carrier_metrics(self, start_date: date, end_date: date) -> Dict[str, Any]:
+    async def get_carrier_metrics(
+        self, start_date: date, end_date: date
+    ) -> Dict[str, Any]:
         """Get aggregated carrier metrics for date range."""
         pass

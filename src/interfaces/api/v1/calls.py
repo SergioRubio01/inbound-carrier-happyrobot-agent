@@ -5,23 +5,30 @@ Author: HappyRobot Team
 Created: 2024-08-14
 """
 
-from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
-from typing import Optional, Dict, Any
-from datetime import datetime
-from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import datetime, timezone
+from typing import Any, Dict, Optional
 from uuid import UUID
 
-from src.interfaces.api.v1.dependencies.database import get_database_session
-from src.infrastructure.database.postgres import PostgresCallRepository, PostgresLoadRepository, PostgresCarrierRepository
-from src.core.domain.value_objects import MCNumber
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from src.core.domain.entities import Call
+from src.core.domain.entities.call import CallOutcome, CallType, Sentiment
+from src.core.domain.value_objects import MCNumber, Rate
+from src.infrastructure.database.postgres import (
+    PostgresCallRepository,
+    PostgresCarrierRepository,
+    PostgresLoadRepository,
+)
+from src.interfaces.api.v1.dependencies.database import get_database_session
 
 router = APIRouter(prefix="/calls", tags=["Calls"])
 
 
 class HandoffRequestModel(BaseModel):
     """Request model for call handoff."""
+
     load_id: str
     mc_number: str
     agreed_rate: float
@@ -34,6 +41,7 @@ class HandoffRequestModel(BaseModel):
 
 class HandoffResponseModel(BaseModel):
     """Response model for call handoff."""
+
     handoff_id: str
     status: str
     assigned_rep: Optional[Dict[str, Any]] = None
@@ -45,6 +53,7 @@ class HandoffResponseModel(BaseModel):
 
 class FinalizeCallRequestModel(BaseModel):
     """Request model for call finalization."""
+
     call_id: Optional[str] = None
     mc_number: str
     load_id: Optional[str] = None
@@ -60,6 +69,7 @@ class FinalizeCallRequestModel(BaseModel):
 
 class FinalizeCallResponseModel(BaseModel):
     """Response model for call finalization."""
+
     call_id: str
     status: str
     data_extraction: Dict[str, Any]
@@ -71,7 +81,9 @@ class FinalizeCallResponseModel(BaseModel):
 
 
 @router.post("/handoff", response_model=HandoffResponseModel)
-async def handoff_call(request: HandoffRequestModel, session: AsyncSession = Depends(get_database_session)):
+async def handoff_call(
+    request: HandoffRequestModel, session: AsyncSession = Depends(get_database_session)
+):
     """
     Initiate handoff to human sales representative.
 
@@ -101,26 +113,26 @@ async def handoff_call(request: HandoffRequestModel, session: AsyncSession = Dep
             raise HTTPException(status_code=404, detail="Carrier not found")
 
         # Generate handoff ID
-        handoff_id = f"handoff_{datetime.utcnow().timestamp()}"
+        handoff_id = f"handoff_{datetime.now(timezone.utc).timestamp()}"
 
         # Create call record for handoff
         call = Call(
-            mc_number=str(mc_number),
+            mc_number=mc_number,
             carrier_id=carrier.carrier_id,
             load_id=load.load_id,
-            start_time=datetime.utcnow(),
-            call_type="INBOUND",
-            outcome="HANDOFF_REQUESTED",
-            final_rate=request.agreed_rate,
+            start_time=datetime.now(timezone.utc),
+            call_type=CallType.INBOUND,
+            outcome=CallOutcome.ACCEPTED,
+            final_rate=Rate.from_float(request.agreed_rate),
             rate_accepted=True,
             extracted_data={
                 "carrier_contact": request.carrier_contact,
                 "agreed_rate": request.agreed_rate,
                 "handoff_reason": request.handoff_reason,
-                "priority": request.priority
+                "priority": request.priority,
             },
             transferred_to_human=True,
-            transfer_reason=request.handoff_reason
+            transfer_reason=request.handoff_reason,
         )
 
         # Save call record
@@ -135,7 +147,7 @@ async def handoff_call(request: HandoffRequestModel, session: AsyncSession = Dep
                 "id": "system_assignment",
                 "name": "Next Available Representative",
                 "direct_line": "+1-800-HAPPYROBOT",
-                "availability": "QUEUED"
+                "availability": "QUEUED",
             },
             transfer_instructions={
                 "method": "QUEUE_TRANSFER",
@@ -145,12 +157,12 @@ async def handoff_call(request: HandoffRequestModel, session: AsyncSession = Dep
                     "load_id": request.load_id,
                     "carrier_mc": request.mc_number,
                     "agreed_rate": request.agreed_rate,
-                    "carrier_contact": request.carrier_contact
-                }
+                    "carrier_contact": request.carrier_contact,
+                },
             },
             context_token=str(saved_call.call_id),
             message=f"Call queued for handoff. Priority: {request.priority}. Load: {request.load_id}",
-            timestamp=datetime.utcnow().isoformat()
+            timestamp=datetime.now(timezone.utc).isoformat(),
         )
 
     except Exception as e:
@@ -158,7 +170,10 @@ async def handoff_call(request: HandoffRequestModel, session: AsyncSession = Dep
 
 
 @router.post("/finalize", response_model=FinalizeCallResponseModel)
-async def finalize_call(request: FinalizeCallRequestModel, session: AsyncSession = Depends(get_database_session)):
+async def finalize_call(
+    request: FinalizeCallRequestModel,
+    session: AsyncSession = Depends(get_database_session),
+):
     """
     Log call data and extract key information.
 
@@ -169,7 +184,6 @@ async def finalize_call(request: FinalizeCallRequestModel, session: AsyncSession
         # Initialize repositories
         call_repo = PostgresCallRepository(session)
         carrier_repo = PostgresCarrierRepository(session)
-        load_repo = PostgresLoadRepository(session)
 
         # Get or create call record
         if request.call_id:
@@ -186,37 +200,45 @@ async def finalize_call(request: FinalizeCallRequestModel, session: AsyncSession
             carrier = await carrier_repo.get_by_mc_number(mc_number)
 
             call = Call(
-                mc_number=request.mc_number,
+                mc_number=mc_number,
                 carrier_id=carrier.carrier_id if carrier else None,
                 load_id=UUID(request.load_id) if request.load_id else None,
-                start_time=datetime.utcnow(),
-                call_type="INBOUND",
-                outcome=request.outcome,
-                sentiment=request.sentiment,
-                final_rate=request.agreed_rate,
+                start_time=datetime.now(timezone.utc),
+                call_type=CallType.INBOUND,
+                outcome=CallOutcome(request.outcome),
+                sentiment=Sentiment(request.sentiment),
+                final_rate=(
+                    Rate.from_float(request.agreed_rate)
+                    if request.agreed_rate
+                    else None
+                ),
                 rate_accepted=request.agreed_rate is not None,
                 extracted_data=request.extracted_data,
                 transcript=request.transcript,
-                follow_up_required=request.follow_up_required
+                follow_up_required=request.follow_up_required,
             )
 
             call = await call_repo.create(call)
 
         # Update call with finalization data
-        call.end_time = datetime.utcnow()
-        call.outcome = request.outcome
-        call.sentiment = request.sentiment
+        call.end_time = datetime.now(timezone.utc)
+        call.outcome = CallOutcome(request.outcome)
+        call.sentiment = Sentiment(request.sentiment)
         call.extracted_data = request.extracted_data
         call.transcript = request.transcript
         call.follow_up_required = request.follow_up_required
 
         if request.agreed_rate:
-            call.final_rate = request.agreed_rate
+            call.final_rate = Rate.from_float(request.agreed_rate)
             call.rate_accepted = True
 
         # Calculate analytics based on extracted data
-        extracted_fields_count = len(request.extracted_data.keys()) if request.extracted_data else 0
-        confidence_score = min(0.95, extracted_fields_count * 0.08)  # Max 95% confidence
+        extracted_fields_count = (
+            len(request.extracted_data.keys()) if request.extracted_data else 0
+        )
+        confidence_score = min(
+            0.95, extracted_fields_count * 0.08
+        )  # Max 95% confidence
 
         call_value_score = 50  # Base score
         if request.outcome == "ACCEPTED":
@@ -245,25 +267,28 @@ async def finalize_call(request: FinalizeCallRequestModel, session: AsyncSession
             next_actions = [
                 {
                     "action": "SEND_RATE_CONFIRMATION",
-                    "deadline": (datetime.utcnow().replace(microsecond=0).isoformat() + "Z")
+                    "deadline": (
+                        datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+                        + "Z"
+                    ),
                 },
-                {
-                    "action": "UPDATE_LOAD_STATUS",
-                    "status": "BOOKED"
-                }
+                {"action": "UPDATE_LOAD_STATUS", "status": "BOOKED"},
             ]
         elif request.outcome == "CALLBACK_REQUESTED":
             next_actions = [
                 {
                     "action": "SCHEDULE_CALLBACK",
-                    "deadline": (datetime.utcnow().replace(microsecond=0).isoformat() + "Z")
+                    "deadline": (
+                        datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+                        + "Z"
+                    ),
                 }
             ]
         elif request.follow_up_required:
             next_actions = [
                 {
                     "action": "FOLLOW_UP_REQUIRED",
-                    "reason": request.notes or "Follow-up requested"
+                    "reason": request.notes or "Follow-up requested",
                 }
             ]
 
@@ -273,21 +298,25 @@ async def finalize_call(request: FinalizeCallRequestModel, session: AsyncSession
             data_extraction={
                 "success": True,
                 "extracted_fields": extracted_fields_count,
-                "confidence_score": confidence_score
+                "confidence_score": confidence_score,
             },
             classification={
                 "outcome": request.outcome,
                 "sentiment": request.sentiment,
-                "confidence": 0.92
+                "confidence": 0.92,
             },
             analytics={
                 "call_value_score": call_value_score,
                 "conversion_probability": conversion_probability,
-                "recommended_follow_up": "Send rate confirmation" if request.outcome == "ACCEPTED" else "Standard follow-up"
+                "recommended_follow_up": (
+                    "Send rate confirmation"
+                    if request.outcome == "ACCEPTED"
+                    else "Standard follow-up"
+                ),
             },
             next_actions=next_actions,
             message="Call data successfully logged and processed",
-            timestamp=datetime.utcnow().isoformat()
+            timestamp=datetime.now(timezone.utc).isoformat(),
         )
 
     except Exception as e:

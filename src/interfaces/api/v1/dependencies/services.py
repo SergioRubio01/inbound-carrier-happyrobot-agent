@@ -8,7 +8,6 @@ Created: 2024-11-15
 from datetime import timedelta
 from functools import lru_cache
 
-from src.config.settings import settings
 from src.infrastructure.caching.memory_cache import MemoryCacheService
 
 

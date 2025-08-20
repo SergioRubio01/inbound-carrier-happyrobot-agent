@@ -5,21 +5,21 @@ Author: HappyRobot Team
 Created: 2024-08-20
 """
 
+from datetime import date, datetime, time
+from unittest.mock import Mock
+from uuid import uuid4
+
 import pytest
-from unittest.mock import AsyncMock, Mock
-from datetime import datetime, date, time
-from uuid import UUID, uuid4
 
 from src.core.application.use_cases.update_load_use_case import (
-    UpdateLoadUseCase,
-    UpdateLoadRequest,
-    UpdateLoadResponse,
     LoadNotFoundException,
     LoadUpdateException,
-    LoadVersionConflictException
+    UpdateLoadRequest,
+    UpdateLoadResponse,
+    UpdateLoadUseCase,
 )
 from src.core.domain.entities.load import Load, LoadStatus, UrgencyLevel
-from src.core.domain.value_objects import Location, EquipmentType, Rate
+from src.core.domain.value_objects import EquipmentType, Location, Rate
 from src.core.ports.repositories.load_repository import ILoadRepository
 
 
@@ -47,11 +47,10 @@ def sample_load():
         commodity_type="Electronics",
         status=LoadStatus.AVAILABLE,
         urgency=UrgencyLevel.NORMAL,
-        priority_score=50,
         is_active=True,
         version=1,
         created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow()
+        updated_at=datetime.utcnow(),
     )
 
 
@@ -65,7 +64,9 @@ class TestUpdateLoadUseCase:
     """Test cases for UpdateLoadUseCase."""
 
     @pytest.mark.asyncio
-    async def test_successful_load_update(self, use_case, mock_load_repository, sample_load):
+    async def test_successful_load_update(
+        self, use_case, mock_load_repository, sample_load
+    ):
         """Test successful load update."""
         # Arrange
         mock_load_repository.get_active_by_id.return_value = sample_load
@@ -77,10 +78,7 @@ class TestUpdateLoadUseCase:
         mock_load_repository.update.return_value = updated_load
 
         request = UpdateLoadRequest(
-            load_id=sample_load.load_id,
-            version=1,
-            weight=30000,
-            loadboard_rate=2750.0
+            load_id=sample_load.load_id, weight=30000, loadboard_rate=2750.0
         )
 
         # Act
@@ -91,8 +89,10 @@ class TestUpdateLoadUseCase:
         assert result.load_id == str(sample_load.load_id)
         assert result.reference_number == sample_load.reference_number
         assert result.status == sample_load.status.value
-        assert result.version == 2
-        mock_load_repository.get_active_by_id.assert_called_once_with(sample_load.load_id)
+        # Version is not part of the response, just verify the result is valid
+        mock_load_repository.get_active_by_id.assert_called_once_with(
+            sample_load.load_id
+        )
         mock_load_repository.update.assert_called_once()
 
     @pytest.mark.asyncio
@@ -102,11 +102,7 @@ class TestUpdateLoadUseCase:
         load_id = uuid4()
         mock_load_repository.get_active_by_id.return_value = None
 
-        request = UpdateLoadRequest(
-            load_id=load_id,
-            version=1,
-            weight=30000
-        )
+        request = UpdateLoadRequest(load_id=load_id, weight=30000)
 
         # Act & Assert
         with pytest.raises(LoadNotFoundException) as exc_info:
@@ -117,39 +113,38 @@ class TestUpdateLoadUseCase:
         mock_load_repository.update.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_version_conflict(self, use_case, mock_load_repository, sample_load):
-        """Test version conflict exception."""
+    async def test_database_error_handling(
+        self, use_case, mock_load_repository, sample_load
+    ):
+        """Test database error handling."""
         # Arrange
-        sample_load.version = 2  # Current version is 2
         mock_load_repository.get_active_by_id.return_value = sample_load
+        mock_load_repository.update.side_effect = Exception(
+            "Database connection failed"
+        )
 
         request = UpdateLoadRequest(
             load_id=sample_load.load_id,
-            version=1,  # Request with old version
-            weight=30000
+            weight=30000,
         )
 
         # Act & Assert
-        with pytest.raises(LoadVersionConflictException) as exc_info:
+        with pytest.raises(LoadUpdateException) as exc_info:
             await use_case.execute(request)
 
-        assert "version conflict" in str(exc_info.value).lower()
-        assert "Expected version 1" in str(exc_info.value)
-        assert "current version is 2" in str(exc_info.value)
-        mock_load_repository.update.assert_not_called()
+        assert "Failed to update load" in str(exc_info.value)
+        mock_load_repository.update.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_cannot_update_deleted_load(self, use_case, mock_load_repository, sample_load):
+    async def test_cannot_update_deleted_load(
+        self, use_case, mock_load_repository, sample_load
+    ):
         """Test that deleted loads cannot be updated."""
         # Arrange
         sample_load.deleted_at = datetime.utcnow()
         mock_load_repository.get_active_by_id.return_value = sample_load
 
-        request = UpdateLoadRequest(
-            load_id=sample_load.load_id,
-            version=1,
-            weight=30000
-        )
+        request = UpdateLoadRequest(load_id=sample_load.load_id, weight=30000)
 
         # Act & Assert
         with pytest.raises(LoadUpdateException) as exc_info:
@@ -159,17 +154,15 @@ class TestUpdateLoadUseCase:
         mock_load_repository.update.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_cannot_update_delivered_load(self, use_case, mock_load_repository, sample_load):
+    async def test_cannot_update_delivered_load(
+        self, use_case, mock_load_repository, sample_load
+    ):
         """Test that delivered loads cannot be updated."""
         # Arrange
         sample_load.status = LoadStatus.DELIVERED
         mock_load_repository.get_active_by_id.return_value = sample_load
 
-        request = UpdateLoadRequest(
-            load_id=sample_load.load_id,
-            version=1,
-            weight=30000
-        )
+        request = UpdateLoadRequest(load_id=sample_load.load_id, weight=30000)
 
         # Act & Assert
         with pytest.raises(LoadUpdateException) as exc_info:
@@ -179,7 +172,9 @@ class TestUpdateLoadUseCase:
         mock_load_repository.update.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_invalid_status_transition(self, use_case, mock_load_repository, sample_load):
+    async def test_invalid_status_transition(
+        self, use_case, mock_load_repository, sample_load
+    ):
         """Test invalid status transition."""
         # Arrange - Use CANCELLED status instead of DELIVERED to test transition validation
         sample_load.status = LoadStatus.CANCELLED
@@ -187,8 +182,7 @@ class TestUpdateLoadUseCase:
 
         request = UpdateLoadRequest(
             load_id=sample_load.load_id,
-            version=1,
-            status="AVAILABLE"  # Cannot go from CANCELLED to AVAILABLE
+            status="AVAILABLE",  # Cannot go from CANCELLED to AVAILABLE
         )
 
         # Act & Assert
@@ -199,7 +193,9 @@ class TestUpdateLoadUseCase:
         mock_load_repository.update.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_valid_status_transition(self, use_case, mock_load_repository, sample_load):
+    async def test_valid_status_transition(
+        self, use_case, mock_load_repository, sample_load
+    ):
         """Test valid status transition."""
         # Arrange
         sample_load.status = LoadStatus.AVAILABLE
@@ -213,8 +209,7 @@ class TestUpdateLoadUseCase:
 
         request = UpdateLoadRequest(
             load_id=sample_load.load_id,
-            version=1,
-            status="BOOKED"  # Valid: AVAILABLE -> BOOKED
+            status="BOOKED",  # Valid: AVAILABLE -> BOOKED
         )
 
         # Act
@@ -225,7 +220,9 @@ class TestUpdateLoadUseCase:
         mock_load_repository.update.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_update_location_information(self, use_case, mock_load_repository, sample_load):
+    async def test_update_location_information(
+        self, use_case, mock_load_repository, sample_load
+    ):
         """Test updating location information."""
         # Arrange
         mock_load_repository.get_active_by_id.return_value = sample_load
@@ -237,21 +234,20 @@ class TestUpdateLoadUseCase:
         mock_load_repository.update.return_value = updated_load
 
         new_origin = Location(city="Chicago", state="IL", zip_code="60601")
-        request = UpdateLoadRequest(
-            load_id=sample_load.load_id,
-            version=1,
-            origin=new_origin
-        )
+        request = UpdateLoadRequest(load_id=sample_load.load_id, origin=new_origin)
 
         # Act
         result = await use_case.execute(request)
 
         # Assert
-        assert result.version == 2
+        assert result is not None
+        # Version is not part of the response, just verify the result is valid
         mock_load_repository.update.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_update_schedule_information(self, use_case, mock_load_repository, sample_load):
+    async def test_update_schedule_information(
+        self, use_case, mock_load_repository, sample_load
+    ):
         """Test updating schedule information."""
         # Arrange
         mock_load_repository.get_active_by_id.return_value = sample_load
@@ -265,47 +261,42 @@ class TestUpdateLoadUseCase:
         mock_load_repository.update.return_value = updated_load
 
         request = UpdateLoadRequest(
-            load_id=sample_load.load_id,
-            version=1,
-            pickup_datetime=new_pickup_datetime
+            load_id=sample_load.load_id, pickup_datetime=new_pickup_datetime
         )
 
         # Act
         result = await use_case.execute(request)
 
         # Assert
-        assert result.version == 2
+        assert result is not None
+        # Version is not part of the response, just verify the result is valid
         mock_load_repository.update.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_update_pricing_information(self, use_case, mock_load_repository, sample_load):
+    async def test_update_pricing_information(
+        self, use_case, mock_load_repository, sample_load
+    ):
         """Test updating pricing information."""
         # Arrange
         mock_load_repository.get_active_by_id.return_value = sample_load
 
         updated_load = Load(**sample_load.__dict__)
         updated_load.loadboard_rate = Rate.from_float(2800.0)
-        updated_load.fuel_surcharge = Rate.from_float(150.0)
-        updated_load.minimum_rate = Rate.from_float(2600.0)
-        updated_load.maximum_rate = Rate.from_float(3000.0)
         updated_load.version = 2
         updated_load.updated_at = datetime.utcnow()
         mock_load_repository.update.return_value = updated_load
 
         request = UpdateLoadRequest(
             load_id=sample_load.load_id,
-            version=1,
             loadboard_rate=2800.0,
-            fuel_surcharge=150.0,
-            minimum_rate=2600.0,
-            maximum_rate=3000.0
         )
 
         # Act
         result = await use_case.execute(request)
 
         # Assert
-        assert result.version == 2
+        assert result is not None
+        # Version is not part of the response, just verify the result is valid
         mock_load_repository.update.assert_called_once()
 
     @pytest.mark.asyncio
@@ -315,9 +306,7 @@ class TestUpdateLoadUseCase:
         mock_load_repository.get_active_by_id.return_value = sample_load
 
         request = UpdateLoadRequest(
-            load_id=sample_load.load_id,
-            version=1,
-            loadboard_rate=0.0  # Invalid rate
+            load_id=sample_load.load_id, loadboard_rate=0.0  # Invalid rate
         )
 
         # Act & Assert
@@ -328,7 +317,9 @@ class TestUpdateLoadUseCase:
         mock_load_repository.update.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_invalid_date_logic(self, use_case, mock_load_repository, sample_load):
+    async def test_invalid_date_logic(
+        self, use_case, mock_load_repository, sample_load
+    ):
         """Test invalid date logic validation."""
         # Arrange
         mock_load_repository.get_active_by_id.return_value = sample_load
@@ -336,9 +327,8 @@ class TestUpdateLoadUseCase:
         # Set pickup after delivery
         request = UpdateLoadRequest(
             load_id=sample_load.load_id,
-            version=1,
             pickup_datetime=datetime(2024, 8, 28, 10, 0),  # After delivery date
-            delivery_datetime=datetime(2024, 8, 27, 15, 0)
+            delivery_datetime=datetime(2024, 8, 27, 15, 0),
         )
 
         # Act & Assert
@@ -349,28 +339,9 @@ class TestUpdateLoadUseCase:
         mock_load_repository.update.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_rate_relationship_validation(self, use_case, mock_load_repository, sample_load):
-        """Test rate relationship validation."""
-        # Arrange
-        mock_load_repository.get_active_by_id.return_value = sample_load
-
-        # Minimum rate greater than maximum rate
-        request = UpdateLoadRequest(
-            load_id=sample_load.load_id,
-            version=1,
-            minimum_rate=3000.0,  # Higher than maximum
-            maximum_rate=2500.0
-        )
-
-        # Act & Assert
-        with pytest.raises(LoadUpdateException) as exc_info:
-            await use_case.execute(request)
-
-        assert "Minimum rate cannot be greater than maximum rate" in str(exc_info.value)
-        mock_load_repository.update.assert_not_called()
-
-    @pytest.mark.asyncio
-    async def test_partial_update_preserves_existing_values(self, use_case, mock_load_repository, sample_load):
+    async def test_partial_update_preserves_existing_values(
+        self, use_case, mock_load_repository, sample_load
+    ):
         """Test that partial updates preserve existing values."""
         # Arrange
         original_weight = sample_load.weight
@@ -384,19 +355,20 @@ class TestUpdateLoadUseCase:
         mock_load_repository.update.return_value = updated_load
 
         request = UpdateLoadRequest(
-            load_id=sample_load.load_id,
-            version=1,
-            notes="Updated notes"  # Only updating notes
+            load_id=sample_load.load_id, notes="Updated notes"  # Only updating notes
         )
 
         # Act
         result = await use_case.execute(request)
 
         # Assert
-        assert result.version == 2
+        assert result is not None
+        # Version is not part of the response, just verify the result is valid
         # Verify the update method was called with a load that preserves existing values
         mock_load_repository.update.assert_called_once()
-        call_args = mock_load_repository.update.call_args[0][0]  # First argument (the load)
+        call_args = mock_load_repository.update.call_args[0][
+            0
+        ]  # First argument (the load)
         assert call_args.weight == original_weight
         assert call_args.commodity_type == original_commodity
         assert call_args.notes == "Updated notes"

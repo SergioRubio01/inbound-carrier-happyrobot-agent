@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 # --- Process handling --- #
 
+
 def _run_api_server():
     """Runs the main HappyRobot FastAPI server."""
     try:
@@ -31,7 +32,6 @@ def _run_api_server():
     except Exception:
         logger.exception("HappyRobot API Server failed to start.")
         sys.exit(1)
-
 
     # The API server running via uvicorn handles its own signal shutdown gracefully
     logger.info("Exiting main process.")

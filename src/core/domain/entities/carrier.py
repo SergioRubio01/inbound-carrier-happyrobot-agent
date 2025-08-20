@@ -6,16 +6,18 @@ Created: 2024-08-14
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Optional, Dict, Any
+from datetime import datetime, timezone
+from functools import partial
+from typing import Any, Dict, Optional
 from uuid import UUID, uuid4
 
-from ..value_objects import MCNumber, Location
 from ..exceptions.base import DomainException
+from ..value_objects import Location, MCNumber
 
 
 class CarrierNotEligibleException(DomainException):
     """Exception raised when carrier is not eligible for business."""
+
     pass
 
 
@@ -25,7 +27,7 @@ class Carrier:
 
     # Identity
     carrier_id: UUID = field(default_factory=uuid4)
-    mc_number: MCNumber = field(default=None)
+    mc_number: Optional[MCNumber] = field(default=None)
     dot_number: Optional[str] = None
 
     # Company Information
@@ -63,8 +65,8 @@ class Carrier:
     verification_source: Optional[str] = None  # EXTERNAL_API, MANUAL, THIRD_PARTY
 
     # Metadata
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    updated_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=partial(datetime.now, timezone.utc))
+    updated_at: datetime = field(default_factory=partial(datetime.now, timezone.utc))
     created_by: Optional[str] = None
     version: int = 1
 
@@ -72,9 +74,9 @@ class Carrier:
     def is_eligible(self) -> bool:
         """Check if carrier is eligible for business."""
         return (
-            self.operating_status == 'AUTHORIZED_FOR_HIRE' and
-            self.status == 'ACTIVE' and
-            self.insurance_on_file is True
+            self.operating_status == "AUTHORIZED_FOR_HIRE"
+            and self.status == "ACTIVE"
+            and self.insurance_on_file is True
         )
 
     def verify_eligibility(self) -> None:
@@ -82,10 +84,10 @@ class Carrier:
         if not self.is_eligible:
             reasons = []
 
-            if self.operating_status != 'AUTHORIZED_FOR_HIRE':
+            if self.operating_status != "AUTHORIZED_FOR_HIRE":
                 reasons.append(f"Operating status: {self.operating_status}")
 
-            if self.status != 'ACTIVE':
+            if self.status != "ACTIVE":
                 reasons.append(f"Status: {self.status}")
 
             if not self.insurance_on_file:
@@ -95,18 +97,25 @@ class Carrier:
                 f"Carrier {self.mc_number} is not eligible: {', '.join(reasons)}"
             )
 
-    def update_verification(self, source: str, verified_at: Optional[datetime] = None) -> None:
+    def update_verification(
+        self, source: str, verified_at: Optional[datetime] = None
+    ) -> None:
         """Update verification information."""
         self.verification_source = source
-        self.last_verified_at = verified_at or datetime.utcnow()
-        self.updated_at = datetime.utcnow()
+        self.last_verified_at = verified_at or datetime.now(timezone.utc)
+        self.updated_at = datetime.now(timezone.utc)
 
-    def update_safety_info(self, rating: str, rating_date: datetime, scores: Optional[Dict[str, Any]] = None) -> None:
+    def update_safety_info(
+        self,
+        rating: str,
+        rating_date: datetime,
+        scores: Optional[Dict[str, Any]] = None,
+    ) -> None:
         """Update safety information."""
         self.safety_rating = rating
         self.safety_rating_date = rating_date
         self.safety_scores = scores
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
 
     def add_eligibility_note(self, note: str) -> None:
         """Add or update eligibility notes."""
@@ -114,7 +123,7 @@ class Carrier:
             self.eligibility_notes += f" | {note}"
         else:
             self.eligibility_notes = note
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
 
     def __eq__(self, other) -> bool:
         if isinstance(other, Carrier):

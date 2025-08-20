@@ -5,19 +5,20 @@ Author: HappyRobot Team
 Created: 2024-08-20
 """
 
-import pytest
-from datetime import datetime, date, time
+from datetime import datetime, time
 from uuid import uuid4
 
+import pytest
+
 from src.core.application.use_cases.list_loads_use_case import (
-    ListLoadsUseCase,
     ListLoadsRequest,
     ListLoadsResponse,
+    ListLoadsUseCase,
+    LoadListException,
     LoadSummary,
-    LoadListException
 )
 from src.core.domain.entities import Load, LoadStatus, UrgencyLevel
-from src.core.domain.value_objects import Location, EquipmentType, Rate
+from src.core.domain.value_objects import EquipmentType, Location, Rate
 
 
 class MockLoadRepository:
@@ -53,7 +54,7 @@ class MockLoadRepository:
             status=LoadStatus.AVAILABLE,
             urgency=UrgencyLevel.NORMAL,
             created_at=datetime.utcnow() - timedelta(hours=4),
-            notes="Test load 1"
+            notes="Test load 1",
         )
 
         # Booked load
@@ -73,7 +74,7 @@ class MockLoadRepository:
             status=LoadStatus.BOOKED,
             urgency=UrgencyLevel.HIGH,
             created_at=datetime.utcnow() - timedelta(hours=8),
-            notes="Test load 2"
+            notes="Test load 2",
         )
 
         # Different equipment type
@@ -93,12 +94,21 @@ class MockLoadRepository:
             status=LoadStatus.AVAILABLE,
             urgency=UrgencyLevel.LOW,
             created_at=datetime.utcnow() - timedelta(hours=12),
-            notes="Test load 3"
+            notes="Test load 3",
         )
 
         self.loads = [load1, load2, load3]
 
-    async def list_all(self, status=None, equipment_type=None, start_date=None, end_date=None, limit=20, offset=0, sort_by="created_at_desc"):
+    async def list_all(
+        self,
+        status=None,
+        equipment_type=None,
+        start_date=None,
+        end_date=None,
+        limit=20,
+        offset=0,
+        sort_by="created_at_desc",
+    ):
         """Mock list_all implementation."""
         filtered_loads = self.loads.copy()
 
@@ -107,13 +117,21 @@ class MockLoadRepository:
             filtered_loads = [load for load in filtered_loads if load.status == status]
 
         if equipment_type:
-            filtered_loads = [load for load in filtered_loads if load.equipment_type.name == equipment_type]
+            filtered_loads = [
+                load
+                for load in filtered_loads
+                if load.equipment_type.name == equipment_type
+            ]
 
         if start_date:
-            filtered_loads = [load for load in filtered_loads if load.pickup_date >= start_date]
+            filtered_loads = [
+                load for load in filtered_loads if load.pickup_date >= start_date
+            ]
 
         if end_date:
-            filtered_loads = [load for load in filtered_loads if load.pickup_date <= end_date]
+            filtered_loads = [
+                load for load in filtered_loads if load.pickup_date <= end_date
+            ]
 
         total_count = len(filtered_loads)
 
@@ -132,7 +150,7 @@ class MockLoadRepository:
             filtered_loads.sort(key=lambda x: x.loadboard_rate.to_float())
 
         # Apply pagination
-        paginated_loads = filtered_loads[offset:offset + limit]
+        paginated_loads = filtered_loads[offset : offset + limit]
 
         return paginated_loads, total_count
 
@@ -195,12 +213,13 @@ class TestListLoadsUseCase:
     async def test_list_loads_with_date_range_filter(self, list_loads_use_case):
         """Test load listing with date range filter."""
         from datetime import timedelta
+
         base_date = datetime.utcnow() + timedelta(days=5)
 
         # Use a narrower date range that only includes load1
         request = ListLoadsRequest(
             start_date=base_date.date(),
-            end_date=base_date.date()  # Only single date to get just load1
+            end_date=base_date.date(),  # Only single date to get just load1
         )
 
         response = await list_loads_use_case.execute(request)
@@ -263,10 +282,7 @@ class TestListLoadsUseCase:
     async def test_list_loads_multiple_filters(self, list_loads_use_case):
         """Test load listing with multiple filters combined."""
         request = ListLoadsRequest(
-            status="AVAILABLE",
-            equipment_type="53-foot van",
-            page=1,
-            limit=10
+            status="AVAILABLE", equipment_type="53-foot van", page=1, limit=10
         )
 
         response = await list_loads_use_case.execute(request)
@@ -306,11 +322,12 @@ class TestListLoadsUseCase:
     async def test_list_loads_invalid_date_range_fails(self, list_loads_use_case):
         """Test that invalid date range raises exception."""
         from datetime import timedelta
+
         base_date = datetime.utcnow() + timedelta(days=5)
 
         request = ListLoadsRequest(
             start_date=(base_date + timedelta(days=5)).date(),
-            end_date=base_date.date()  # end date before start date
+            end_date=base_date.date(),  # end date before start date
         )
 
         with pytest.raises(LoadListException) as exc_info:

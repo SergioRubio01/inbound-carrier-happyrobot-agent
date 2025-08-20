@@ -3,8 +3,12 @@ Database dependency for API endpoints.
 """
 
 from typing import AsyncGenerator
+
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.infrastructure.database.connection import get_database_session as _get_database_session
+
+from src.infrastructure.database.connection import (
+    get_database_session as _get_database_session,
+)
 
 
 async def get_database_session() -> AsyncGenerator[AsyncSession, None]:

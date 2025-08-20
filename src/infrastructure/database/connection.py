@@ -1,8 +1,13 @@
 import logging
-from typing import Optional
+from typing import AsyncGenerator, Optional
 
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 from sqlalchemy.pool import AsyncAdaptedQueuePool
 
 from src.config.settings import Settings
@@ -35,26 +40,32 @@ class DatabaseConnection:
         )
         self.pool_size = pool_size
         self.max_overflow = max_overflow
-        self.engine = None
-        self.session_factory = None
+        self.engine: Optional[AsyncEngine] = None
+        self.session_factory: Optional[async_sessionmaker[AsyncSession]] = None
 
         if not self.database_url:
             raise ValueError("Database URL is required for database connection")
+
+        # Ensure database_url is not None for create_async_engine
+        if self.database_url is None:
+            raise ValueError("Database URL cannot be None")
 
     def initialize(self):
         """Initialize database connection and session factory"""
         logger.info("Initializing standard database connection...")
 
-        pool_size = self.settings.database_pool_size if self.settings else self.pool_size
+        pool_size = (
+            self.settings.database_pool_size if self.settings else self.pool_size
+        )
         max_overflow = (
             self.settings.database_max_overflow if self.settings else self.max_overflow
         )
-        pool_recycle = (
-            self.settings.database_pool_recycle if self.settings else 3600
-        )
+        pool_recycle = self.settings.database_pool_recycle if self.settings else 3600
         pool_pre_ping = True
 
         # Create engine with connection pooling
+        if self.database_url is None:
+            raise ValueError("Database URL cannot be None")
         self.engine = create_async_engine(
             self.database_url,
             poolclass=AsyncAdaptedQueuePool,
@@ -66,9 +77,9 @@ class DatabaseConnection:
             connect_args={
                 "command_timeout": 30,
                 "server_settings": {
-                    "application_name": self.settings.app_name
-                    if self.settings
-                    else "HappyRobot",
+                    "application_name": (
+                        self.settings.app_name if self.settings else "HappyRobot"
+                    ),
                     "timezone": "UTC",
                 },
             },
@@ -114,7 +125,7 @@ class DatabaseConnection:
             engine = await self.get_engine()
             async with engine.begin() as conn:
                 result = await conn.execute(text("SELECT 1"))
-                return result.scalar() == 1
+                return bool(result.scalar() == 1)
         except Exception as e:
             logger.error(f"Database health check failed: {e}")
             return False
@@ -135,11 +146,15 @@ def initialize_database_connection(settings: Settings) -> DatabaseConnection:
     return _db_connection
 
 
-async def get_database_session() -> AsyncSession:
+async def get_database_session() -> AsyncGenerator[AsyncSession, None]:
     """Dependency function for FastAPI to get database session"""
     if _db_connection is None:
         from src.config.settings import settings
+
         initialize_database_connection(settings)
+
+    if _db_connection is None:
+        raise RuntimeError("Failed to initialize database connection")
 
     session = await _db_connection.get_session()
     try:

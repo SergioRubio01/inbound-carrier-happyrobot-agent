@@ -6,15 +6,15 @@ Created: 2024-08-20
 """
 
 from dataclasses import dataclass
-from typing import Optional
 from datetime import datetime
+from typing import Optional
 from uuid import uuid4
 
-from src.core.domain.entities import Load, LoadStatus
-from src.core.domain.value_objects import Location, EquipmentType, Rate
-from src.core.ports.repositories import ILoadRepository
-from src.core.domain.exceptions.base import DomainException
 from src.config.settings import settings
+from src.core.domain.entities import Load, LoadStatus
+from src.core.domain.exceptions.base import DomainException
+from src.core.domain.value_objects import EquipmentType, Location, Rate
+from src.core.ports.repositories import ILoadRepository
 
 
 class LoadCreationException(DomainException):
@@ -36,6 +36,7 @@ class DuplicateReferenceException(DomainException):
 @dataclass
 class CreateLoadRequest:
     """Request for creating a new load."""
+
     origin: Location
     destination: Location
     pickup_datetime: datetime
@@ -53,6 +54,7 @@ class CreateLoadRequest:
 @dataclass
 class CreateLoadResponse:
     """Response for load creation."""
+
     load_id: str
     reference_number: str
     status: str
@@ -98,17 +100,21 @@ class CreateLoadUseCase:
                 status=LoadStatus.AVAILABLE,
                 is_active=True,
                 created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow()
+                updated_at=datetime.utcnow(),
             )
 
             # Save to repository
             created_load = await self.load_repository.create(load)
 
+            # Reference number should always be set after creation
+            if created_load.reference_number is None:
+                raise LoadCreationException("Reference number was not generated")
+
             return CreateLoadResponse(
                 load_id=str(created_load.load_id),
                 reference_number=created_load.reference_number,
                 status=created_load.status.value,
-                created_at=created_load.created_at
+                created_at=created_load.created_at,
             )
 
         except DuplicateReferenceException:
@@ -145,11 +151,14 @@ class CreateLoadUseCase:
 
         # Validate dates
         if request.pickup_datetime >= request.delivery_datetime:
-            raise LoadCreationException("Pickup datetime must be before delivery datetime")
+            raise LoadCreationException(
+                "Pickup datetime must be before delivery datetime"
+            )
 
         # Make current_time timezone-aware if pickup_datetime is timezone-aware
         if request.pickup_datetime.tzinfo is not None:
             from datetime import timezone
+
             current_time = datetime.now(timezone.utc)
         else:
             current_time = datetime.utcnow()
@@ -161,19 +170,23 @@ class CreateLoadUseCase:
         try:
             EquipmentType.from_name(request.equipment_type)
         except Exception:
-            raise LoadCreationException(f"Invalid equipment type: {request.equipment_type}")
+            raise LoadCreationException(
+                f"Invalid equipment type: {request.equipment_type}"
+            )
 
         # Validate rate
         try:
             Rate.from_float(request.loadboard_rate)
         except Exception:
-            raise LoadCreationException(f"Invalid loadboard rate: {request.loadboard_rate}")
-
+            raise LoadCreationException(
+                f"Invalid loadboard rate: {request.loadboard_rate}"
+            )
 
         # Validate weight limits
         if request.weight > settings.max_load_weight_lbs:
-            raise LoadCreationException(f"Weight cannot exceed {settings.max_load_weight_lbs:,} pounds")
-
+            raise LoadCreationException(
+                f"Weight cannot exceed {settings.max_load_weight_lbs:,} pounds"
+            )
 
     async def _generate_reference_number(self) -> str:
         """Generate a unique reference number."""
@@ -191,4 +204,6 @@ class CreateLoadUseCase:
 
             # Prevent infinite loops
             if counter > settings.max_reference_number_counter:
-                raise LoadCreationException("Unable to generate unique reference number")
+                raise LoadCreationException(
+                    "Unable to generate unique reference number"
+                )

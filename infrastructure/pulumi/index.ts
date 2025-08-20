@@ -10,6 +10,7 @@ import { MonitoringComponent } from "./components/monitoring";
 const config = new pulumi.Config();
 const environment = config.get("environment") || "dev";
 const projectName = "happyrobot-fde";
+const resourcePrefix = `happyrobot-${environment}`; // Prefix for all resources
 
 // Business logic configuration (passed to containers component)
 // These are configured in Pulumi.happyrobot-fde.yaml:
@@ -26,7 +27,7 @@ const commonTags = {
 };
 
 // Create VPC and networking infrastructure
-const networking = new NetworkingComponent("networking", {
+const networking = new NetworkingComponent(`${resourcePrefix}-networking`, {
     cidrBlock: "10.0.0.0/16",
     availabilityZones: 2,
     environment,
@@ -34,7 +35,7 @@ const networking = new NetworkingComponent("networking", {
 });
 
 // Create RDS PostgreSQL database
-const database = new DatabaseComponent("database", {
+const database = new DatabaseComponent(`${resourcePrefix}-database`, {
     vpc: networking.vpc,
     privateSubnets: networking.privateSubnets,
     databaseSecurityGroup: networking.databaseSecurityGroup,
@@ -45,18 +46,19 @@ const database = new DatabaseComponent("database", {
 });
 
 // Create ECS cluster and container services
-const containers = new ContainersComponent("containers", {
+const containers = new ContainersComponent(`${resourcePrefix}-containers`, {
     vpc: networking.vpc,
     privateSubnets: networking.privateSubnets,
     ecsSecurityGroup: networking.ecsSecurityGroup,
     databaseEndpoint: database.endpoint,
     databaseSecretArn: database.secretArn,
     environment,
+    apiKey: config.require("apiKey"),
     tags: commonTags,
 });
 
 // Create Application Load Balancer
-const loadBalancer = new LoadBalancerComponent("loadbalancer", {
+const loadBalancer = new LoadBalancerComponent(`${resourcePrefix}-loadbalancer`, {
     vpc: networking.vpc,
     publicSubnets: networking.publicSubnets,
     albSecurityGroup: networking.albSecurityGroup,
@@ -67,7 +69,7 @@ const loadBalancer = new LoadBalancerComponent("loadbalancer", {
 });
 
 // Create monitoring and logging
-const monitoring = new MonitoringComponent("monitoring", {
+const monitoring = new MonitoringComponent(`${resourcePrefix}-monitoring`, {
     ecsCluster: containers.cluster,
     apiService: containers.apiService,
     database: database.instance,

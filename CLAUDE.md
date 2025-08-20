@@ -154,3 +154,4 @@ Each step uses HTTP POST to the API endpoints with appropriate JSON payloads.
 - When user shows a screenshot with HappyRobot platform advancements, tell him in screen additional enhancements the user will manually apply, including settings of each new block
 - Use subagents when tasks are long, to preserve more context space
 - Never run a aws cli command to deploy changes. Use pulumi unless it is a permissions issue
+- use .is() method in sqlalchemy for boolean comparisons in queries

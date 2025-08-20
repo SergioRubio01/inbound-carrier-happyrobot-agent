@@ -6,22 +6,24 @@ Created: 2024-08-14
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime, date, time
-from typing import Optional, Dict, Any, List
-from uuid import UUID, uuid4
+from datetime import date, datetime, time
 from enum import Enum
+from typing import Optional
+from uuid import UUID, uuid4
 
-from ..value_objects import Rate, Location, EquipmentType
 from ..exceptions.base import DomainException
+from ..value_objects import EquipmentType, Location, Rate
 
 
 class LoadNotAvailableException(DomainException):
     """Exception raised when load is not available."""
+
     pass
 
 
 class LoadStatus(Enum):
     """Load status enumeration."""
+
     AVAILABLE = "AVAILABLE"
     PENDING = "PENDING"
     BOOKED = "BOOKED"
@@ -32,6 +34,7 @@ class LoadStatus(Enum):
 
 class UrgencyLevel(Enum):
     """Load urgency level enumeration."""
+
     LOW = "LOW"
     NORMAL = "NORMAL"
     HIGH = "HIGH"
@@ -47,27 +50,37 @@ class Load:
     reference_number: Optional[str] = None
 
     # Location Information
-    origin: Location = field(default=None)
-    destination: Location = field(default=None)
+    origin: Optional[Location] = field(default=None)
+    destination: Optional[Location] = field(default=None)
 
     # Schedule
-    pickup_date: date = field(default=None)
+    pickup_date: Optional[date] = field(default=None)
     pickup_time_start: Optional[time] = None
-    delivery_date: date = field(default=None)
+    delivery_date: Optional[date] = field(default=None)
     delivery_time_start: Optional[time] = None
 
     # Equipment Requirements
-    equipment_type: EquipmentType = field(default=None)
+    equipment_type: Optional[EquipmentType] = field(default=None)
 
     # Load Details
     weight: int = 0  # in pounds
     commodity_type: Optional[str] = None
+    pieces: Optional[int] = None
+    dimensions: Optional[str] = None
+    special_requirements: Optional[list] = None
 
     # Pricing
-    loadboard_rate: Rate = field(default=None)
+    loadboard_rate: Optional[Rate] = field(default=None)
+    rate_per_mile: Optional[Rate] = None
+    miles: Optional[float] = None
+
+    # Broker Information
+    broker_company: Optional[str] = None
+    broker_contact: Optional[dict] = None
 
     # Status
     status: LoadStatus = LoadStatus.AVAILABLE
+    urgency: UrgencyLevel = UrgencyLevel.NORMAL
 
     # Special Instructions
     notes: Optional[str] = None
@@ -81,26 +94,29 @@ class Load:
     version: int = 1
 
     @property
-    def lane_key(self) -> str:
+    def lane_key(self) -> Optional[str]:
         """Get lane key for rate history."""
+        if self.origin is None or self.destination is None:
+            return None
         return f"{self.origin.state}-{self.destination.state}"
 
     @property
     def is_available(self) -> bool:
         """Check if load is available for booking."""
-        return (
-            self.status == LoadStatus.AVAILABLE and
-            self.is_active
-        )
+        return self.status == LoadStatus.AVAILABLE and self.is_active
 
     def verify_availability(self) -> None:
         """Verify load availability and raise exception if not available."""
         if not self.is_available:
             if self.status != LoadStatus.AVAILABLE:
-                raise LoadNotAvailableException(f"Load {self.reference_number} status is {self.status.value}")
+                raise LoadNotAvailableException(
+                    f"Load {self.reference_number} status is {self.status.value}"
+                )
 
             if not self.is_active:
-                raise LoadNotAvailableException(f"Load {self.reference_number} is not active")
+                raise LoadNotAvailableException(
+                    f"Load {self.reference_number} is not active"
+                )
 
     def book_by_carrier(self, agreed_rate: Optional[Rate] = None) -> None:
         """Book the load by a carrier."""
@@ -126,6 +142,8 @@ class Load:
 
     def matches_equipment(self, equipment_type: EquipmentType) -> bool:
         """Check if load matches the given equipment type."""
+        if self.equipment_type is None:
+            return False
         return self.equipment_type.name.lower() == equipment_type.name.lower()
 
     def matches_weight_capacity(self, equipment_type: EquipmentType) -> bool:

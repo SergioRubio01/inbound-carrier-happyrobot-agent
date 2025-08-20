@@ -49,7 +49,6 @@ export class MonitoringComponent extends pulumi.ComponentResource {
         // API Service CPU Utilization Alarm
         this.apiServiceAlarm = new aws.cloudwatch.MetricAlarm(`${name}-api-cpu-alarm`, {
             name: `${name}-api-cpu-high`,
-            description: "API service CPU utilization is too high",
             metricName: "CPUUtilization",
             namespace: "AWS/ECS",
             statistic: "Average",
@@ -74,7 +73,6 @@ export class MonitoringComponent extends pulumi.ComponentResource {
         // Database CPU Utilization Alarm
         this.databaseAlarm = new aws.cloudwatch.MetricAlarm(`${name}-db-cpu-alarm`, {
             name: `${name}-db-cpu-high`,
-            description: "Database CPU utilization is too high",
             metricName: "CPUUtilization",
             namespace: "AWS/RDS",
             statistic: "Average",
@@ -97,7 +95,6 @@ export class MonitoringComponent extends pulumi.ComponentResource {
         // ALB Response Time Alarm
         this.albAlarm = new aws.cloudwatch.MetricAlarm(`${name}-alb-response-time-alarm`, {
             name: `${name}-alb-response-time-high`,
-            description: "ALB response time is too high",
             metricName: "TargetResponseTime",
             namespace: "AWS/ApplicationELB",
             statistic: "Average",
@@ -261,10 +258,10 @@ export class MonitoringComponent extends pulumi.ComponentResource {
     }
 
     private createAdditionalAlarms(args: MonitoringArgs) {
+        const name = "monitoring";
         // Database Connection Count Alarm
-        new aws.cloudwatch.MetricAlarm(`${this.getResource().urn.name}-db-connections-alarm`, {
-            name: `${this.getResource().urn.name}-db-connections-high`,
-            description: "Database connection count is too high",
+        new aws.cloudwatch.MetricAlarm(`${name}-db-connections-alarm`, {
+            name: `${name}-db-connections-high`,
             metricName: "DatabaseConnections",
             namespace: "AWS/RDS",
             statistic: "Average",
@@ -279,15 +276,14 @@ export class MonitoringComponent extends pulumi.ComponentResource {
             okActions: [this.snsTopicAlerts.arn],
             tags: {
                 ...args.tags,
-                Name: `${this.getResource().urn.name}-db-connections-alarm`,
+                Name: `${name}-db-connections-alarm`,
                 Service: "database",
             },
         }, { parent: this });
 
         // ALB Target Health Alarm
-        new aws.cloudwatch.MetricAlarm(`${this.getResource().urn.name}-alb-unhealthy-targets-alarm`, {
-            name: `${this.getResource().urn.name}-alb-unhealthy-targets`,
-            description: "ALB has unhealthy targets",
+        new aws.cloudwatch.MetricAlarm(`${name}-alb-unhealthy-targets-alarm`, {
+            name: `${name}-alb-unhealthy-targets`,
             metricName: "UnHealthyHostCount",
             namespace: "AWS/ApplicationELB",
             statistic: "Average",
@@ -302,15 +298,14 @@ export class MonitoringComponent extends pulumi.ComponentResource {
             okActions: [this.snsTopicAlerts.arn],
             tags: {
                 ...args.tags,
-                Name: `${this.getResource().urn.name}-alb-unhealthy-targets-alarm`,
+                Name: `${name}-alb-unhealthy-targets-alarm`,
                 Service: "loadbalancer",
             },
         }, { parent: this });
 
         // ECS Service Desired vs Running Task Count Alarm
-        new aws.cloudwatch.MetricAlarm(`${this.getResource().urn.name}-api-task-count-alarm`, {
-            name: `${this.getResource().urn.name}-api-task-count-low`,
-            description: "API service running task count is below desired",
+        new aws.cloudwatch.MetricAlarm(`${name}-api-task-count-alarm`, {
+            name: `${name}-api-task-count-low`,
             metricName: "RunningTaskCount",
             namespace: "AWS/ECS",
             statistic: "Average",
@@ -326,15 +321,14 @@ export class MonitoringComponent extends pulumi.ComponentResource {
             okActions: [this.snsTopicAlerts.arn],
             tags: {
                 ...args.tags,
-                Name: `${this.getResource().urn.name}-api-task-count-alarm`,
+                Name: `${name}-api-task-count-alarm`,
                 Service: "api",
             },
         }, { parent: this });
 
         // High Error Rate Alarm (5XX responses)
-        new aws.cloudwatch.MetricAlarm(`${this.getResource().urn.name}-alb-5xx-alarm`, {
-            name: `${this.getResource().urn.name}-alb-5xx-high`,
-            description: "High rate of 5XX errors from ALB",
+        new aws.cloudwatch.MetricAlarm(`${name}-alb-5xx-alarm`, {
+            name: `${name}-alb-5xx-high`,
             metricName: "HTTPCode_Target_5XX_Count",
             namespace: "AWS/ApplicationELB",
             statistic: "Sum",
@@ -350,7 +344,7 @@ export class MonitoringComponent extends pulumi.ComponentResource {
             treatMissingData: "notBreaching",
             tags: {
                 ...args.tags,
-                Name: `${this.getResource().urn.name}-alb-5xx-alarm`,
+                Name: `${name}-alb-5xx-alarm`,
                 Service: "loadbalancer",
             },
         }, { parent: this });

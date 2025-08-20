@@ -2,12 +2,13 @@
 Unit tests for memory cache service.
 """
 
-import pytest
 import asyncio
-from datetime import timedelta, datetime
+from datetime import datetime, timedelta
 from unittest.mock import patch
 
-from src.infrastructure.caching.memory_cache import MemoryCacheService, CacheEntry
+import pytest
+
+from src.infrastructure.caching.memory_cache import CacheEntry, MemoryCacheService
 
 
 @pytest.fixture
@@ -221,12 +222,9 @@ class TestMemoryCacheService:
         """Test serialization of complex objects."""
         key = "complex_object"
         value = {
-            "nested": {
-                "data": [1, 2, 3],
-                "timestamp": "2024-11-15T10:30:45Z"
-            },
+            "nested": {"data": [1, 2, 3], "timestamp": "2024-11-15T10:30:45Z"},
             "list": ["a", "b", "c"],
-            "number": 42
+            "number": 42,
         }
 
         # Set complex object
@@ -265,7 +263,11 @@ class TestMemoryCacheService:
     @pytest.mark.asyncio
     async def test_error_handling_in_set(self, cache_service):
         """Test error handling in set operation."""
-        with patch.object(cache_service, '_serialize_value', side_effect=Exception("Serialization error")):
+        with patch.object(
+            cache_service,
+            "_serialize_value",
+            side_effect=Exception("Serialization error"),
+        ):
             success = await cache_service.set("error_key", "error_value")
             assert not success
 
@@ -276,8 +278,10 @@ class TestMemoryCacheService:
         await cache_service.set("test_key", "test_value")
 
         # Mock an error in the lock acquisition
-        with patch.object(cache_service._lock, '__aenter__', side_effect=Exception("Lock error")):
-            result = await cache_service.get("test_key")
+        with patch.object(
+            cache_service._lock, "__aenter__", side_effect=Exception("Lock error")
+        ):
+            await cache_service.get("test_key")
             # Should handle error gracefully, but exact behavior depends on implementation
             # This test ensures no unhandled exceptions
 
@@ -311,8 +315,7 @@ class TestMemoryCacheService:
             # Manually trigger cleanup
             async with service._lock:
                 expired_keys = [
-                    key for key, entry in service._cache.items()
-                    if entry.is_expired()
+                    key for key, entry in service._cache.items() if entry.is_expired()
                 ]
                 for key in expired_keys:
                     del service._cache[key]

@@ -4,6 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from src.config.settings import settings
 from src.core.domain.exceptions import (
     BaseException,
     ForbiddenException,
@@ -11,7 +12,6 @@ from src.core.domain.exceptions import (
     UnauthorizedException,
     ValidationException,
 )
-from src.config.settings import settings
 
 # Import custom middleware
 from src.interfaces.api.v1.middleware import (
@@ -51,7 +51,7 @@ def create_app() -> FastAPI:
             {
                 "name": "Loads",
                 "description": "Operations for loads",
-            }
+            },
         ],
     )
 
@@ -110,7 +110,8 @@ def create_app() -> FastAPI:
         return JSONResponse(status_code=422, content={"detail": exc.details})
 
     # Include API routers
-    from src.interfaces.api.v1 import loads, negotiations, calls, metrics
+    from src.interfaces.api.v1 import calls, loads, metrics, negotiations
+
     app.include_router(loads.router, prefix="/api/v1")
     app.include_router(negotiations.router, prefix="/api/v1")
     app.include_router(calls.router, prefix="/api/v1")
@@ -120,4 +121,5 @@ def create_app() -> FastAPI:
     @app.on_event("startup")
     async def startup_event():
         logger_app.info("Application startup...")
+
     return app

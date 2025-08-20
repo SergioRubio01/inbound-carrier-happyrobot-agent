@@ -6,12 +6,13 @@ Created: 2024-08-20
 """
 
 from dataclasses import dataclass
-from uuid import UUID
 from datetime import datetime
+from typing import Optional
+from uuid import UUID
 
 from src.core.domain.entities import Load, LoadStatus
-from src.core.ports.repositories import ILoadRepository
 from src.core.domain.exceptions.base import DomainException
+from src.core.ports.repositories import ILoadRepository
 
 
 class LoadNotFoundException(DomainException):
@@ -33,14 +34,16 @@ class LoadDeletionException(DomainException):
 @dataclass
 class DeleteLoadRequest:
     """Request for deleting a load."""
+
     load_id: UUID
 
 
 @dataclass
 class DeleteLoadResponse:
     """Response for load deletion."""
+
     load_id: str
-    reference_number: str
+    reference_number: Optional[str]
     deleted_at: datetime
 
 
@@ -69,7 +72,7 @@ class DeleteLoadUseCase:
             return DeleteLoadResponse(
                 load_id=str(load.load_id),
                 reference_number=load.reference_number,
-                deleted_at=datetime.utcnow()
+                deleted_at=datetime.utcnow(),
             )
 
         except LoadNotFoundException:
@@ -83,7 +86,11 @@ class DeleteLoadUseCase:
         """Validate business rules for load deletion."""
         # Cannot delete loads that are in transit or delivered
         if load.status == LoadStatus.IN_TRANSIT:
-            raise LoadDeletionException(f"Cannot delete load {load.reference_number} - load is in transit")
+            raise LoadDeletionException(
+                f"Cannot delete load {load.reference_number} - load is in transit"
+            )
 
         if load.status == LoadStatus.DELIVERED:
-            raise LoadDeletionException(f"Cannot delete load {load.reference_number} - load has been delivered")
+            raise LoadDeletionException(
+                f"Cannot delete load {load.reference_number} - load has been delivered"
+            )

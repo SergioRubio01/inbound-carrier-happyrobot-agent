@@ -8,9 +8,9 @@ Created: 2024-11-15
 import asyncio
 import json
 import logging
-from typing import Optional, Any, Dict
-from datetime import datetime, timedelta
 from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import Any, Dict, Optional
 
 from src.core.ports.services.cache_service import CacheServicePort
 
@@ -20,9 +20,10 @@ logger = logging.getLogger(__name__)
 @dataclass
 class CacheEntry:
     """Cache entry with value and expiration time."""
+
     value: Any
     expires_at: Optional[datetime] = None
-    created_at: datetime = None
+    created_at: Optional[datetime] = None
 
     def __post_init__(self):
         if self.created_at is None:
@@ -55,7 +56,7 @@ class MemoryCacheService(CacheServicePort):
         self.default_ttl = default_ttl
         self._cache: Dict[str, CacheEntry] = {}
         self._lock = asyncio.Lock()
-        self._cleanup_task = None
+        self._cleanup_task: Optional[asyncio.Task] = None
         self._start_cleanup_task()
 
     def _start_cleanup_task(self):
@@ -69,14 +70,15 @@ class MemoryCacheService(CacheServicePort):
                 await asyncio.sleep(300)  # Clean up every 5 minutes
                 async with self._lock:
                     expired_keys = [
-                        key for key, entry in self._cache.items()
-                        if entry.is_expired()
+                        key for key, entry in self._cache.items() if entry.is_expired()
                     ]
                     for key in expired_keys:
                         del self._cache[key]
 
                     if expired_keys:
-                        logger.debug(f"Cleaned up {len(expired_keys)} expired cache entries")
+                        logger.debug(
+                            f"Cleaned up {len(expired_keys)} expired cache entries"
+                        )
             except asyncio.CancelledError:
                 break
             except Exception as e:
@@ -104,12 +106,7 @@ class MemoryCacheService(CacheServicePort):
             logger.debug(f"Cache hit for key: {key}")
             return entry.value
 
-    async def set(
-        self,
-        key: str,
-        value: Any,
-        ttl: Optional[timedelta] = None
-    ) -> bool:
+    async def set(self, key: str, value: Any, ttl: Optional[timedelta] = None) -> bool:
         """
         Store value in cache.
 
@@ -133,8 +130,7 @@ class MemoryCacheService(CacheServicePort):
                 serialized_value = self._serialize_value(value)
 
                 self._cache[key] = CacheEntry(
-                    value=serialized_value,
-                    expires_at=expires_at
+                    value=serialized_value, expires_at=expires_at
                 )
 
                 logger.debug(f"Cache set for key: {key} (TTL: {ttl})")

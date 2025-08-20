@@ -5,20 +5,21 @@ Author: HappyRobot Team
 Created: 2024-08-20
 """
 
-import pytest
+from datetime import datetime
 from unittest.mock import AsyncMock
 from uuid import uuid4
-from datetime import datetime
+
+import pytest
 
 from src.core.application.use_cases.delete_load_use_case import (
-    DeleteLoadUseCase,
     DeleteLoadRequest,
     DeleteLoadResponse,
+    DeleteLoadUseCase,
+    LoadDeletionException,
     LoadNotFoundException,
-    LoadDeletionException
 )
 from src.core.domain.entities import Load, LoadStatus
-from src.core.domain.value_objects import Location, EquipmentType, Rate
+from src.core.domain.value_objects import EquipmentType, Location, Rate
 
 
 class TestDeleteLoadUseCase:
@@ -55,11 +56,12 @@ class TestDeleteLoadUseCase:
             commodity_type="General Freight",
             status=LoadStatus.AVAILABLE,
             is_active=True,
-            deleted_at=None
         )
 
     @pytest.mark.asyncio
-    async def test_delete_load_success(self, delete_use_case, mock_load_repository, sample_load):
+    async def test_delete_load_success(
+        self, delete_use_case, mock_load_repository, sample_load
+    ):
         """Test successful load deletion."""
         # Arrange
         load_id = sample_load.load_id
@@ -98,7 +100,9 @@ class TestDeleteLoadUseCase:
         mock_load_repository.delete.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_delete_load_in_transit_fails(self, delete_use_case, mock_load_repository, sample_load):
+    async def test_delete_load_in_transit_fails(
+        self, delete_use_case, mock_load_repository, sample_load
+    ):
         """Test deletion of load in transit fails."""
         # Arrange
         sample_load.status = LoadStatus.IN_TRANSIT
@@ -116,7 +120,9 @@ class TestDeleteLoadUseCase:
         mock_load_repository.delete.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_delete_load_delivered_fails(self, delete_use_case, mock_load_repository, sample_load):
+    async def test_delete_load_delivered_fails(
+        self, delete_use_case, mock_load_repository, sample_load
+    ):
         """Test deletion of delivered load fails."""
         # Arrange
         sample_load.status = LoadStatus.DELIVERED
@@ -134,10 +140,12 @@ class TestDeleteLoadUseCase:
         mock_load_repository.delete.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_delete_already_deleted_load_fails(self, delete_use_case, mock_load_repository, sample_load):
+    async def test_delete_already_deleted_load_fails(
+        self, delete_use_case, mock_load_repository, sample_load
+    ):
         """Test deletion of already deleted load fails."""
-        # Arrange
-        sample_load.deleted_at = datetime.utcnow()
+        # Arrange - Set the load as inactive to simulate a deleted state
+        sample_load.is_active = False
         load_id = sample_load.load_id
         mock_load_repository.get_by_id.return_value = sample_load
 
@@ -147,12 +155,14 @@ class TestDeleteLoadUseCase:
         with pytest.raises(LoadDeletionException) as exc_info:
             await delete_use_case.execute(request)
 
-        assert "already been deleted" in str(exc_info.value)
+        assert "not active" in str(exc_info.value)
         mock_load_repository.get_by_id.assert_called_once_with(load_id)
         mock_load_repository.delete.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_delete_inactive_load_fails(self, delete_use_case, mock_load_repository, sample_load):
+    async def test_delete_inactive_load_fails(
+        self, delete_use_case, mock_load_repository, sample_load
+    ):
         """Test deletion of inactive load fails."""
         # Arrange
         sample_load.is_active = False
@@ -170,7 +180,9 @@ class TestDeleteLoadUseCase:
         mock_load_repository.delete.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_delete_booked_load_success(self, delete_use_case, mock_load_repository, sample_load):
+    async def test_delete_booked_load_success(
+        self, delete_use_case, mock_load_repository, sample_load
+    ):
         """Test deletion of booked load succeeds (business rule allows this)."""
         # Arrange
         sample_load.status = LoadStatus.BOOKED
@@ -190,7 +202,9 @@ class TestDeleteLoadUseCase:
         mock_load_repository.delete.assert_called_once_with(load_id)
 
     @pytest.mark.asyncio
-    async def test_delete_cancelled_load_success(self, delete_use_case, mock_load_repository, sample_load):
+    async def test_delete_cancelled_load_success(
+        self, delete_use_case, mock_load_repository, sample_load
+    ):
         """Test deletion of cancelled load succeeds."""
         # Arrange
         sample_load.status = LoadStatus.CANCELLED
@@ -210,7 +224,9 @@ class TestDeleteLoadUseCase:
         mock_load_repository.delete.assert_called_once_with(load_id)
 
     @pytest.mark.asyncio
-    async def test_delete_repository_failure(self, delete_use_case, mock_load_repository, sample_load):
+    async def test_delete_repository_failure(
+        self, delete_use_case, mock_load_repository, sample_load
+    ):
         """Test handling of repository deletion failure."""
         # Arrange
         load_id = sample_load.load_id

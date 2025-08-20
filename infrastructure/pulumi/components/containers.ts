@@ -8,6 +8,7 @@ export interface ContainersArgs {
     databaseEndpoint: pulumi.Output<string>;
     databaseSecretArn: pulumi.Output<string>;
     environment: string;
+    apiKey: string;
     tags: Record<string, string>;
 }
 
@@ -25,7 +26,7 @@ export class ContainersComponent extends pulumi.ComponentResource {
 
         // Create ECS Cluster
         this.cluster = new aws.ecs.Cluster(`${name}-cluster`, {
-            name: "happyrobot-fde",
+            name: `${name}-cluster`,
             settings: [
                 {
                     name: "containerInsights",
@@ -40,7 +41,7 @@ export class ContainersComponent extends pulumi.ComponentResource {
 
         // Create ECR repositories
         this.apiRepository = new aws.ecr.Repository(`${name}-api-repo`, {
-            name: "happyrobot-api",
+            name: `${name}-api`,
             imageTagMutability: "MUTABLE",
             imageScanningConfiguration: {
                 scanOnPush: true,
@@ -204,9 +205,12 @@ export class ContainersComponent extends pulumi.ComponentResource {
                 this.apiRepository.repositoryUrl,
                 args.databaseEndpoint,
                 args.databaseSecretArn,
-            ]).apply(([repositoryUrl, dbEndpoint, secretArn]) => JSON.stringify([
+                apiLogGroup.name,
+            ]).apply(([repositoryUrl, dbEndpoint, secretArn, logGroupName]) => {
+                const containerName = `${name}-api`;
+                return JSON.stringify([
                 {
-                    name: "happyrobot-api",
+                    name: containerName,
                     image: `${repositoryUrl}:latest`,
                     essential: true,
                     portMappings: [
@@ -221,8 +225,12 @@ export class ContainersComponent extends pulumi.ComponentResource {
                             value: args.environment,
                         },
                         {
+                            name: "API_KEY",
+                            value: args.apiKey,
+                        },
+                        {
                             name: "POSTGRES_HOST",
-                            value: dbEndpoint,
+                            value: dbEndpoint.split(':')[0], // Extract hostname only
                         },
                         {
                             name: "POSTGRES_PORT",
@@ -247,14 +255,18 @@ export class ContainersComponent extends pulumi.ComponentResource {
                     ],
                     secrets: [
                         {
-                            name: "DATABASE_SECRET",
-                            valueFrom: secretArn,
+                            name: "POSTGRES_USER",
+                            valueFrom: `${secretArn}:username::`,
+                        },
+                        {
+                            name: "POSTGRES_PASSWORD",
+                            valueFrom: `${secretArn}:password::`,
                         },
                     ],
                     logConfiguration: {
                         logDriver: "awslogs",
                         options: {
-                            "awslogs-group": apiLogGroup.name,
+                            "awslogs-group": logGroupName,
                             "awslogs-region": aws.config.region!,
                             "awslogs-stream-prefix": "ecs",
                         },
@@ -267,7 +279,8 @@ export class ContainersComponent extends pulumi.ComponentResource {
                         startPeriod: 60,
                     },
                 },
-            ])),
+            ]);
+            }),
             tags: {
                 ...args.tags,
                 Name: `${name}-api-task`,
@@ -277,7 +290,7 @@ export class ContainersComponent extends pulumi.ComponentResource {
 
         // API ECS Service
         this.apiService = new aws.ecs.Service(`${name}-api-service`, {
-            name: "happyrobot-api",
+            name: `${name}-api-service`,
             cluster: this.cluster.id,
             taskDefinition: this.apiTaskDefinition.arn,
             launchType: "FARGATE",
@@ -293,7 +306,7 @@ export class ContainersComponent extends pulumi.ComponentResource {
             loadBalancers: [
                 {
                     targetGroupArn: this.apiTargetGroup.arn,
-                    containerName: "happyrobot-api",
+                    containerName: `${name}-api`,
                     containerPort: 8000,
                 },
             ],
@@ -322,8 +335,9 @@ export class ContainersComponent extends pulumi.ComponentResource {
     }
 
     private createAutoScaling(args: ContainersArgs) {
+        const name = "containers";
         // API Auto Scaling
-        const apiAutoScalingTarget = new aws.appautoscaling.Target(`api-autoscaling-target`, {
+        const apiAutoScalingTarget = new aws.appautoscaling.Target(`${name}-api-autoscaling-target`, {
             maxCapacity: 3,
             minCapacity: 1,
             resourceId: pulumi.interpolate`service/${this.cluster.name}/${this.apiService.name}`,
@@ -331,8 +345,8 @@ export class ContainersComponent extends pulumi.ComponentResource {
             serviceNamespace: "ecs",
         }, { parent: this });
 
-        new aws.appautoscaling.Policy(`api-autoscaling-policy`, {
-            name: `api-cpu-autoscaling`,
+        new aws.appautoscaling.Policy(`${name}-api-autoscaling-policy`, {
+            name: `${name}-api-cpu-autoscaling`,
             policyType: "TargetTrackingScaling",
             resourceId: apiAutoScalingTarget.resourceId,
             scalableDimension: apiAutoScalingTarget.scalableDimension,

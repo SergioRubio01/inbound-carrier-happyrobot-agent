@@ -6,7 +6,7 @@ Implements connection pooling, query optimization, and performance monitoring.
 from dataclasses import dataclass
 from typing import Any, Dict
 
-from HappyRobot.config.settings import settings
+from src.config.settings import settings
 
 
 @dataclass

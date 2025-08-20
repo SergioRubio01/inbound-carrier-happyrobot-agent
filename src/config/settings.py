@@ -14,7 +14,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     # Application settings
     app_name: str = "HappyRobot FDE"
-    app_description: str = "AI-powered workflow automation platform for audit and compliance"
+    app_description: str = (
+        "AI-powered workflow automation platform for audit and compliance"
+    )
     app_version: str = "1.0.0"
 
     # Environment settings
@@ -49,9 +51,10 @@ class Settings(BaseSettings):
 
     # Business Logic Settings
     max_load_weight_lbs: int = Field(default=80000, alias="MAX_LOAD_WEIGHT_LBS")
-    max_reference_number_counter: int = Field(default=99999, alias="MAX_REFERENCE_NUMBER_COUNTER")
+    max_reference_number_counter: int = Field(
+        default=99999, alias="MAX_REFERENCE_NUMBER_COUNTER"
+    )
     max_rate_amount: str = Field(default="999999.99", alias="MAX_RATE_AMOUNT")
-
 
     # Pydantic configuration
     model_config = SettingsConfigDict(

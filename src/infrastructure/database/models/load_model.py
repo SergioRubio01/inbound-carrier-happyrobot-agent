@@ -5,13 +5,17 @@ Author: HappyRobot Team
 Created: 2024-08-14
 """
 
-from sqlalchemy import Column, String, Integer, Date, Time, Boolean, Text, TIMESTAMP, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID, JSONB, NUMERIC, ARRAY
-from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
 import uuid
+from typing import TYPE_CHECKING
+
+from sqlalchemy import Boolean, Column, Date, Integer, String, Text, Time
+from sqlalchemy.dialects.postgresql import NUMERIC, UUID
+from sqlalchemy.orm import Mapped, mapped_column
 
 from src.infrastructure.database.base import Base, TimestampMixin
+
+if TYPE_CHECKING:
+    pass
 
 
 class LoadModel(Base, TimestampMixin):
@@ -20,7 +24,9 @@ class LoadModel(Base, TimestampMixin):
     __tablename__ = "loads"
 
     # Primary Key
-    load_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    load_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
 
     # Load Reference
     reference_number = Column(String(50), unique=True, index=True)
@@ -52,7 +58,9 @@ class LoadModel(Base, TimestampMixin):
     loadboard_rate = Column(NUMERIC(10, 2), nullable=False, index=True)
 
     # Status
-    status = Column(String(30), nullable=False, default='AVAILABLE', index=True)
+    status: Mapped[str] = mapped_column(
+        String(30), nullable=False, default="AVAILABLE", index=True
+    )
     # AVAILABLE, PENDING, BOOKED, IN_TRANSIT, DELIVERED, CANCELLED
 
     # Special Instructions
@@ -63,7 +71,6 @@ class LoadModel(Base, TimestampMixin):
 
     # Metadata
     version = Column(Integer, default=1)
-
 
     def __repr__(self) -> str:
         return f"<LoadModel(reference_number='{self.reference_number}', origin='{self.origin_city}, {self.origin_state}', destination='{self.destination_city}, {self.destination_state}')>"

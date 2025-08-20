@@ -5,16 +5,18 @@ Author: HappyRobot Team
 Created: 2024-08-14
 """
 
-from typing import Optional, List, Dict, Any
+from datetime import date, datetime, timezone
+from typing import Any, Dict, List, Optional
 from uuid import UUID
-from datetime import datetime, date
+
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, func
 
 from src.core.domain.entities import Load, LoadStatus
 from src.core.domain.value_objects import EquipmentType, Location, Rate
 from src.core.ports.repositories import ILoadRepository, LoadSearchCriteria
 from src.infrastructure.database.models import LoadModel
+
 from .base_repository import BaseRepository
 
 
@@ -24,21 +26,19 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
     def __init__(self, session: AsyncSession):
         super().__init__(session, LoadModel)
 
-    def _model_to_entity(self, model: LoadModel) -> Load:
+    def _model_to_entity(self, model: Optional[LoadModel]) -> Optional[Load]:
         """Convert database model to domain entity."""
         if not model:
             return None
 
         origin = Location(
-            city=model.origin_city,
-            state=model.origin_state,
-            zip_code=model.origin_zip
+            city=model.origin_city, state=model.origin_state, zip_code=model.origin_zip
         )
 
         destination = Location(
             city=model.destination_city,
             state=model.destination_state,
-            zip_code=model.destination_zip
+            zip_code=model.destination_zip,
         )
 
         equipment_type = EquipmentType.from_name(model.equipment_type)
@@ -90,13 +90,16 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
             updated_at=entity.updated_at,
         )
 
-    async def create(self, load: Load) -> Load:
+    async def create(self, load: Load) -> Load:  # type: ignore[override]
         """Create a new load."""
         model = self._entity_to_model(load)
         created_model = await super().create(model)
-        return self._model_to_entity(created_model)
+        result = self._model_to_entity(created_model)
+        if result is None:
+            raise RuntimeError("Failed to create load")
+        return result
 
-    async def get_by_id(self, load_id: UUID) -> Optional[Load]:
+    async def get_by_id(self, load_id: UUID) -> Optional[Load]:  # type: ignore[override]
         """Get load by ID."""
         stmt = select(LoadModel).where(LoadModel.load_id == load_id)
         result = await self.session.execute(stmt)
@@ -106,8 +109,7 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
     async def get_active_by_id(self, load_id: UUID) -> Optional[Load]:
         """Get active load by ID."""
         stmt = select(LoadModel).where(
-            LoadModel.load_id == load_id,
-            LoadModel.is_active
+            LoadModel.load_id == load_id, LoadModel.is_active
         )
         result = await self.session.execute(stmt)
         model = result.scalar_one_or_none()
@@ -120,7 +122,7 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
         model = result.scalar_one_or_none()
         return self._model_to_entity(model) if model else None
 
-    async def update(self, load: Load) -> Load:
+    async def update(self, load: Load) -> Load:  # type: ignore[override]
         """Update existing load."""
         # Get the existing load
         stmt = select(LoadModel).where(LoadModel.load_id == load.load_id)
@@ -131,18 +133,27 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
             raise Exception(f"Load not found. Load ID: {load.load_id}")
 
         # Update the existing model directly with the new values
-        existing_model.origin_city = load.origin.city
-        existing_model.origin_state = load.origin.state
-        existing_model.origin_zip = load.origin.zip_code
-        existing_model.destination_city = load.destination.city
-        existing_model.destination_state = load.destination.state
-        existing_model.destination_zip = load.destination.zip_code
+        if load.origin:
+            existing_model.origin_city = load.origin.city
+            existing_model.origin_state = load.origin.state
+            existing_model.origin_zip = load.origin.zip_code
+
+        if load.destination:
+            existing_model.destination_city = load.destination.city
+            existing_model.destination_state = load.destination.state
+            existing_model.destination_zip = load.destination.zip_code
+
         existing_model.pickup_date = load.pickup_date
         existing_model.pickup_time_start = load.pickup_time_start
         existing_model.delivery_date = load.delivery_date
         existing_model.delivery_time_start = load.delivery_time_start
-        existing_model.equipment_type = load.equipment_type.name
-        existing_model.loadboard_rate = load.loadboard_rate.to_float()
+
+        if load.equipment_type:
+            existing_model.equipment_type = load.equipment_type.name
+
+        if load.loadboard_rate:
+            existing_model.loadboard_rate = load.loadboard_rate.to_float()
+
         existing_model.weight = load.weight
         existing_model.commodity_type = load.commodity_type
         existing_model.notes = load.notes
@@ -162,10 +173,24 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
 
         if model:
             model.is_active = False
-            model.updated_at = datetime.utcnow()
+            model.updated_at = datetime.now(timezone.utc)
             await self.session.flush()
             return True
         return False
+
+    def _build_order_clause(self, sort_by: Optional[str] = None):
+        """Build order clause for sorting."""
+        if not sort_by:
+            return LoadModel.created_at.desc()
+
+        # Add mapping for different sort options
+        sort_mapping = {
+            "rate": LoadModel.loadboard_rate.desc(),
+            "miles": LoadModel.miles.asc(),
+            "pickup_date": LoadModel.pickup_date.asc(),
+            "created_at": LoadModel.created_at.desc(),
+        }
+        return sort_mapping.get(sort_by, LoadModel.created_at.desc())
 
     async def search_loads(self, criteria: LoadSearchCriteria) -> List[Load]:
         """Search loads by criteria."""
@@ -184,9 +209,13 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
         if criteria.pickup_date_end:
             conditions.append(LoadModel.pickup_date <= criteria.pickup_date_end)
         if criteria.minimum_rate:
-            conditions.append(LoadModel.loadboard_rate >= criteria.minimum_rate.to_float())
+            conditions.append(
+                LoadModel.loadboard_rate >= criteria.minimum_rate.to_float()
+            )
         if criteria.maximum_rate:
-            conditions.append(LoadModel.loadboard_rate <= criteria.maximum_rate.to_float())
+            conditions.append(
+                LoadModel.loadboard_rate <= criteria.maximum_rate.to_float()
+            )
         if criteria.maximum_miles:
             conditions.append(LoadModel.miles <= criteria.maximum_miles)
         if criteria.weight_min:
@@ -211,27 +240,28 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
 
         result = await self.session.execute(stmt)
         models = result.scalars().all()
-        return [self._model_to_entity(model) for model in models]
+        entities = [self._model_to_entity(model) for model in models]
+        return [e for e in entities if e is not None]
 
-    async def get_available_loads(self, limit: int = 100, offset: int = 0) -> List[Load]:
+    async def get_available_loads(
+        self, limit: int = 100, offset: int = 0
+    ) -> List[Load]:
         """Get list of available loads."""
         stmt = (
             select(LoadModel)
-            .where(
-                and_(
-                    LoadModel.status == 'AVAILABLE',
-                    LoadModel.is_active
-                )
-            )
+            .where(and_(LoadModel.status == "AVAILABLE", LoadModel.is_active))
             .limit(limit)
             .offset(offset)
         )
 
         result = await self.session.execute(stmt)
         models = result.scalars().all()
-        return [self._model_to_entity(model) for model in models]
+        entities = [self._model_to_entity(model) for model in models]
+        return [e for e in entities if e is not None]
 
-    async def get_loads_by_status(self, status: LoadStatus, limit: int = 100, offset: int = 0) -> List[Load]:
+    async def get_loads_by_status(
+        self, status: LoadStatus, limit: int = 100, offset: int = 0
+    ) -> List[Load]:
         """Get loads by status."""
         stmt = (
             select(LoadModel)
@@ -242,16 +272,19 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
 
         result = await self.session.execute(stmt)
         models = result.scalars().all()
-        return [self._model_to_entity(model) for model in models]
+        entities = [self._model_to_entity(model) for model in models]
+        return [e for e in entities if e is not None]
 
-    async def get_loads_by_carrier(self, carrier_id: UUID, limit: int = 100, offset: int = 0) -> List[Load]:
+    async def get_loads_by_carrier(
+        self, carrier_id: UUID, limit: int = 100, offset: int = 0
+    ) -> List[Load]:
         """Get loads booked by specific carrier."""
         # Note: This method is not applicable since we removed carrier booking tracking
         return []
 
     async def count_loads_by_criteria(self, criteria: LoadSearchCriteria) -> int:
         """Count loads matching criteria."""
-        stmt = select(func.count()).select_from(LoadModel)
+        stmt = select(func.count(LoadModel.load_id))
 
         conditions = []
         if criteria.equipment_type:
@@ -262,21 +295,23 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
             stmt = stmt.where(and_(*conditions))
 
         result = await self.session.execute(stmt)
-        return result.scalar()
+        return int(result.scalar() or 0)
 
     async def get_loads_expiring_soon(self, hours: int = 24) -> List[Load]:
         """Get loads expiring within specified hours."""
         # Note: This method is not applicable since we removed expiration tracking
         return []
 
-    async def get_load_metrics(self, start_date: datetime, end_date: datetime) -> Dict[str, Any]:
+    async def get_load_metrics(  # type: ignore[override]
+        self, start_date: datetime, end_date: datetime
+    ) -> Dict[str, Any]:
         """Get aggregated load metrics for date range."""
         # Total booked revenue
         total_revenue_stmt = select(func.sum(LoadModel.loadboard_rate)).where(
             and_(
-                LoadModel.status == 'BOOKED',
+                LoadModel.status == "BOOKED",
                 LoadModel.created_at >= start_date,
-                LoadModel.created_at <= end_date
+                LoadModel.created_at <= end_date,
             )
         )
         total_revenue_result = await self.session.execute(total_revenue_stmt)
@@ -287,7 +322,7 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
             and_(
                 LoadModel.created_at >= start_date,
                 LoadModel.created_at <= end_date,
-                LoadModel.is_active
+                LoadModel.is_active,
             )
         )
         avg_value_result = await self.session.execute(avg_value_stmt)
@@ -298,30 +333,34 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
             and_(
                 LoadModel.created_at >= start_date,
                 LoadModel.created_at <= end_date,
-                LoadModel.is_active
+                LoadModel.is_active,
             )
         )
         avg_rate_result = await self.session.execute(avg_rate_stmt)
         average_loadboard_rate = float(avg_rate_result.scalar() or 0)
 
         return {
-            'total_booked_revenue': total_booked_revenue,
-            'average_load_value': average_load_value,
-            'average_loadboard_rate': average_loadboard_rate
+            "total_booked_revenue": total_booked_revenue,
+            "average_load_value": average_load_value,
+            "average_loadboard_rate": average_loadboard_rate,
         }
 
-    async def list_all(self,
-                      status: Optional[LoadStatus] = None,
-                      equipment_type: Optional[str] = None,
-                      start_date: Optional[date] = None,
-                      end_date: Optional[date] = None,
-                      limit: int = 20,
-                      offset: int = 0,
-                      sort_by: str = "created_at_desc") -> tuple[List[Load], int]:
+    async def list_all(
+        self,
+        status: Optional[LoadStatus] = None,
+        equipment_type: Optional[str] = None,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None,
+        limit: int = 20,
+        offset: int = 0,
+        sort_by: str = "created_at_desc",
+    ) -> tuple[List[Load], int]:
         """List all loads with filters and return total count."""
         # Build query with filters
         stmt = select(LoadModel).where(LoadModel.is_active)
-        count_stmt = select(func.count()).select_from(LoadModel).where(LoadModel.is_active)
+        count_stmt = (
+            select(func.count()).select_from(LoadModel).where(LoadModel.is_active)
+        )
 
         conditions = []
 

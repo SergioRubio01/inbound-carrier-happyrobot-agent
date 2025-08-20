@@ -6,15 +6,15 @@ Created: 2024-08-20
 """
 
 from dataclasses import dataclass
-from typing import Optional, List, Dict, Any
-from datetime import datetime, date, time
+from datetime import datetime, time
+from typing import Dict, List, Optional
 from uuid import UUID
 
-from src.core.domain.entities import Load, LoadStatus
-from src.core.domain.value_objects import Location, EquipmentType, Rate
-from src.core.ports.repositories import ILoadRepository
-from src.core.domain.exceptions.base import DomainException
 from src.config.settings import settings
+from src.core.domain.entities import Load, LoadStatus
+from src.core.domain.exceptions.base import DomainException
+from src.core.domain.value_objects import EquipmentType, Location, Rate
+from src.core.ports.repositories import ILoadRepository
 
 
 class LoadNotFoundException(DomainException):
@@ -33,10 +33,10 @@ class LoadUpdateException(DomainException):
         super().__init__(self.message)
 
 
-
 @dataclass
 class UpdateLoadRequest:
     """Request for updating an existing load."""
+
     load_id: UUID
     origin: Optional[Location] = None
     destination: Optional[Location] = None
@@ -53,8 +53,9 @@ class UpdateLoadRequest:
 @dataclass
 class UpdateLoadResponse:
     """Response for load update."""
+
     load_id: str
-    reference_number: str
+    reference_number: Optional[str]
     status: str
     updated_at: datetime
 
@@ -89,7 +90,7 @@ class UpdateLoadUseCase:
                 load_id=str(saved_load.load_id),
                 reference_number=saved_load.reference_number,
                 status=saved_load.status.value,
-                updated_at=saved_load.updated_at
+                updated_at=saved_load.updated_at,
             )
 
         except (LoadNotFoundException, LoadUpdateException):
@@ -97,11 +98,15 @@ class UpdateLoadUseCase:
         except Exception as e:
             raise LoadUpdateException(f"Failed to update load: {str(e)}")
 
-    async def _validate_update_rules(self, load: Load, request: UpdateLoadRequest) -> None:
+    async def _validate_update_rules(
+        self, load: Load, request: UpdateLoadRequest
+    ) -> None:
         """Validate business rules for load update."""
         # Cannot update delivered loads
         if load.status == LoadStatus.DELIVERED:
-            raise LoadUpdateException(f"Cannot update load {load.reference_number} - load has been delivered")
+            raise LoadUpdateException(
+                f"Cannot update load {load.reference_number} - load has been delivered"
+            )
 
         # Validate status transitions if status is being changed
         if request.status and request.status != load.status.value:
@@ -111,15 +116,25 @@ class UpdateLoadUseCase:
                     f"Invalid status transition from {load.status.value} to {new_status.value}"
                 )
 
-    def _is_valid_status_transition(self, current_status: LoadStatus, new_status: LoadStatus) -> bool:
+    def _is_valid_status_transition(
+        self, current_status: LoadStatus, new_status: LoadStatus
+    ) -> bool:
         """Check if status transition is valid."""
-        valid_transitions = {
-            LoadStatus.AVAILABLE: [LoadStatus.PENDING, LoadStatus.BOOKED, LoadStatus.CANCELLED],
-            LoadStatus.PENDING: [LoadStatus.AVAILABLE, LoadStatus.BOOKED, LoadStatus.CANCELLED],
+        valid_transitions: Dict[LoadStatus, List[LoadStatus]] = {
+            LoadStatus.AVAILABLE: [
+                LoadStatus.PENDING,
+                LoadStatus.BOOKED,
+                LoadStatus.CANCELLED,
+            ],
+            LoadStatus.PENDING: [
+                LoadStatus.AVAILABLE,
+                LoadStatus.BOOKED,
+                LoadStatus.CANCELLED,
+            ],
             LoadStatus.BOOKED: [LoadStatus.IN_TRANSIT, LoadStatus.CANCELLED],
             LoadStatus.IN_TRANSIT: [LoadStatus.DELIVERED],
             LoadStatus.CANCELLED: [],  # Cannot change from cancelled
-            LoadStatus.DELIVERED: []   # Cannot change from delivered
+            LoadStatus.DELIVERED: [],  # Cannot change from delivered
         }
 
         return new_status in valid_transitions.get(current_status, [])
@@ -171,7 +186,9 @@ class UpdateLoadUseCase:
 
         return load
 
-    async def _validate_updated_load(self, load: Load, request: UpdateLoadRequest) -> None:
+    async def _validate_updated_load(
+        self, load: Load, request: UpdateLoadRequest
+    ) -> None:
         """Validate the updated load entity."""
         # Validate required fields are still present
         if not load.origin or not load.destination:
@@ -193,12 +210,20 @@ class UpdateLoadUseCase:
             raise LoadUpdateException("Commodity type is required")
 
         # Validate date logic
-        pickup_datetime = datetime.combine(load.pickup_date, load.pickup_time_start or time.min)
-        delivery_datetime = datetime.combine(load.delivery_date, load.delivery_time_start or time.min)
+        pickup_datetime = datetime.combine(
+            load.pickup_date, load.pickup_time_start or time.min
+        )
+        delivery_datetime = datetime.combine(
+            load.delivery_date, load.delivery_time_start or time.min
+        )
 
         if pickup_datetime >= delivery_datetime:
-            raise LoadUpdateException("Pickup datetime must be before delivery datetime")
+            raise LoadUpdateException(
+                "Pickup datetime must be before delivery datetime"
+            )
 
         # Validate weight limits
         if load.weight > settings.max_load_weight_lbs:
-            raise LoadUpdateException(f"Weight cannot exceed {settings.max_load_weight_lbs:,} pounds")
+            raise LoadUpdateException(
+                f"Weight cannot exceed {settings.max_load_weight_lbs:,} pounds"
+            )
