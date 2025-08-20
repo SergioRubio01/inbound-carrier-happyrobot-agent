@@ -5,7 +5,7 @@ Author: HappyRobot Team
 Created: 2024-08-14
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -56,7 +56,7 @@ async def get_metrics_summary(
         carrier_repo = PostgresCarrierRepository(session)
 
         # Calculate date range
-        end_date = datetime.utcnow()
+        end_date = datetime.now(timezone.utc)
         start_date = end_date - timedelta(days=days)
 
         # Get metrics from database
@@ -156,7 +156,7 @@ async def get_metrics_summary(
                     "handoff_success_rate", 0.0
                 ),
             },
-            generated_at=datetime.utcnow().isoformat(),
+            generated_at=datetime.now(timezone.utc).isoformat(),
         )
 
     except Exception as e:

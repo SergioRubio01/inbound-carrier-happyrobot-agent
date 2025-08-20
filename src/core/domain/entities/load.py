@@ -6,8 +6,9 @@ Created: 2024-08-14
 """
 
 from dataclasses import dataclass, field
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timezone
 from enum import Enum
+from functools import partial
 from typing import Any, Dict, List, Optional
 from uuid import UUID, uuid4
 
@@ -101,7 +102,9 @@ class Load:
 
     # Status
     status: LoadStatus = LoadStatus.AVAILABLE
-    status_changed_at: datetime = field(default_factory=datetime.utcnow)
+    status_changed_at: datetime = field(
+        default_factory=partial(datetime.now, timezone.utc)
+    )
     booked_by_carrier_id: Optional[UUID] = None
     booked_at: Optional[datetime] = None
 
@@ -120,8 +123,8 @@ class Load:
 
     # Metadata
     source: Optional[str] = None  # DAT, MANUAL, API, etc.
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    updated_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=partial(datetime.now, timezone.utc))
+    updated_at: datetime = field(default_factory=partial(datetime.now, timezone.utc))
     created_by: Optional[str] = None
     deleted_at: Optional[datetime] = None
     version: int = 1
@@ -156,7 +159,9 @@ class Load:
         return (
             self.status == LoadStatus.AVAILABLE
             and self.is_active
-            and (self.expires_at is None or self.expires_at > datetime.utcnow())
+            and (
+                self.expires_at is None or self.expires_at > datetime.now(timezone.utc)
+            )
             and self.deleted_at is None
         )
 
@@ -173,7 +178,7 @@ class Load:
                     f"Load {self.reference_number} is not active"
                 )
 
-            if self.expires_at and self.expires_at <= datetime.utcnow():
+            if self.expires_at and self.expires_at <= datetime.now(timezone.utc):
                 raise LoadNotAvailableException(
                     f"Load {self.reference_number} has expired"
                 )
@@ -190,10 +195,10 @@ class Load:
         self.verify_availability()
 
         self.status = LoadStatus.BOOKED
-        self.status_changed_at = datetime.utcnow()
+        self.status_changed_at = datetime.now(timezone.utc)
         self.booked_by_carrier_id = carrier_id
-        self.booked_at = datetime.utcnow()
-        self.updated_at = datetime.utcnow()
+        self.booked_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(timezone.utc)
 
         # Update the loadboard rate if a different rate was agreed upon
         if agreed_rate and agreed_rate != self.loadboard_rate:
@@ -202,8 +207,8 @@ class Load:
     def cancel_booking(self, reason: Optional[str] = None) -> None:
         """Cancel the load booking."""
         self.status = LoadStatus.CANCELLED
-        self.status_changed_at = datetime.utcnow()
-        self.updated_at = datetime.utcnow()
+        self.status_changed_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(timezone.utc)
 
         if reason and self.internal_notes:
             self.internal_notes += f" | Cancelled: {reason}"
@@ -214,8 +219,8 @@ class Load:
         """Update load status."""
         if self.status != new_status:
             self.status = new_status
-            self.status_changed_at = datetime.utcnow()
-            self.updated_at = datetime.utcnow()
+            self.status_changed_at = datetime.now(timezone.utc)
+            self.updated_at = datetime.now(timezone.utc)
 
     def matches_equipment(self, equipment_type: EquipmentType) -> bool:
         """Check if load matches the given equipment type."""

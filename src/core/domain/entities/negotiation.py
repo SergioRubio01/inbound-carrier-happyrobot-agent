@@ -6,8 +6,9 @@ Created: 2024-08-14
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
+from functools import partial
 from typing import Any, Dict, Optional
 from uuid import UUID, uuid4
 
@@ -59,7 +60,7 @@ class Negotiation:
 
     # Session Management
     session_id: str = ""
-    session_start: datetime = field(default_factory=datetime.utcnow)
+    session_start: datetime = field(default_factory=partial(datetime.now, timezone.utc))
     session_end: Optional[datetime] = None
     is_active: bool = True
 
@@ -93,8 +94,8 @@ class Negotiation:
     total_duration_seconds: Optional[int] = None
 
     # Metadata
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    updated_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=partial(datetime.now, timezone.utc))
+    updated_at: datetime = field(default_factory=partial(datetime.now, timezone.utc))
     created_by: Optional[str] = None
     version: int = 1
 
@@ -200,7 +201,7 @@ class Negotiation:
         }
 
         self.system_response = response
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
 
         return response
 
@@ -211,7 +212,7 @@ class Negotiation:
 
         self.final_status = NegotiationStatus.DEAL_ACCEPTED
         self.agreed_rate = agreed_rate or self.carrier_offer
-        self.session_end = datetime.utcnow()
+        self.session_end = datetime.now(timezone.utc)
         self.is_active = False
 
         # Calculate total duration
@@ -219,7 +220,7 @@ class Negotiation:
             duration = self.session_end - self.session_start
             self.total_duration_seconds = int(duration.total_seconds())
 
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
 
     def reject_deal(self, reason: Optional[str] = None) -> None:
         """Reject the deal and finalize negotiation."""
@@ -227,7 +228,7 @@ class Negotiation:
             raise InvalidNegotiationStateException("Negotiation is already completed")
 
         self.final_status = NegotiationStatus.DEAL_REJECTED
-        self.session_end = datetime.utcnow()
+        self.session_end = datetime.now(timezone.utc)
         self.is_active = False
 
         if reason:
@@ -241,7 +242,7 @@ class Negotiation:
             duration = self.session_end - self.session_start
             self.total_duration_seconds = int(duration.total_seconds())
 
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
 
     def advance_round(self, new_carrier_offer: Rate) -> None:
         """Advance to the next round of negotiation."""
@@ -256,12 +257,12 @@ class Negotiation:
         self.counter_offer = None
         self.message_to_carrier = None
         self.justification = None
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
 
     def abandon_negotiation(self, reason: Optional[str] = None) -> None:
         """Abandon the negotiation (e.g., carrier hung up)."""
         self.final_status = NegotiationStatus.ABANDONED
-        self.session_end = datetime.utcnow()
+        self.session_end = datetime.now(timezone.utc)
         self.is_active = False
 
         if reason:
@@ -272,12 +273,12 @@ class Negotiation:
             duration = self.session_end - self.session_start
             self.total_duration_seconds = int(duration.total_seconds())
 
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
 
     def timeout_negotiation(self) -> None:
         """Mark negotiation as timed out."""
         self.final_status = NegotiationStatus.TIMEOUT
-        self.session_end = datetime.utcnow()
+        self.session_end = datetime.now(timezone.utc)
         self.is_active = False
         self.justification = "Negotiation timed out"
 
@@ -286,7 +287,7 @@ class Negotiation:
             duration = self.session_end - self.session_start
             self.total_duration_seconds = int(duration.total_seconds())
 
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
 
     def __eq__(self, other) -> bool:
         if isinstance(other, Negotiation):

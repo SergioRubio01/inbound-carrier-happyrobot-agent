@@ -5,7 +5,7 @@ Author: HappyRobot Team
 Created: 2024-08-14
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -194,7 +194,7 @@ async def search_loads(
                 if len(load_data) == 0
                 else None
             ),
-            search_timestamp=datetime.utcnow().isoformat(),
+            search_timestamp=datetime.now(timezone.utc).isoformat(),
         )
 
     except Exception as e:

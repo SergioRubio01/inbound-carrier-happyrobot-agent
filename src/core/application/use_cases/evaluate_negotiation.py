@@ -6,7 +6,7 @@ Created: 2024-08-14
 """
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 from uuid import UUID
 
@@ -101,7 +101,7 @@ class EvaluateNegotiationUseCase:
                 load_id=load.load_id,
                 carrier_id=carrier.carrier_id,
                 mc_number=mc_number,
-                session_id=f"{load_id}_{carrier.carrier_id}_{datetime.utcnow().timestamp()}",
+                session_id=f"{load_id}_{carrier.carrier_id}_{datetime.now(timezone.utc).timestamp()}",
                 round_number=request.negotiation_round,
                 carrier_offer=carrier_offer,
                 loadboard_rate=load.loadboard_rate,
@@ -188,7 +188,7 @@ class EvaluateNegotiationUseCase:
                     ),
                 },
             },
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
 
     def _create_counter_offer_response(
@@ -213,7 +213,7 @@ class EvaluateNegotiationUseCase:
             remaining_rounds=negotiation.max_rounds - negotiation.round_number,
             message=negotiation.message_to_carrier or "",
             justification=negotiation.justification,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
 
     def _create_rejected_response(
@@ -231,5 +231,5 @@ class EvaluateNegotiationUseCase:
             ),
             negotiation_round=negotiation.round_number,
             message=negotiation.message_to_carrier or "",
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )

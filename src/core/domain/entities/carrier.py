@@ -6,7 +6,8 @@ Created: 2024-08-14
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
+from functools import partial
 from typing import Any, Dict, Optional
 from uuid import UUID, uuid4
 
@@ -64,8 +65,8 @@ class Carrier:
     verification_source: Optional[str] = None  # FMCSA, MANUAL, THIRD_PARTY
 
     # Metadata
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    updated_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=partial(datetime.now, timezone.utc))
+    updated_at: datetime = field(default_factory=partial(datetime.now, timezone.utc))
     created_by: Optional[str] = None
     version: int = 1
 
@@ -101,8 +102,8 @@ class Carrier:
     ) -> None:
         """Update verification information."""
         self.verification_source = source
-        self.last_verified_at = verified_at or datetime.utcnow()
-        self.updated_at = datetime.utcnow()
+        self.last_verified_at = verified_at or datetime.now(timezone.utc)
+        self.updated_at = datetime.now(timezone.utc)
 
     def update_safety_info(
         self,
@@ -114,7 +115,7 @@ class Carrier:
         self.safety_rating = rating
         self.safety_rating_date = rating_date
         self.safety_scores = scores
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
 
     def add_eligibility_note(self, note: str) -> None:
         """Add or update eligibility notes."""
@@ -122,7 +123,7 @@ class Carrier:
             self.eligibility_notes += f" | {note}"
         else:
             self.eligibility_notes = note
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
 
     def __eq__(self, other) -> bool:
         if isinstance(other, Carrier):

@@ -66,7 +66,7 @@ async def evaluate_negotiation(
     counter-offer, or reject based on business rules and negotiation state.
     """
     try:
-        from datetime import datetime
+        from datetime import datetime, timezone
         from uuid import UUID
 
         # Initialize repositories
@@ -101,7 +101,9 @@ async def evaluate_negotiation(
             raise HTTPException(status_code=400, detail="Carrier is not eligible")
 
         # Create or get existing negotiation session
-        session_id = f"{load_id}_{carrier.carrier_id}_{datetime.utcnow().date()}"
+        session_id = (
+            f"{load_id}_{carrier.carrier_id}_{datetime.now(timezone.utc).date()}"
+        )
         existing_negotiation = await negotiation_repo.get_by_session_id(session_id)
 
         if existing_negotiation and existing_negotiation.round_number >= 3:
@@ -143,7 +145,7 @@ async def evaluate_negotiation(
                     "action": "END_NEGOTIATION",
                     "reason": "Maximum rounds exceeded",
                 },
-                timestamp=datetime.utcnow().isoformat(),
+                timestamp=datetime.now(timezone.utc).isoformat(),
             )
 
         # Create negotiation entity
@@ -220,7 +222,7 @@ async def evaluate_negotiation(
                         "carrier_mc": request.mc_number,
                     },
                 },
-                timestamp=datetime.utcnow().isoformat(),
+                timestamp=datetime.now(timezone.utc).isoformat(),
             )
         elif system_response == SystemResponse.COUNTER_OFFER:
             counter_rate = (
@@ -244,7 +246,7 @@ async def evaluate_negotiation(
                 rate_difference=rate_difference,
                 percentage_over_loadboard=percentage_over_loadboard,
                 next_steps={"action": "CONTINUE_NEGOTIATION", "follow_up_time": 300},
-                timestamp=datetime.utcnow().isoformat(),
+                timestamp=datetime.now(timezone.utc).isoformat(),
             )
         else:  # REJECTED
             negotiation.reject_deal("Offer exceeds maximum acceptable rate")
@@ -264,7 +266,7 @@ async def evaluate_negotiation(
                 rate_difference=rate_difference,
                 percentage_over_loadboard=percentage_over_loadboard,
                 next_steps={"action": "END_NEGOTIATION", "reason": "Offer too high"},
-                timestamp=datetime.utcnow().isoformat(),
+                timestamp=datetime.now(timezone.utc).isoformat(),
             )
 
     except Exception as e:

@@ -6,7 +6,7 @@ Created: 2024-08-14
 """
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 from src.core.domain.entities import Carrier, CarrierNotEligibleException
@@ -60,7 +60,7 @@ class VerifyCarrierUseCase:
             if existing_carrier and existing_carrier.last_verified_at:
                 # Check if verification is recent (within 24 hours)
                 time_since_verification = (
-                    datetime.utcnow() - existing_carrier.last_verified_at
+                    datetime.now(timezone.utc) - existing_carrier.last_verified_at
                 )
                 if time_since_verification.total_seconds() < 86400:  # 24 hours
                     return self._create_response_from_carrier(existing_carrier)
@@ -82,7 +82,7 @@ class VerifyCarrierUseCase:
                         eligible=False,
                         reason="CARRIER_NOT_FOUND",
                         details="Carrier not found in database and external verification unavailable",
-                        verification_timestamp=datetime.utcnow(),
+                        verification_timestamp=datetime.now(timezone.utc),
                     )
 
             # Create or update carrier entity with FMCSA data
@@ -103,7 +103,7 @@ class VerifyCarrierUseCase:
                 eligible=False,
                 reason="CARRIER_NOT_ELIGIBLE",
                 details=str(e),
-                verification_timestamp=datetime.utcnow(),
+                verification_timestamp=datetime.now(timezone.utc),
             )
         except Exception as e:
             raise FMCSAVerificationException(
@@ -145,7 +145,7 @@ class VerifyCarrierUseCase:
             bond_on_file=fmcsa_data.get("bond_on_file"),
             safety_rating=fmcsa_data.get("safety_rating"),
             safety_scores=fmcsa_data.get("safety_scores"),
-            last_verified_at=datetime.utcnow(),
+            last_verified_at=datetime.now(timezone.utc),
             verification_source="FMCSA",
         )
 
@@ -235,5 +235,5 @@ class VerifyCarrierUseCase:
             safety_score=response_safety_score,
             reason=reason,
             details=details,
-            verification_timestamp=datetime.utcnow(),
+            verification_timestamp=datetime.now(timezone.utc),
         )

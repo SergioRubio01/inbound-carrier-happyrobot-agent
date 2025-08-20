@@ -5,7 +5,7 @@ Author: HappyRobot Team
 Created: 2024-08-14
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -66,7 +66,7 @@ async def verify_carrier(
                 safety_score=None,
                 reason="Invalid MC number format",
                 details="The provided MC number contains no digits",
-                verification_timestamp=datetime.utcnow().isoformat(),
+                verification_timestamp=datetime.now(timezone.utc).isoformat(),
             )
 
         # Try to find carrier in database
@@ -157,7 +157,7 @@ async def verify_carrier(
                     else "Carrier eligibility check failed"
                 ),
                 details="Verification completed successfully",
-                verification_timestamp=datetime.utcnow().isoformat(),
+                verification_timestamp=datetime.now(timezone.utc).isoformat(),
             )
         else:
             # Carrier not found in database - return not found response
@@ -168,7 +168,7 @@ async def verify_carrier(
                 safety_score=None,
                 reason="MC number not found in database",
                 details="The provided MC number was not found in our carrier records. Please ensure carrier is registered and active.",
-                verification_timestamp=datetime.utcnow().isoformat(),
+                verification_timestamp=datetime.now(timezone.utc).isoformat(),
             )
 
     except Exception as e:

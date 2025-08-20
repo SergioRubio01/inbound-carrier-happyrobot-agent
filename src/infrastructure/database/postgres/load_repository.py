@@ -5,7 +5,7 @@ Author: HappyRobot Team
 Created: 2024-08-14
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
@@ -219,7 +219,7 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
     async def update(self, load: Load) -> Load:  # type: ignore[override]
         """Update existing load."""
         model = self._entity_to_model(load)
-        model.updated_at = datetime.utcnow()
+        model.updated_at = datetime.now(timezone.utc)
         model.version += 1
         updated_model = await super().update(model)
         result = self._model_to_entity(updated_model)
@@ -234,9 +234,9 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
         model = result.scalar_one_or_none()
 
         if model:
-            model.deleted_at = datetime.utcnow()
+            model.deleted_at = datetime.now(timezone.utc)
             model.is_active = False
-            model.updated_at = datetime.utcnow()
+            model.updated_at = datetime.now(timezone.utc)
             await self.session.flush()
             return True
         return False

@@ -5,7 +5,7 @@ Author: HappyRobot Team
 Created: 2024-08-14
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
@@ -174,7 +174,7 @@ class PostgresNegotiationRepository(
     async def update(self, negotiation: Negotiation) -> Negotiation:  # type: ignore[override]
         """Update existing negotiation."""
         model = self._entity_to_model(negotiation)
-        model.updated_at = datetime.utcnow()
+        model.updated_at = datetime.now(timezone.utc)
         model.version += 1
         updated_model = await super().update(model)
         result = self._model_to_entity(updated_model)

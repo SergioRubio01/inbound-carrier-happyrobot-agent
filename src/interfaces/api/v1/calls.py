@@ -5,7 +5,7 @@ Author: HappyRobot Team
 Created: 2024-08-14
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 from uuid import UUID
 
@@ -113,14 +113,14 @@ async def handoff_call(
             raise HTTPException(status_code=404, detail="Carrier not found")
 
         # Generate handoff ID
-        handoff_id = f"handoff_{datetime.utcnow().timestamp()}"
+        handoff_id = f"handoff_{datetime.now(timezone.utc).timestamp()}"
 
         # Create call record for handoff
         call = Call(
             mc_number=mc_number,
             carrier_id=carrier.carrier_id,
             load_id=load.load_id,
-            start_time=datetime.utcnow(),
+            start_time=datetime.now(timezone.utc),
             call_type=CallType.INBOUND,
             outcome=CallOutcome.ACCEPTED,
             final_rate=Rate.from_float(request.agreed_rate),
@@ -162,7 +162,7 @@ async def handoff_call(
             },
             context_token=str(saved_call.call_id),
             message=f"Call queued for handoff. Priority: {request.priority}. Load: {request.load_id}",
-            timestamp=datetime.utcnow().isoformat(),
+            timestamp=datetime.now(timezone.utc).isoformat(),
         )
 
     except Exception as e:
@@ -203,7 +203,7 @@ async def finalize_call(
                 mc_number=mc_number,
                 carrier_id=carrier.carrier_id if carrier else None,
                 load_id=UUID(request.load_id) if request.load_id else None,
-                start_time=datetime.utcnow(),
+                start_time=datetime.now(timezone.utc),
                 call_type=CallType.INBOUND,
                 outcome=CallOutcome(request.outcome),
                 sentiment=Sentiment(request.sentiment),
@@ -221,7 +221,7 @@ async def finalize_call(
             call = await call_repo.create(call)
 
         # Update call with finalization data
-        call.end_time = datetime.utcnow()
+        call.end_time = datetime.now(timezone.utc)
         call.outcome = CallOutcome(request.outcome)
         call.sentiment = Sentiment(request.sentiment)
         call.extracted_data = request.extracted_data
@@ -268,7 +268,8 @@ async def finalize_call(
                 {
                     "action": "SEND_RATE_CONFIRMATION",
                     "deadline": (
-                        datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+                        datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+                        + "Z"
                     ),
                 },
                 {"action": "UPDATE_LOAD_STATUS", "status": "BOOKED"},
@@ -278,7 +279,8 @@ async def finalize_call(
                 {
                     "action": "SCHEDULE_CALLBACK",
                     "deadline": (
-                        datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+                        datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+                        + "Z"
                     ),
                 }
             ]
@@ -314,7 +316,7 @@ async def finalize_call(
             },
             next_actions=next_actions,
             message="Call data successfully logged and processed",
-            timestamp=datetime.utcnow().isoformat(),
+            timestamp=datetime.now(timezone.utc).isoformat(),
         )
 
     except Exception as e:

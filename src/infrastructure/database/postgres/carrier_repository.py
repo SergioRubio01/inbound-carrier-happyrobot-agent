@@ -5,7 +5,7 @@ Author: HappyRobot Team
 Created: 2024-08-14
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
@@ -149,7 +149,7 @@ class PostgresCarrierRepository(
     async def update(self, carrier: Carrier) -> Carrier:  # type: ignore[override]
         """Update existing carrier."""
         model = self._entity_to_model(carrier)
-        model.updated_at = datetime.utcnow()
+        model.updated_at = datetime.now(timezone.utc)
         model.version += 1
 
         updated_model = await super().update(model)
@@ -167,7 +167,7 @@ class PostgresCarrierRepository(
 
         if model:
             model.status = "INACTIVE"
-            model.updated_at = datetime.utcnow()
+            model.updated_at = datetime.now(timezone.utc)
             await self.session.flush()
             return True
 

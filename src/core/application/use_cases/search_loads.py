@@ -6,7 +6,7 @@ Created: 2024-08-14
 """
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from src.core.domain.entities import Load
@@ -82,7 +82,7 @@ class SearchLoadsUseCase:
                 returned_count=len(loads),
                 loads=load_dicts,
                 suggestions=suggestions,
-                search_timestamp=datetime.utcnow(),
+                search_timestamp=datetime.now(timezone.utc),
             )
 
         except Exception as e:

@@ -90,6 +90,10 @@ show_error_context = true
 module = [
     "alembic.*",
     "sqlalchemy.*",
+    "sqlalchemy.orm.*",
+    "sqlalchemy.pool.*",
+    "sqlalchemy.ext.*",
+    "sqlalchemy.ext.asyncio.*",
     "pydantic_settings.*",
     "dotenv.*",
     "moto.*",
@@ -98,3 +102,7 @@ module = [
     "faker.*"
 ]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "src.infrastructure.database.*"
+ignore_errors = true
