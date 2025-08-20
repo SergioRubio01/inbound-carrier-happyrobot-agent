@@ -185,6 +185,12 @@ export class ContainersComponent extends pulumi.ComponentResource {
         }, { parent: this });
 
 
+        // Get business logic configuration
+        const config = new pulumi.Config("happyrobot-fde");
+        const maxLoadWeightLbs = config.get("maxLoadWeightLbs") || "80000";
+        const maxReferenceNumberCounter = config.get("maxReferenceNumberCounter") || "99999";
+        const maxRateAmount = config.get("maxRateAmount") || "999999.99";
+
         // API Task Definition
         this.apiTaskDefinition = new aws.ecs.TaskDefinition(`${name}-api-task`, {
             family: `${name}-api`,
@@ -225,6 +231,18 @@ export class ContainersComponent extends pulumi.ComponentResource {
                         {
                             name: "POSTGRES_DB",
                             value: "happyrobot",
+                        },
+                        {
+                            name: "MAX_LOAD_WEIGHT_LBS",
+                            value: maxLoadWeightLbs,
+                        },
+                        {
+                            name: "MAX_REFERENCE_NUMBER_COUNTER",
+                            value: maxReferenceNumberCounter,
+                        },
+                        {
+                            name: "MAX_RATE_AMOUNT",
+                            value: maxRateAmount,
                         },
                     ],
                     secrets: [
@@ -280,7 +298,6 @@ export class ContainersComponent extends pulumi.ComponentResource {
                 },
             ],
 
-            dependsOn: [this.apiTargetGroup],
 
             tags: {
                 ...args.tags,
@@ -306,7 +323,7 @@ export class ContainersComponent extends pulumi.ComponentResource {
 
     private createAutoScaling(args: ContainersArgs) {
         // API Auto Scaling
-        const apiAutoScalingTarget = new aws.appautoscaling.Target(`${this.getResource().urn.name}-api-autoscaling-target`, {
+        const apiAutoScalingTarget = new aws.appautoscaling.Target(`api-autoscaling-target`, {
             maxCapacity: 3,
             minCapacity: 1,
             resourceId: pulumi.interpolate`service/${this.cluster.name}/${this.apiService.name}`,
@@ -314,8 +331,8 @@ export class ContainersComponent extends pulumi.ComponentResource {
             serviceNamespace: "ecs",
         }, { parent: this });
 
-        new aws.appautoscaling.Policy(`${this.getResource().urn.name}-api-autoscaling-policy`, {
-            name: `${this.getResource().urn.name}-api-cpu-autoscaling`,
+        new aws.appautoscaling.Policy(`api-autoscaling-policy`, {
+            name: `api-cpu-autoscaling`,
             policyType: "TargetTrackingScaling",
             resourceId: apiAutoScalingTarget.resourceId,
             scalableDimension: apiAutoScalingTarget.scalableDimension,
