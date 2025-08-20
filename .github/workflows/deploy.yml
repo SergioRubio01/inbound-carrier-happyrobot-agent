@@ -8,9 +8,7 @@ on:
     paths:
       - 'infrastructure/pulumi/**'
       - 'src/**'
-      - 'web_client/**'
       - 'Dockerfile.api'
-      - 'web_client/Dockerfile.prod'
       - '.github/workflows/deploy.yml'
 
   pull_request:
@@ -20,9 +18,7 @@ on:
     paths:
       - 'infrastructure/pulumi/**'
       - 'src/**'
-      - 'web_client/**'
       - 'Dockerfile.api'
-      - 'web_client/Dockerfile.prod'
 
   workflow_dispatch:
     inputs:
@@ -39,7 +35,6 @@ on:
 env:
   AWS_REGION: eu-south-2  # Spain region for compliance
   ECR_API_REPOSITORY: happyrobot-dev-containers-api
-  ECR_WEB_REPOSITORY: happyrobot-frontend
   PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
 
 jobs:
@@ -87,33 +82,6 @@ jobs:
         run: |
           poetry run pytest
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: web_client/package-lock.json
-
-      - name: Install Node.js dependencies
-        run: |
-          cd web_client
-          npm ci
-
-      - name: Run frontend linting
-        run: |
-          cd web_client
-          npm run lint
-
-      - name: Run frontend type checking
-        run: |
-          cd web_client
-          npm run type-check
-
-      - name: Run frontend tests
-        run: |
-          cd web_client
-          npm run test
-
   # Build and push Docker images
   build:
     name: Build and Push Docker Images
@@ -123,7 +91,6 @@ jobs:
 
     outputs:
       api-image-tag: ${{ steps.meta.outputs.api-tag }}
-      web-image-tag: ${{ steps.meta.outputs.web-tag }}
 
     steps:
       - name: Checkout code
@@ -150,14 +117,11 @@ jobs:
           SHORT_SHA=${GITHUB_SHA::8}
 
           API_TAG="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_API_REPOSITORY }}:${TIMESTAMP}-${SHORT_SHA}"
-          WEB_TAG="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_WEB_REPOSITORY }}:${TIMESTAMP}-${SHORT_SHA}"
 
           echo "api-tag=${API_TAG}" >> $GITHUB_OUTPUT
-          echo "web-tag=${WEB_TAG}" >> $GITHUB_OUTPUT
 
           # Also tag as latest for convenience
           echo "api-latest=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_API_REPOSITORY }}:latest" >> $GITHUB_OUTPUT
-          echo "web-latest=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_WEB_REPOSITORY }}:latest" >> $GITHUB_OUTPUT
 
       - name: Build and push API image
         uses: docker/build-push-action@v5
@@ -168,19 +132,6 @@ jobs:
           tags: |
             ${{ steps.meta.outputs.api-tag }}
             ${{ steps.meta.outputs.api-latest }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          platforms: linux/amd64
-
-      - name: Build and push Web image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./web_client
-          file: ./web_client/Dockerfile.prod
-          push: true
-          tags: |
-            ${{ steps.meta.outputs.web-tag }}
-            ${{ steps.meta.outputs.web-latest }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64
