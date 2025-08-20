@@ -150,3 +150,5 @@ Each step uses HTTP POST to the API endpoints with appropriate JSON payloads.
 - PostgreSQL optimized with connection pooling (max 200 connections)
 - API uses async/await for I/O operations
 - Database indexes on frequently queried fields (MC number, load status)
+
+- use .is() method in sqlalchemy for boolean comparisons in queries

@@ -1,0 +1,176 @@
+"""Unit tests for domain entities."""
+
+import uuid
+from datetime import datetime
+
+import pytest
+
+from src.core.domain.entities import (
+    Carrier,
+    Load,
+    LoadStatus,
+    Negotiation,
+    NegotiationStatus,
+    SystemResponse,
+    UrgencyLevel,
+)
+from src.core.domain.value_objects import EquipmentType, Location, MCNumber, Rate
+
+
+class TestCarrier:
+    """Test Carrier entity."""
+
+    def test_carrier_creation(self):
+        """Test creating a carrier entity."""
+        carrier = Carrier(
+            carrier_id=uuid.uuid4(),
+            mc_number=MCNumber.from_string("MC123456"),
+            dot_number="DOT789012",
+            legal_name="Test Carrier LLC",
+            dba_name="Test Carrier",
+            entity_type="CARRIER",
+            operating_status="AUTHORIZED_FOR_HIRE",
+            status="ACTIVE",
+            insurance_on_file=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+
+        assert carrier.mc_number == MCNumber.from_string("MC123456")
+        assert carrier.legal_name == "Test Carrier LLC"
+        assert carrier.is_eligible
+
+    def test_carrier_eligibility(self):
+        """Test carrier eligibility logic."""
+        # Eligible carrier
+        eligible_carrier = Carrier(
+            carrier_id=uuid.uuid4(),
+            mc_number=MCNumber.from_string("MC123456"),
+            legal_name="Test Carrier",
+            entity_type="CARRIER",
+            operating_status="AUTHORIZED_FOR_HIRE",
+            status="ACTIVE",
+            insurance_on_file=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+        assert eligible_carrier.is_eligible
+
+        # Ineligible carrier (no insurance)
+        ineligible_carrier = Carrier(
+            carrier_id=uuid.uuid4(),
+            mc_number=MCNumber.from_string("MC123456"),
+            legal_name="Test Carrier",
+            entity_type="CARRIER",
+            operating_status="AUTHORIZED_FOR_HIRE",
+            status="ACTIVE",
+            insurance_on_file=False,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+        assert not ineligible_carrier.is_eligible
+
+
+class TestLoad:
+    """Test Load entity."""
+
+    def test_load_creation(self):
+        """Test creating a load entity."""
+        load = Load(
+            load_id=uuid.uuid4(),
+            reference_number="LOAD001",
+            origin=Location("Chicago", "IL", "60601"),
+            destination=Location("Atlanta", "GA", "30301"),
+            pickup_date=datetime.utcnow().date(),
+            delivery_date=datetime.utcnow().date(),
+            equipment_type=EquipmentType.from_name("DRY_VAN"),
+            weight=35000,
+            miles=716,
+            loadboard_rate=Rate.from_float(2500),
+            status=LoadStatus.AVAILABLE,
+            urgency=UrgencyLevel.NORMAL,
+            is_active=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+
+        assert load.reference_number == "LOAD001"
+        assert load.origin.city == "Chicago"
+        assert load.destination.city == "Atlanta"
+        assert load.miles == 716
+        assert load.loadboard_rate.to_float() == 2500
+
+    def test_load_rate_per_mile(self):
+        """Test load rate per mile calculation."""
+        load = Load(
+            load_id=uuid.uuid4(),
+            origin=Location("Chicago", "IL", "60601"),
+            destination=Location("Atlanta", "GA", "30301"),
+            pickup_date=datetime.utcnow().date(),
+            delivery_date=datetime.utcnow().date(),
+            equipment_type=EquipmentType.from_name("DRY_VAN"),
+            weight=35000,
+            miles=500,
+            loadboard_rate=Rate.from_float(2000),
+            status=LoadStatus.AVAILABLE,
+            urgency=UrgencyLevel.NORMAL,
+            is_active=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+
+        assert load.rate_per_mile == 4.0  # $2000 / 500 miles
+
+
+class TestNegotiation:
+    """Test Negotiation entity."""
+
+    @pytest.mark.unit
+    def test_negotiation_creation(self):
+        """Test creating a negotiation entity."""
+        negotiation = Negotiation(
+            negotiation_id=uuid.uuid4(),
+            call_id=uuid.uuid4(),
+            load_id=uuid.uuid4(),
+            carrier_id=uuid.uuid4(),
+            mc_number=MCNumber.from_string("MC123456"),
+            session_id="session123",
+            session_start=datetime.utcnow(),
+            is_active=True,
+            round_number=1,
+            max_rounds=3,
+            carrier_offer=Rate.from_float(2800),
+            system_response=SystemResponse.COUNTER_OFFER,
+            counter_offer=Rate.from_float(2600),
+            loadboard_rate=Rate.from_float(2500),
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+
+        assert negotiation.round_number == 1
+        assert negotiation.carrier_offer.to_float() == 2800
+        assert negotiation.system_response == SystemResponse.COUNTER_OFFER
+        assert negotiation.counter_offer.to_float() == 2600
+
+    def test_negotiation_completion(self):
+        """Test negotiation completion logic."""
+        negotiation = Negotiation(
+            negotiation_id=uuid.uuid4(),
+            load_id=uuid.uuid4(),
+            session_id="session123",
+            session_start=datetime.utcnow(),
+            is_active=False,
+            round_number=2,
+            max_rounds=3,
+            carrier_offer=Rate.from_float(2600),
+            system_response=SystemResponse.ACCEPTED,
+            loadboard_rate=Rate.from_float(2500),
+            final_status=NegotiationStatus.DEAL_ACCEPTED,
+            agreed_rate=Rate.from_float(2600),
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+
+        assert not negotiation.is_active
+        assert negotiation.final_status == NegotiationStatus.DEAL_ACCEPTED
+        assert negotiation.agreed_rate.to_float() == 2600
