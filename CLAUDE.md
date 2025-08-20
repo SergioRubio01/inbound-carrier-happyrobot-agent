@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-HappyRobot FDE - Inbound Carrier Sales automation platform using voice AI agents for logistics operations. The system authenticates carriers, matches loads, negotiates rates, and hands off to sales reps.
+HappyRobot FDE - Inbound Carrier Sales automation platform using voice AI agents for logistics operations. The system matches loads, negotiates rates, and hands off to sales reps. Carrier authentication and verification is handled by the HappyRobot workflow platform.
 
 ## Architecture
 
@@ -83,7 +83,6 @@ Exempt endpoints: `/health`, `/api/v1/health`, `/api/v1/docs`, `/api/v1/openapi.
 
 ## Key API Endpoints
 
-- `POST /api/v1/fmcsa/verify` - Verify carrier MC number eligibility
 - `POST /api/v1/loads/search` - Search available loads
 - `POST /api/v1/negotiations/evaluate` - Handle price negotiation
 - `POST /api/v1/calls/handoff` - Transfer to sales rep
@@ -122,7 +121,7 @@ Local development:
 ## HappyRobot Platform Integration
 
 The system integrates with HappyRobot voice agents via REST webhooks:
-1. Agent authenticates carrier via MC number
+1. Agent authenticates and verifies carriers (handled by HappyRobot workflow platform)
 2. Searches and presents matching loads
 3. Handles up to 3 rounds of price negotiation
 4. Transfers accepted deals to sales reps
@@ -134,7 +133,7 @@ Each step uses HTTP POST to the API endpoints with appropriate JSON payloads.
 
 - Backend: Tests in `src/tests/` following pytest conventions
 - Use markers: `@pytest.mark.unit`, `@pytest.mark.integration`, `@pytest.mark.aws`
-- Mock external services (AWS, FMCSA) in tests
+- Mock external services (AWS) in tests
 
 ## Development Workflow
 

@@ -60,7 +60,7 @@ class Carrier:
 
     # Verification
     last_verified_at: Optional[datetime] = None
-    verification_source: Optional[str] = None  # FMCSA, MANUAL, THIRD_PARTY
+    verification_source: Optional[str] = None  # EXTERNAL_API, MANUAL, THIRD_PARTY
 
     # Metadata
     created_at: datetime = field(default_factory=datetime.utcnow)

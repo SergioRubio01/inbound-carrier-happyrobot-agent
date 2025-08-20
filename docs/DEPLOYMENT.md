@@ -66,10 +66,10 @@ curl http://localhost:8000/health
 # Open http://localhost:8000/api/v1/docs
 
 # Test an endpoint (with API key)
-curl -X POST http://localhost:8000/api/v1/fmcsa/verify \
+curl -X POST http://localhost:8000/api/v1/loads/search \
   -H "X-API-Key: dev-local-api-key" \
   -H "Content-Type: application/json" \
-  -d '{"mc_number": "123456"}'
+  -d '{"equipment_type": "VAN", "origin_state": "TX", "destination_state": "CA"}'
 
 ```
 
@@ -227,7 +227,6 @@ curl https://<alb-url>/health
 1. Login to HappyRobot platform
 2. Create new agent "Inbound Carrier Sales"
 3. Configure webhooks:
-   - FMCSA Verify: `https://<alb-url>/api/v1/fmcsa/verify`
    - Load Search: `https://<alb-url>/api/v1/loads/search`
    - Negotiation: `https://<alb-url>/api/v1/negotiations/evaluate`
    - Call Finalize: `https://<alb-url>/api/v1/calls/finalize`

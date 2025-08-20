@@ -1,3 +1,0 @@
-"""
-FMCSA API integration package.
-"""

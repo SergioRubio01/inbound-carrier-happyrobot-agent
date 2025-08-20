@@ -25,7 +25,6 @@ The API serves as the backend for HappyRobot platform integration. For this POC 
 
 ## Architecture summary
 - A single FastAPI service exposes REST endpoints for:
-  - MC verification (proxy to FMCSA)
   - Load search and selection
   - Negotiation handling (state limited to 3 back-and-forths)
   - Call extraction, outcome classification, and sentiment tagging
@@ -94,13 +93,7 @@ The solution uses the web call trigger and REST callbacks (no purchased phone nu
 - Greeting prompt (example):
   "Thank you for calling Acme Logistics. I can help match your truck to available loads. May I have your MC number to get started?"
 
-2) MC verification step
-- Action: HTTP POST to `POST /api/v1/fmcsa/verify`
-- Payload:
-  `{ "mc_number": "{{call.caller_provided_mc}}" }`
-- Success condition: `eligible == true` → continue; else reply with eligibility failure and end.
-
-3) Load matching step
+2) Load matching step
 - Action: HTTP POST to `POST /api/v1/loads/search`
 - Payload includes carrier lane, equipment, dates gathered during the call
 - Response returns a set of viable loads with details to pitch

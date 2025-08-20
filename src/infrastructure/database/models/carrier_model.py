@@ -56,7 +56,7 @@ class CarrierModel(Base, TimestampMixin):
 
     # Verification
     last_verified_at = Column(TIMESTAMP(timezone=True))
-    verification_source = Column(String(50))  # FMCSA, MANUAL, THIRD_PARTY
+    verification_source = Column(String(50))  # EXTERNAL_API, MANUAL, THIRD_PARTY
 
     # Metadata
     created_by = Column(String(100))

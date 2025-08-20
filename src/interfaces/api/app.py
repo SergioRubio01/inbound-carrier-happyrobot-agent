@@ -49,10 +49,6 @@ def create_app() -> FastAPI:
                 "description": "Operations for negotiations",
             },
             {
-                "name": "FMCSA",
-                "description": "Operations for FMCSA",
-            },
-            {
                 "name": "Loads",
                 "description": "Operations for loads",
             }
@@ -114,9 +110,7 @@ def create_app() -> FastAPI:
         return JSONResponse(status_code=422, content={"detail": exc.details})
 
     # Include API routers
-    from src.interfaces.api.v1 import fmcsa, loads, negotiations, calls, metrics
-
-    app.include_router(fmcsa.router, prefix="/api/v1")
+    from src.interfaces.api.v1 import loads, negotiations, calls, metrics
     app.include_router(loads.router, prefix="/api/v1")
     app.include_router(negotiations.router, prefix="/api/v1")
     app.include_router(calls.router, prefix="/api/v1")
