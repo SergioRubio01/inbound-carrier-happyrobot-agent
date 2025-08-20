@@ -16,6 +16,7 @@ from ..exceptions.base import DomainException
 
 class CarrierNotEligibleException(DomainException):
     """Exception raised when carrier is not eligible for business."""
+
     pass
 
 
@@ -72,9 +73,9 @@ class Carrier:
     def is_eligible(self) -> bool:
         """Check if carrier is eligible for business."""
         return (
-            self.operating_status == 'AUTHORIZED_FOR_HIRE' and
-            self.status == 'ACTIVE' and
-            self.insurance_on_file is True
+            self.operating_status == "AUTHORIZED_FOR_HIRE"
+            and self.status == "ACTIVE"
+            and self.insurance_on_file is True
         )
 
     def verify_eligibility(self) -> None:
@@ -82,10 +83,10 @@ class Carrier:
         if not self.is_eligible:
             reasons = []
 
-            if self.operating_status != 'AUTHORIZED_FOR_HIRE':
+            if self.operating_status != "AUTHORIZED_FOR_HIRE":
                 reasons.append(f"Operating status: {self.operating_status}")
 
-            if self.status != 'ACTIVE':
+            if self.status != "ACTIVE":
                 reasons.append(f"Status: {self.status}")
 
             if not self.insurance_on_file:
@@ -95,13 +96,20 @@ class Carrier:
                 f"Carrier {self.mc_number} is not eligible: {', '.join(reasons)}"
             )
 
-    def update_verification(self, source: str, verified_at: Optional[datetime] = None) -> None:
+    def update_verification(
+        self, source: str, verified_at: Optional[datetime] = None
+    ) -> None:
         """Update verification information."""
         self.verification_source = source
         self.last_verified_at = verified_at or datetime.utcnow()
         self.updated_at = datetime.utcnow()
 
-    def update_safety_info(self, rating: str, rating_date: datetime, scores: Optional[Dict[str, Any]] = None) -> None:
+    def update_safety_info(
+        self,
+        rating: str,
+        rating_date: datetime,
+        scores: Optional[Dict[str, Any]] = None,
+    ) -> None:
         """Update safety information."""
         self.safety_rating = rating
         self.safety_rating_date = rating_date

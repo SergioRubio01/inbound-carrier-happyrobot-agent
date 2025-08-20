@@ -13,6 +13,7 @@ from ..exceptions.base import DomainException
 
 class InvalidLocationException(DomainException):
     """Exception raised when location is invalid."""
+
     pass
 
 
@@ -35,7 +36,7 @@ class Location:
             raise InvalidLocationException("State must be a 2-letter code")
 
         # Normalize state to uppercase
-        object.__setattr__(self, 'state', self.state.upper())
+        object.__setattr__(self, "state", self.state.upper())
 
         # Validate coordinates if provided
         if self.latitude is not None:
@@ -58,10 +59,14 @@ class Location:
         """Get state lane key for rate history."""
         return self.state
 
-    def distance_to(self, other: 'Location') -> Optional[float]:
+    def distance_to(self, other: "Location") -> Optional[float]:
         """Calculate distance to another location (requires coordinates)."""
-        if (self.latitude is None or self.longitude is None or
-            other.latitude is None or other.longitude is None):
+        if (
+            self.latitude is None
+            or self.longitude is None
+            or other.latitude is None
+            or other.longitude is None
+        ):
             return None
 
         # Haversine formula
@@ -73,8 +78,10 @@ class Location:
         dlat = lat2 - lat1
         dlon = lon2 - lon1
 
-        a = (math.sin(dlat/2)**2 +
-             math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2)
+        a = (
+            math.sin(dlat / 2) ** 2
+            + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+        )
         c = 2 * math.asin(math.sqrt(a))
 
         # Radius of earth in miles

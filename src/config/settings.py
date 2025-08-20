@@ -14,7 +14,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     # Application settings
     app_name: str = "HappyRobot FDE"
-    app_description: str = "AI-powered workflow automation platform for audit and compliance"
+    app_description: str = (
+        "AI-powered workflow automation platform for audit and compliance"
+    )
     app_version: str = "1.0.0"
 
     # Environment settings

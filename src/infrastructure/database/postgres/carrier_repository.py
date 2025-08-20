@@ -18,7 +18,9 @@ from src.infrastructure.database.models import CarrierModel
 from .base_repository import BaseRepository
 
 
-class PostgresCarrierRepository(BaseRepository[CarrierModel, Carrier], ICarrierRepository):
+class PostgresCarrierRepository(
+    BaseRepository[CarrierModel, Carrier], ICarrierRepository
+):
     """PostgreSQL implementation of carrier repository."""
 
     def __init__(self, session: AsyncSession):
@@ -33,11 +35,11 @@ class PostgresCarrierRepository(BaseRepository[CarrierModel, Carrier], ICarrierR
         address = None
         if model.address:
             address = Location(
-                city=model.address.get('city', ''),
-                state=model.address.get('state', ''),
-                zip_code=model.address.get('zip'),
-                latitude=model.address.get('lat'),
-                longitude=model.address.get('lng')
+                city=model.address.get("city", ""),
+                state=model.address.get("state", ""),
+                zip_code=model.address.get("zip"),
+                latitude=model.address.get("lat"),
+                longitude=model.address.get("lng"),
             )
 
         return Carrier(
@@ -67,7 +69,7 @@ class PostgresCarrierRepository(BaseRepository[CarrierModel, Carrier], ICarrierR
             created_at=model.created_at,
             updated_at=model.updated_at,
             created_by=model.created_by,
-            version=model.version
+            version=model.version,
         )
 
     def _entity_to_model(self, entity: Carrier) -> CarrierModel:
@@ -76,11 +78,11 @@ class PostgresCarrierRepository(BaseRepository[CarrierModel, Carrier], ICarrierR
         address_dict = None
         if entity.address:
             address_dict = {
-                'city': entity.address.city,
-                'state': entity.address.state,
-                'zip': entity.address.zip_code,
-                'lat': entity.address.latitude,
-                'lng': entity.address.longitude
+                "city": entity.address.city,
+                "state": entity.address.state,
+                "zip": entity.address.zip_code,
+                "lat": entity.address.latitude,
+                "lng": entity.address.longitude,
             }
 
         model = CarrierModel(
@@ -110,7 +112,7 @@ class PostgresCarrierRepository(BaseRepository[CarrierModel, Carrier], ICarrierR
             created_at=entity.created_at,
             updated_at=entity.updated_at,
             created_by=entity.created_by,
-            version=entity.version
+            version=entity.version,
         )
 
         return model
@@ -152,22 +154,24 @@ class PostgresCarrierRepository(BaseRepository[CarrierModel, Carrier], ICarrierR
         model = result.scalar_one_or_none()
 
         if model:
-            model.status = 'INACTIVE'
+            model.status = "INACTIVE"
             model.updated_at = datetime.utcnow()
             await self.session.flush()
             return True
 
         return False
 
-    async def get_eligible_carriers(self, limit: int = 100, offset: int = 0) -> List[Carrier]:
+    async def get_eligible_carriers(
+        self, limit: int = 100, offset: int = 0
+    ) -> List[Carrier]:
         """Get list of eligible carriers."""
         stmt = (
             select(CarrierModel)
             .where(
                 and_(
-                    CarrierModel.operating_status == 'AUTHORIZED_FOR_HIRE',
-                    CarrierModel.status == 'ACTIVE',
-                    CarrierModel.insurance_on_file is True
+                    CarrierModel.operating_status == "AUTHORIZED_FOR_HIRE",
+                    CarrierModel.status == "ACTIVE",
+                    CarrierModel.insurance_on_file is True,
                 )
             )
             .limit(limit)
@@ -178,11 +182,13 @@ class PostgresCarrierRepository(BaseRepository[CarrierModel, Carrier], ICarrierR
         models = result.scalars().all()
         return [self._model_to_entity(model) for model in models]
 
-    async def search_carriers(self,
-                            legal_name: Optional[str] = None,
-                            operating_status: Optional[str] = None,
-                            limit: int = 100,
-                            offset: int = 0) -> List[Carrier]:
+    async def search_carriers(
+        self,
+        legal_name: Optional[str] = None,
+        operating_status: Optional[str] = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> List[Carrier]:
         """Search carriers by criteria."""
         stmt = select(CarrierModel)
 
@@ -207,7 +213,9 @@ class PostgresCarrierRepository(BaseRepository[CarrierModel, Carrier], ICarrierR
         result = await self.session.execute(stmt)
         return result.scalar() > 0
 
-    async def get_carrier_metrics(self, start_date: datetime, end_date: datetime) -> Dict[str, Any]:
+    async def get_carrier_metrics(
+        self, start_date: datetime, end_date: datetime
+    ) -> Dict[str, Any]:
         """Get aggregated carrier metrics for date range."""
         # Count of carriers that called multiple times (repeat callers)
         # This would need to join with calls table to get accurate data
@@ -217,7 +225,7 @@ class PostgresCarrierRepository(BaseRepository[CarrierModel, Carrier], ICarrierR
         new_carriers_stmt = select(func.count()).where(
             and_(
                 CarrierModel.created_at >= start_date,
-                CarrierModel.created_at <= end_date
+                CarrierModel.created_at <= end_date,
             )
         )
         new_carriers_result = await self.session.execute(new_carriers_stmt)
@@ -230,15 +238,15 @@ class PostgresCarrierRepository(BaseRepository[CarrierModel, Carrier], ICarrierR
         top_equipment_types = [
             {"type": "53-foot van", "count": 0},
             {"type": "Reefer", "count": 0},
-            {"type": "Flatbed", "count": 0}
+            {"type": "Flatbed", "count": 0},
         ]
 
         # Average verification time - placeholder
         avg_verification_time_ms = 450
 
         return {
-            'repeat_callers': repeat_callers,
-            'new_carriers': new_carriers,
-            'top_equipment_types': top_equipment_types,
-            'avg_verification_time_ms': avg_verification_time_ms
+            "repeat_callers": repeat_callers,
+            "new_carriers": new_carriers,
+            "top_equipment_types": top_equipment_types,
+            "avg_verification_time_ms": avg_verification_time_ms,
         }

@@ -30,7 +30,9 @@ class CarrierModel(Base, TimestampMixin):
 
     # Status Information
     entity_type = Column(String(50), nullable=False)  # CARRIER, BROKER, BOTH
-    operating_status = Column(String(50), nullable=False)  # AUTHORIZED_FOR_HIRE, NOT_AUTHORIZED, OUT_OF_SERVICE
+    operating_status = Column(
+        String(50), nullable=False
+    )  # AUTHORIZED_FOR_HIRE, NOT_AUTHORIZED, OUT_OF_SERVICE
     status = Column(String(20), nullable=False)  # ACTIVE, INACTIVE
 
     # Insurance Information
@@ -66,9 +68,9 @@ class CarrierModel(Base, TimestampMixin):
     def is_eligible(self) -> bool:
         """Check if carrier is eligible for business."""
         return (
-            self.operating_status == 'AUTHORIZED_FOR_HIRE' and
-            self.status == 'ACTIVE' and
-            self.insurance_on_file is True
+            self.operating_status == "AUTHORIZED_FOR_HIRE"
+            and self.status == "ACTIVE"
+            and self.insurance_on_file is True
         )
 
     def __repr__(self) -> str:

@@ -41,10 +41,12 @@ def init_database():
         # First, check if alembic_version table exists and clear it
         with engine.begin() as conn:
             # Check if alembic_version exists
-            result = conn.execute(text(
-                "SELECT EXISTS (SELECT 1 FROM information_schema.tables "
-                "WHERE table_name = 'alembic_version')"
-            ))
+            result = conn.execute(
+                text(
+                    "SELECT EXISTS (SELECT 1 FROM information_schema.tables "
+                    "WHERE table_name = 'alembic_version')"
+                )
+            )
             alembic_exists = result.scalar()
 
             if alembic_exists:
@@ -52,10 +54,12 @@ def init_database():
                 conn.execute(text("DELETE FROM alembic_version"))
 
             # Check if any tables exist
-            result = conn.execute(text(
-                "SELECT COUNT(*) FROM information_schema.tables "
-                "WHERE table_schema = 'public' AND table_type = 'BASE TABLE'"
-            ))
+            result = conn.execute(
+                text(
+                    "SELECT COUNT(*) FROM information_schema.tables "
+                    "WHERE table_schema = 'public' AND table_type = 'BASE TABLE'"
+                )
+            )
             table_count = result.scalar()
             logger.info(f"Found {table_count} existing tables")
 
@@ -79,10 +83,12 @@ def init_database():
             logger.info(f"Current alembic version: {version}")
 
             # Count tables again
-            result = conn.execute(text(
-                "SELECT COUNT(*) FROM information_schema.tables "
-                "WHERE table_schema = 'public' AND table_type = 'BASE TABLE'"
-            ))
+            result = conn.execute(
+                text(
+                    "SELECT COUNT(*) FROM information_schema.tables "
+                    "WHERE table_schema = 'public' AND table_type = 'BASE TABLE'"
+                )
+            )
             final_table_count = result.scalar()
             logger.info(f"Total tables after initialization: {final_table_count}")
 

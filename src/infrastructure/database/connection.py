@@ -45,13 +45,13 @@ class DatabaseConnection:
         """Initialize database connection and session factory"""
         logger.info("Initializing standard database connection...")
 
-        pool_size = self.settings.database_pool_size if self.settings else self.pool_size
+        pool_size = (
+            self.settings.database_pool_size if self.settings else self.pool_size
+        )
         max_overflow = (
             self.settings.database_max_overflow if self.settings else self.max_overflow
         )
-        pool_recycle = (
-            self.settings.database_pool_recycle if self.settings else 3600
-        )
+        pool_recycle = self.settings.database_pool_recycle if self.settings else 3600
         pool_pre_ping = True
 
         # Create engine with connection pooling
@@ -139,6 +139,7 @@ async def get_database_session() -> AsyncSession:
     """Dependency function for FastAPI to get database session"""
     if _db_connection is None:
         from src.config.settings import settings
+
         initialize_database_connection(settings)
 
     session = await _db_connection.get_session()

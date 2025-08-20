@@ -17,11 +17,13 @@ from ..exceptions.base import DomainException
 
 class LoadNotAvailableException(DomainException):
     """Exception raised when load is not available."""
+
     pass
 
 
 class LoadStatus(Enum):
     """Load status enumeration."""
+
     AVAILABLE = "AVAILABLE"
     PENDING = "PENDING"
     BOOKED = "BOOKED"
@@ -32,6 +34,7 @@ class LoadStatus(Enum):
 
 class UrgencyLevel(Enum):
     """Load urgency level enumeration."""
+
     LOW = "LOW"
     NORMAL = "NORMAL"
     HIGH = "HIGH"
@@ -146,28 +149,38 @@ class Load:
     def is_available(self) -> bool:
         """Check if load is available for booking."""
         return (
-            self.status == LoadStatus.AVAILABLE and
-            self.is_active and
-            (self.expires_at is None or self.expires_at > datetime.utcnow()) and
-            self.deleted_at is None
+            self.status == LoadStatus.AVAILABLE
+            and self.is_active
+            and (self.expires_at is None or self.expires_at > datetime.utcnow())
+            and self.deleted_at is None
         )
 
     def verify_availability(self) -> None:
         """Verify load availability and raise exception if not available."""
         if not self.is_available:
             if self.status != LoadStatus.AVAILABLE:
-                raise LoadNotAvailableException(f"Load {self.reference_number} status is {self.status.value}")
+                raise LoadNotAvailableException(
+                    f"Load {self.reference_number} status is {self.status.value}"
+                )
 
             if not self.is_active:
-                raise LoadNotAvailableException(f"Load {self.reference_number} is not active")
+                raise LoadNotAvailableException(
+                    f"Load {self.reference_number} is not active"
+                )
 
             if self.expires_at and self.expires_at <= datetime.utcnow():
-                raise LoadNotAvailableException(f"Load {self.reference_number} has expired")
+                raise LoadNotAvailableException(
+                    f"Load {self.reference_number} has expired"
+                )
 
             if self.deleted_at:
-                raise LoadNotAvailableException(f"Load {self.reference_number} has been deleted")
+                raise LoadNotAvailableException(
+                    f"Load {self.reference_number} has been deleted"
+                )
 
-    def book_by_carrier(self, carrier_id: UUID, agreed_rate: Optional[Rate] = None) -> None:
+    def book_by_carrier(
+        self, carrier_id: UUID, agreed_rate: Optional[Rate] = None
+    ) -> None:
         """Book the load by a carrier."""
         self.verify_availability()
 
@@ -207,7 +220,9 @@ class Load:
         """Check if equipment can handle the load weight."""
         return equipment_type.can_haul_weight(self.weight)
 
-    def calculate_negotiation_thresholds(self, urgency_factor: float = 1.0, history_factor: float = 1.0) -> Dict[str, Rate]:
+    def calculate_negotiation_thresholds(
+        self, urgency_factor: float = 1.0, history_factor: float = 1.0
+    ) -> Dict[str, Rate]:
         """Calculate negotiation thresholds based on various factors."""
         base_rate = self.loadboard_rate
 
@@ -220,7 +235,7 @@ class Load:
             "minimum_rate": min_rate,
             "maximum_rate": max_rate,
             "auto_accept_threshold": auto_accept,
-            "loadboard_rate": base_rate
+            "loadboard_rate": base_rate,
         }
 
     def __eq__(self, other) -> bool:

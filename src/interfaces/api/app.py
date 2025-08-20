@@ -55,7 +55,7 @@ def create_app() -> FastAPI:
             {
                 "name": "Loads",
                 "description": "Operations for loads",
-            }
+            },
         ],
     )
 
@@ -126,4 +126,5 @@ def create_app() -> FastAPI:
     @app.on_event("startup")
     async def startup_event():
         logger_app.info("Application startup...")
+
     return app

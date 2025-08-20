@@ -17,11 +17,13 @@ from ..exceptions.base import DomainException
 
 class InvalidCallStateException(DomainException):
     """Exception raised when call state is invalid."""
+
     pass
 
 
 class CallType(Enum):
     """Call type enumeration."""
+
     INBOUND = "INBOUND"
     OUTBOUND = "OUTBOUND"
     CALLBACK = "CALLBACK"
@@ -29,6 +31,7 @@ class CallType(Enum):
 
 class CallChannel(Enum):
     """Call channel enumeration."""
+
     VOICE = "VOICE"
     WEB_CALL = "WEB_CALL"
     API_TRIGGERED = "API_TRIGGERED"
@@ -36,6 +39,7 @@ class CallChannel(Enum):
 
 class AgentType(Enum):
     """Agent type enumeration."""
+
     AI = "AI"
     HUMAN = "HUMAN"
     HYBRID = "HYBRID"
@@ -43,6 +47,7 @@ class AgentType(Enum):
 
 class CallOutcome(Enum):
     """Call outcome enumeration."""
+
     ACCEPTED = "ACCEPTED"
     DECLINED = "DECLINED"
     NEGOTIATION_FAILED = "NEGOTIATION_FAILED"
@@ -55,6 +60,7 @@ class CallOutcome(Enum):
 
 class Sentiment(Enum):
     """Sentiment enumeration."""
+
     POSITIVE = "POSITIVE"
     NEUTRAL = "NEUTRAL"
     NEGATIVE = "NEGATIVE"
@@ -153,7 +159,9 @@ class Call:
         """Check if call needs follow-up."""
         return self.follow_up_required and not self.follow_up_completed
 
-    def end_call(self, outcome: CallOutcome, end_time: Optional[datetime] = None) -> None:
+    def end_call(
+        self, outcome: CallOutcome, end_time: Optional[datetime] = None
+    ) -> None:
         """End the call with an outcome."""
         if not self.is_active:
             raise InvalidCallStateException("Call is already ended")
@@ -188,14 +196,24 @@ class Call:
         self.extracted_data.update(data)
         self.updated_at = datetime.utcnow()
 
-    def set_sentiment(self, sentiment: Sentiment, score: Optional[float] = None, breakdown: Optional[Dict[str, float]] = None) -> None:
+    def set_sentiment(
+        self,
+        sentiment: Sentiment,
+        score: Optional[float] = None,
+        breakdown: Optional[Dict[str, float]] = None,
+    ) -> None:
         """Set sentiment analysis results."""
         self.sentiment = sentiment
         self.sentiment_score = score
         self.sentiment_breakdown = breakdown
         self.updated_at = datetime.utcnow()
 
-    def set_financial_info(self, initial_offer: Optional[Rate] = None, final_rate: Optional[Rate] = None, accepted: Optional[bool] = None) -> None:
+    def set_financial_info(
+        self,
+        initial_offer: Optional[Rate] = None,
+        final_rate: Optional[Rate] = None,
+        accepted: Optional[bool] = None,
+    ) -> None:
         """Set financial information."""
         if initial_offer:
             self.initial_offer = initial_offer

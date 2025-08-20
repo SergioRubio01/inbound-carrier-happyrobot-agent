@@ -1,9 +1,5 @@
 """API v1 modules."""
 
-from . import (
-    loads
-)
+from . import loads
 
-__all__ = [
-    "loads"
-]
+__all__ = ["loads"]

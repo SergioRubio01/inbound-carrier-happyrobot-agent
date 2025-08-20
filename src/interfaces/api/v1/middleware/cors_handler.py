@@ -30,7 +30,9 @@ class CORSHandlerMiddleware(BaseHTTPMiddleware):
         if request.method == "OPTIONS":
             response = StarletteResponse(status_code=200)
             response.headers["Access-Control-Allow-Origin"] = "*"
-            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+            response.headers["Access-Control-Allow-Methods"] = (
+                "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+            )
             response.headers["Access-Control-Allow-Headers"] = "*"
             response.headers["Access-Control-Allow-Credentials"] = "true"
             response.headers["Access-Control-Max-Age"] = "3600"

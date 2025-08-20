@@ -65,7 +65,7 @@ def process_revision_directives(context, revision, directives):
 def run_migrations_for_db(db_url):
     # Override sqlalchemy.url in alembic.ini
     # Escape % characters for configparser by doubling them
-    escaped_url = db_url.replace('%', '%%')
+    escaped_url = db_url.replace("%", "%%")
     config.set_main_option("sqlalchemy.url", escaped_url)
 
     configuration = config.get_section(config.config_ini_section)

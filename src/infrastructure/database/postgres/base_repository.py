@@ -12,8 +12,8 @@ from sqlalchemy import select, delete, and_, desc, asc, func
 
 from src.infrastructure.database.base import Base
 
-T = TypeVar('T', bound=Base)
-D = TypeVar('D')  # Domain entity type
+T = TypeVar("T", bound=Base)
+D = TypeVar("D")  # Domain entity type
 
 
 class BaseRepository(Generic[T, D]):
@@ -81,23 +81,23 @@ class BaseRepository(Generic[T, D]):
                 if isinstance(value, dict):
                     # Handle operators like {'>=': 100}, {'like': '%pattern%'}
                     for operator, operand in value.items():
-                        if operator == 'like':
+                        if operator == "like":
                             conditions.append(column.like(operand))
-                        elif operator == 'ilike':
+                        elif operator == "ilike":
                             conditions.append(column.ilike(operand))
-                        elif operator == 'in':
+                        elif operator == "in":
                             conditions.append(column.in_(operand))
-                        elif operator == 'not_in':
+                        elif operator == "not_in":
                             conditions.append(~column.in_(operand))
-                        elif operator == '>':
+                        elif operator == ">":
                             conditions.append(column > operand)
-                        elif operator == '>=':
+                        elif operator == ">=":
                             conditions.append(column >= operand)
-                        elif operator == '<':
+                        elif operator == "<":
                             conditions.append(column < operand)
-                        elif operator == '<=':
+                        elif operator == "<=":
                             conditions.append(column <= operand)
-                        elif operator == '!=':
+                        elif operator == "!=":
                             conditions.append(column != operand)
                 elif isinstance(value, list):
                     conditions.append(column.in_(value))
@@ -112,10 +112,10 @@ class BaseRepository(Generic[T, D]):
             return None
 
         # Handle format like "field_name_desc" or "field_name_asc"
-        if sort_by.endswith('_desc'):
+        if sort_by.endswith("_desc"):
             field_name = sort_by[:-5]
             direction = desc
-        elif sort_by.endswith('_asc'):
+        elif sort_by.endswith("_asc"):
             field_name = sort_by[:-4]
             direction = asc
         else:

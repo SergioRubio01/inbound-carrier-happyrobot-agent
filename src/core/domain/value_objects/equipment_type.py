@@ -14,11 +14,13 @@ from ..exceptions.base import DomainException
 
 class InvalidEquipmentTypeException(DomainException):
     """Exception raised when equipment type is invalid."""
+
     pass
 
 
 class EquipmentCategory(Enum):
     """Equipment categories."""
+
     VAN = "VAN"
     FLATBED = "FLATBED"
     SPECIALIZED = "SPECIALIZED"
@@ -45,7 +47,11 @@ class EquipmentType:
         "RGN": {"category": EquipmentCategory.SPECIALIZED, "capacity": 70000},
         "Power Only": {"category": EquipmentCategory.POWER_ONLY, "capacity": None},
         "Hotshot": {"category": EquipmentCategory.SPECIALIZED, "capacity": 20000},
-        "Box Truck": {"category": EquipmentCategory.VAN, "capacity": 12000, "cdl": False},
+        "Box Truck": {
+            "category": EquipmentCategory.VAN,
+            "capacity": 12000,
+            "cdl": False,
+        },
     }
 
     def __post_init__(self):
@@ -55,23 +61,23 @@ class EquipmentType:
 
         # Normalize name
         normalized_name = self.name.strip()
-        object.__setattr__(self, 'name', normalized_name)
+        object.__setattr__(self, "name", normalized_name)
 
         # Set standard properties if this is a known type
         if normalized_name in self.STANDARD_TYPES:
             standard = self.STANDARD_TYPES[normalized_name]
 
             if self.category is None:
-                object.__setattr__(self, 'category', standard["category"])
+                object.__setattr__(self, "category", standard["category"])
 
             if self.typical_capacity is None:
-                object.__setattr__(self, 'typical_capacity', standard["capacity"])
+                object.__setattr__(self, "typical_capacity", standard["capacity"])
 
             if "cdl" in standard:
-                object.__setattr__(self, 'requires_cdl', standard["cdl"])
+                object.__setattr__(self, "requires_cdl", standard["cdl"])
 
     @classmethod
-    def from_name(cls, name: str) -> 'EquipmentType':
+    def from_name(cls, name: str) -> "EquipmentType":
         """Create EquipmentType from name string."""
         return cls(name=name)
 

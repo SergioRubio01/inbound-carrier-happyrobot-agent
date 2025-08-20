@@ -24,8 +24,12 @@ class NegotiationModel(Base, TimestampMixin):
 
     # Association
     call_id = Column(UUID(as_uuid=True), ForeignKey("calls.call_id"), index=True)
-    load_id = Column(UUID(as_uuid=True), ForeignKey("loads.load_id"), nullable=False, index=True)
-    carrier_id = Column(UUID(as_uuid=True), ForeignKey("carriers.carrier_id"), index=True)
+    load_id = Column(
+        UUID(as_uuid=True), ForeignKey("loads.load_id"), nullable=False, index=True
+    )
+    carrier_id = Column(
+        UUID(as_uuid=True), ForeignKey("carriers.carrier_id"), index=True
+    )
     mc_number = Column(String(20))
 
     # Session Management
@@ -40,7 +44,9 @@ class NegotiationModel(Base, TimestampMixin):
 
     # Offer Details
     carrier_offer = Column(NUMERIC(10, 2), nullable=False)
-    system_response = Column(String(50), nullable=False)  # ACCEPTED, COUNTER_OFFER, REJECTED
+    system_response = Column(
+        String(50), nullable=False
+    )  # ACCEPTED, COUNTER_OFFER, REJECTED
     counter_offer = Column(NUMERIC(10, 2))
 
     # Context
@@ -63,7 +69,9 @@ class NegotiationModel(Base, TimestampMixin):
     justification = Column(Text)
 
     # Result
-    final_status = Column(String(30), index=True)  # DEAL_ACCEPTED, DEAL_REJECTED, ABANDONED, TIMEOUT
+    final_status = Column(
+        String(30), index=True
+    )  # DEAL_ACCEPTED, DEAL_REJECTED, ABANDONED, TIMEOUT
     agreed_rate = Column(NUMERIC(10, 2))
 
     # Timing
@@ -88,7 +96,10 @@ class NegotiationModel(Base, TimestampMixin):
     def percentage_over(self) -> float:
         """Calculate percentage over loadboard rate."""
         if self.loadboard_rate and float(self.loadboard_rate) > 0:
-            return ((float(self.carrier_offer) - float(self.loadboard_rate)) / float(self.loadboard_rate)) * 100
+            return (
+                (float(self.carrier_offer) - float(self.loadboard_rate))
+                / float(self.loadboard_rate)
+            ) * 100
         return 0.0
 
     def __repr__(self) -> str:

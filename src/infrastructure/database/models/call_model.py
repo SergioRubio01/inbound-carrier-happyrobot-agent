@@ -22,18 +22,24 @@ class CallModel(Base, TimestampMixin):
     call_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
     # Call Identification
-    external_call_id = Column(String(100), index=True)  # From HappyRobot or phone system
+    external_call_id = Column(
+        String(100), index=True
+    )  # From HappyRobot or phone system
     session_id = Column(String(100))
 
     # Carrier Information
     mc_number = Column(String(20), index=True)
-    carrier_id = Column(UUID(as_uuid=True), ForeignKey("carriers.carrier_id"), index=True)
+    carrier_id = Column(
+        UUID(as_uuid=True), ForeignKey("carriers.carrier_id"), index=True
+    )
     caller_phone = Column(String(20), index=True)
     caller_name = Column(String(100))
 
     # Load Association
     load_id = Column(UUID(as_uuid=True), ForeignKey("loads.load_id"), index=True)
-    multiple_loads_discussed = Column(ARRAY(UUID(as_uuid=True)))  # Array of load IDs discussed
+    multiple_loads_discussed = Column(
+        ARRAY(UUID(as_uuid=True))
+    )  # Array of load IDs discussed
 
     # Call Metadata
     start_time = Column(TIMESTAMP(timezone=True), nullable=False, index=True)

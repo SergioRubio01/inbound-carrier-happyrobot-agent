@@ -17,16 +17,19 @@ from ..exceptions.base import DomainException
 
 class NegotiationLimitExceededException(DomainException):
     """Exception raised when negotiation rounds exceed limit."""
+
     pass
 
 
 class InvalidNegotiationStateException(DomainException):
     """Exception raised when negotiation state is invalid."""
+
     pass
 
 
 class SystemResponse(Enum):
     """System response to carrier offer."""
+
     ACCEPTED = "ACCEPTED"
     COUNTER_OFFER = "COUNTER_OFFER"
     REJECTED = "REJECTED"
@@ -34,6 +37,7 @@ class SystemResponse(Enum):
 
 class NegotiationStatus(Enum):
     """Final negotiation status."""
+
     DEAL_ACCEPTED = "DEAL_ACCEPTED"
     DEAL_REJECTED = "DEAL_REJECTED"
     ABANDONED = "ABANDONED"
@@ -108,9 +112,9 @@ class Negotiation:
     def can_continue_negotiation(self) -> bool:
         """Check if negotiation can continue (within round limits)."""
         return (
-            self.is_active and
-            self.round_number < self.max_rounds and
-            self.final_status is None
+            self.is_active
+            and self.round_number < self.max_rounds
+            and self.final_status is None
         )
 
     @property
@@ -118,10 +122,12 @@ class Negotiation:
         """Check if negotiation is completed."""
         return self.final_status is not None
 
-    def evaluate_offer(self,
-                      urgency_factor: float = 1.0,
-                      history_factor: float = 1.0,
-                      market_factor: float = 1.0) -> SystemResponse:
+    def evaluate_offer(
+        self,
+        urgency_factor: float = 1.0,
+        history_factor: float = 1.0,
+        market_factor: float = 1.0,
+    ) -> SystemResponse:
         """Evaluate carrier offer and determine system response."""
         if not self.is_active:
             raise InvalidNegotiationStateException("Negotiation is not active")
@@ -151,7 +157,9 @@ class Negotiation:
             # Accept if within maximum acceptable range
             response = SystemResponse.ACCEPTED
             self.message_to_carrier = "Offer accepted. Proceeding with booking."
-            self.justification = f"Offer within acceptable range (max: {self.maximum_acceptable})"
+            self.justification = (
+                f"Offer within acceptable range (max: {self.maximum_acceptable})"
+            )
         elif self.can_continue_negotiation:
             # Counter-offer if we can continue negotiating
             response = SystemResponse.COUNTER_OFFER
@@ -167,7 +175,9 @@ class Negotiation:
             # Reject if we've reached max rounds or offer is too high
             response = SystemResponse.REJECTED
             self.message_to_carrier = f"I'm sorry, but ${self.carrier_offer} is beyond our budget. Our maximum for this load is ${self.maximum_acceptable}."
-            self.justification = "Offer exceeds maximum acceptable rate or max rounds reached"
+            self.justification = (
+                "Offer exceeds maximum acceptable rate or max rounds reached"
+            )
 
         # Record decision factors
         self.decision_factors = {
@@ -177,7 +187,7 @@ class Negotiation:
             "auto_accept_threshold": auto_accept_threshold.to_float(),
             "minimum_acceptable": self.minimum_acceptable.to_float(),
             "maximum_acceptable": self.maximum_acceptable.to_float(),
-            "offer_percentage_over": self.percentage_over
+            "offer_percentage_over": self.percentage_over,
         }
 
         self.system_response = response

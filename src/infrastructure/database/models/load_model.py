@@ -5,7 +5,17 @@ Author: HappyRobot Team
 Created: 2024-08-14
 """
 
-from sqlalchemy import Column, String, Integer, Date, Time, Boolean, Text, TIMESTAMP, ForeignKey
+from sqlalchemy import (
+    Column,
+    String,
+    Integer,
+    Date,
+    Time,
+    Boolean,
+    Text,
+    TIMESTAMP,
+    ForeignKey,
+)
 from sqlalchemy.dialects.postgresql import UUID, JSONB, NUMERIC, ARRAY
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
@@ -86,7 +96,7 @@ class LoadModel(Base, TimestampMixin):
     customer_name = Column(String(255))
 
     # Status
-    status = Column(String(30), nullable=False, default='AVAILABLE', index=True)
+    status = Column(String(30), nullable=False, default="AVAILABLE", index=True)
     # AVAILABLE, PENDING, BOOKED, IN_TRANSIT, DELIVERED, CANCELLED
     status_changed_at = Column(TIMESTAMP(timezone=True), default=func.now())
     booked_by_carrier_id = Column(UUID(as_uuid=True), ForeignKey("carriers.carrier_id"))
@@ -98,7 +108,7 @@ class LoadModel(Base, TimestampMixin):
     internal_notes = Column(Text)  # Not shown to carriers
 
     # Urgency and Priority
-    urgency = Column(String(20), default='NORMAL')  # LOW, NORMAL, HIGH, CRITICAL
+    urgency = Column(String(20), default="NORMAL")  # LOW, NORMAL, HIGH, CRITICAL
     priority_score = Column(Integer, default=50)  # 0-100
 
     # Visibility
@@ -112,7 +122,9 @@ class LoadModel(Base, TimestampMixin):
     version = Column(Integer, default=1)
 
     # Relationships
-    booked_by_carrier = relationship("CarrierModel", foreign_keys=[booked_by_carrier_id])
+    booked_by_carrier = relationship(
+        "CarrierModel", foreign_keys=[booked_by_carrier_id]
+    )
 
     @property
     def total_rate(self) -> float:
