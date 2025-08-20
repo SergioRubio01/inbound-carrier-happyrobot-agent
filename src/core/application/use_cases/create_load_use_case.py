@@ -49,6 +49,7 @@ class CreateLoadRequest:
     dimensions: Optional[str] = None
     num_of_pieces: Optional[int] = None
     miles: Optional[int] = None
+    reference_number: Optional[str] = None
 
 
 @dataclass
@@ -73,8 +74,19 @@ class CreateLoadUseCase:
             # Validate the request
             await self._validate_request(request)
 
-            # Generate reference number
-            reference_number = await self._generate_reference_number()
+            # Use custom reference number or generate one
+            if request.reference_number:
+                reference_number = request.reference_number
+                # Check for duplicate reference
+                existing_load = await self.load_repository.get_by_reference_number(
+                    reference_number
+                )
+                if existing_load:
+                    raise DuplicateReferenceException(
+                        f"Reference number {reference_number} already exists"
+                    )
+            else:
+                reference_number = await self._generate_reference_number()
 
             # Extract date and time components from datetime
             pickup_date = request.pickup_datetime.date()

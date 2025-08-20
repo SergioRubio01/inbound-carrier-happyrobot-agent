@@ -48,9 +48,16 @@ def valid_load_data():
     }
 
 
+@pytest.mark.integration
 def test_create_load_success(client, valid_load_data):
     """Test successful load creation."""
     response = client.post("/api/v1/loads/", json=valid_load_data)
+
+    # Debug the error
+    if response.status_code != 201:
+        print(f"Status code: {response.status_code}")
+        print(f"Response content: {response.content}")
+        print(f"Response text: {response.text}")
 
     assert response.status_code == 201
     data = response.json()
@@ -62,6 +69,7 @@ def test_create_load_success(client, valid_load_data):
     assert data["reference_number"].startswith("LD-2025-")
 
 
+@pytest.mark.integration
 def test_list_loads_success(client):
     """Test successful load listing."""
     response = client.get("/api/v1/loads/")
@@ -81,6 +89,7 @@ def test_list_loads_success(client):
     assert not data["has_previous"]
 
 
+@pytest.mark.integration
 def test_create_load_missing_required_field_fails(client, valid_load_data):
     """Test that missing required fields fail."""
     del valid_load_data["origin"]
@@ -90,6 +99,7 @@ def test_create_load_missing_required_field_fails(client, valid_load_data):
     assert response.status_code == 422  # Validation error
 
 
+@pytest.mark.integration
 def test_list_loads_with_filters(client):
     """Test load listing with query filters."""
     params = {
@@ -109,6 +119,7 @@ def test_list_loads_with_filters(client):
     assert data["limit"] == 10
 
 
+@pytest.mark.integration
 def test_list_loads_invalid_page_fails(client):
     """Test that invalid page parameter fails."""
     params = {"page": 0}

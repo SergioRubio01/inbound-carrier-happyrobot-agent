@@ -136,22 +136,41 @@ class TestUpdateLoadUseCase:
         mock_load_repository.update.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_cannot_update_deleted_load(
+    async def test_can_update_deleted_load(
         self, use_case, mock_load_repository, sample_load
     ):
-        """Test that deleted loads cannot be updated."""
+        """Test that deleted loads can be updated (validation removed)."""
         # Arrange
         sample_load.deleted_at = datetime.utcnow()
         mock_load_repository.get_active_by_id.return_value = sample_load
 
+        # Create updated load for repository return
+        updated_load = Load(
+            load_id=sample_load.load_id,
+            reference_number=sample_load.reference_number,
+            origin=sample_load.origin,
+            destination=sample_load.destination,
+            equipment_type=sample_load.equipment_type,
+            loadboard_rate=sample_load.loadboard_rate,
+            weight=30000,
+            commodity_type=sample_load.commodity_type,
+            status=sample_load.status,
+            is_active=sample_load.is_active,
+            created_at=sample_load.created_at,
+            updated_at=datetime.utcnow(),
+            version=2,
+        )
+        mock_load_repository.update.return_value = updated_load
+
         request = UpdateLoadRequest(load_id=sample_load.load_id, weight=30000)
 
-        # Act & Assert
-        with pytest.raises(LoadUpdateException) as exc_info:
-            await use_case.execute(request)
+        # Act
+        response = await use_case.execute(request)
 
-        assert "has been deleted" in str(exc_info.value)
-        mock_load_repository.update.assert_not_called()
+        # Assert
+        assert isinstance(response, UpdateLoadResponse)
+        assert response.load_id == str(sample_load.load_id)
+        mock_load_repository.update.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_cannot_update_delivered_load(

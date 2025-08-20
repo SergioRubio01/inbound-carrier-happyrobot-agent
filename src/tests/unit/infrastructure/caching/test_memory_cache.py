@@ -7,11 +7,12 @@ from datetime import datetime, timedelta
 from unittest.mock import patch
 
 import pytest
+import pytest_asyncio
 
 from src.infrastructure.caching.memory_cache import CacheEntry, MemoryCacheService
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def cache_service():
     """Create memory cache service for testing."""
     service = MemoryCacheService(default_ttl=timedelta(seconds=60))
@@ -19,7 +20,7 @@ async def cache_service():
     await service.close()
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def cache_service_no_ttl():
     """Create memory cache service without default TTL."""
     service = MemoryCacheService()

@@ -140,44 +140,48 @@ class TestDeleteLoadUseCase:
         mock_load_repository.delete.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_delete_already_deleted_load_fails(
+    async def test_delete_already_deleted_load_succeeds(
         self, delete_use_case, mock_load_repository, sample_load
     ):
-        """Test deletion of already deleted load fails."""
+        """Test deletion of already deleted load succeeds (idempotent operation)."""
         # Arrange - Set the load as inactive to simulate a deleted state
         sample_load.is_active = False
         load_id = sample_load.load_id
         mock_load_repository.get_by_id.return_value = sample_load
+        mock_load_repository.delete.return_value = True
 
         request = DeleteLoadRequest(load_id=load_id)
 
-        # Act & Assert
-        with pytest.raises(LoadDeletionException) as exc_info:
-            await delete_use_case.execute(request)
+        # Act
+        response = await delete_use_case.execute(request)
 
-        assert "not active" in str(exc_info.value)
+        # Assert
+        assert isinstance(response, DeleteLoadResponse)
+        assert response.load_id == str(load_id)
         mock_load_repository.get_by_id.assert_called_once_with(load_id)
-        mock_load_repository.delete.assert_not_called()
+        mock_load_repository.delete.assert_called_once_with(load_id)
 
     @pytest.mark.asyncio
-    async def test_delete_inactive_load_fails(
+    async def test_delete_inactive_load_succeeds(
         self, delete_use_case, mock_load_repository, sample_load
     ):
-        """Test deletion of inactive load fails."""
+        """Test deletion of inactive load succeeds."""
         # Arrange
         sample_load.is_active = False
         load_id = sample_load.load_id
         mock_load_repository.get_by_id.return_value = sample_load
+        mock_load_repository.delete.return_value = True
 
         request = DeleteLoadRequest(load_id=load_id)
 
-        # Act & Assert
-        with pytest.raises(LoadDeletionException) as exc_info:
-            await delete_use_case.execute(request)
+        # Act
+        response = await delete_use_case.execute(request)
 
-        assert "not active" in str(exc_info.value)
+        # Assert
+        assert isinstance(response, DeleteLoadResponse)
+        assert response.load_id == str(load_id)
         mock_load_repository.get_by_id.assert_called_once_with(load_id)
-        mock_load_repository.delete.assert_not_called()
+        mock_load_repository.delete.assert_called_once_with(load_id)
 
     @pytest.mark.asyncio
     async def test_delete_booked_load_success(

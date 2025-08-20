@@ -71,7 +71,6 @@ class Load:
 
     # Pricing
     loadboard_rate: Optional[Rate] = field(default=None)
-    rate_per_mile: Optional[Rate] = None
     miles: Optional[float] = None
 
     # Broker Information
@@ -99,6 +98,14 @@ class Load:
         if self.origin is None or self.destination is None:
             return None
         return f"{self.origin.state}-{self.destination.state}"
+
+    @property
+    def rate_per_mile(self) -> Optional[Rate]:
+        """Calculate rate per mile from loadboard rate and miles."""
+        if self.loadboard_rate is None or self.miles is None or self.miles <= 0:
+            return None
+        rate_per_mile_value = self.loadboard_rate.to_float() / self.miles
+        return Rate.from_float(rate_per_mile_value)
 
     @property
     def is_available(self) -> bool:
