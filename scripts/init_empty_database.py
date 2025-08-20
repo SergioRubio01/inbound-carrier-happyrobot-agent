@@ -8,8 +8,6 @@ alembic migration tracking.
 """
 
 import sys
-import os
-import asyncio
 import logging
 from pathlib import Path
 
@@ -17,13 +15,13 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from sqlalchemy import create_engine, text
-from alembic.config import Config
-from alembic import command
+from sqlalchemy import create_engine, text  # noqa: E402
+from alembic.config import Config  # noqa: E402
+from alembic import command  # noqa: E402
 
-from src.config.settings import settings
-from src.infrastructure.database.base import Base
-from src.infrastructure.database.models import *  # noqa: F401,F403
+from src.config.settings import settings  # noqa: E402
+from src.infrastructure.database.base import Base  # noqa: E402
+from src.infrastructure.database.models import *  # noqa: F401,F403,E402
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -34,7 +32,7 @@ def init_database():
 
     # Get sync database URL
     database_url = settings.get_sync_database_url
-    logger.info(f"Connecting to database...")
+    logger.info("Connecting to database...")
 
     # Create engine
     engine = create_engine(database_url)

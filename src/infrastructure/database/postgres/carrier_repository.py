@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, func
 
 from src.core.domain.entities import Carrier
-from src.core.domain.value_objects import MCNumber, Location, Rate
+from src.core.domain.value_objects import MCNumber, Location
 from src.core.ports.repositories import ICarrierRepository
 from src.infrastructure.database.models import CarrierModel
 from .base_repository import BaseRepository
@@ -167,7 +167,7 @@ class PostgresCarrierRepository(BaseRepository[CarrierModel, Carrier], ICarrierR
                 and_(
                     CarrierModel.operating_status == 'AUTHORIZED_FOR_HIRE',
                     CarrierModel.status == 'ACTIVE',
-                    CarrierModel.insurance_on_file == True
+                    CarrierModel.insurance_on_file is True
                 )
             )
             .limit(limit)

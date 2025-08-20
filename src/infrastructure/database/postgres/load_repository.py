@@ -7,9 +7,9 @@ Created: 2024-08-14
 
 from typing import Optional, List, Dict, Any
 from uuid import UUID
-from datetime import datetime, date
+from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, func, or_
+from sqlalchemy import select, and_, func
 
 from src.core.domain.entities import Load, LoadStatus, UrgencyLevel
 from src.core.domain.value_objects import EquipmentType, Location, Rate
@@ -232,7 +232,7 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
         if criteria.status:
             conditions.append(LoadModel.status == criteria.status.value)
         if criteria.is_active:
-            conditions.append(LoadModel.is_active == True)
+            conditions.append(LoadModel.is_active is True)
             conditions.append(LoadModel.deleted_at.is_(None))
 
         if conditions:
@@ -257,7 +257,7 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
             .where(
                 and_(
                     LoadModel.status == 'AVAILABLE',
-                    LoadModel.is_active == True,
+                    LoadModel.is_active is True,
                     LoadModel.deleted_at.is_(None)
                 )
             )
@@ -321,7 +321,7 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
                     LoadModel.expires_at.isnot(None),
                     LoadModel.expires_at <= text(f"NOW() + INTERVAL '{hours} hours'"),
                     LoadModel.status == 'AVAILABLE',
-                    LoadModel.is_active == True
+                    LoadModel.is_active is True
                 )
             )
         )
@@ -348,7 +348,7 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
             and_(
                 LoadModel.created_at >= start_date,
                 LoadModel.created_at <= end_date,
-                LoadModel.is_active == True
+                LoadModel.is_active is True
             )
         )
         avg_value_result = await self.session.execute(avg_value_stmt)
@@ -359,7 +359,7 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
             and_(
                 LoadModel.created_at >= start_date,
                 LoadModel.created_at <= end_date,
-                LoadModel.is_active == True
+                LoadModel.is_active is True
             )
         )
         avg_rate_result = await self.session.execute(avg_rate_stmt)

@@ -7,7 +7,6 @@ Created: 2024-08-14
 
 from sqlalchemy import Column, String, Boolean, Date, Integer, TIMESTAMP, Text
 from sqlalchemy.dialects.postgresql import UUID, JSONB, NUMERIC
-from sqlalchemy.sql import func
 import uuid
 
 from src.infrastructure.database.base import Base, TimestampMixin

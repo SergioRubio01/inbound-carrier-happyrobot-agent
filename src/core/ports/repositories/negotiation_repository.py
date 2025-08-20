@@ -10,7 +10,7 @@ from typing import Optional, List, Dict, Any
 from uuid import UUID
 from datetime import datetime
 
-from src.core.domain.entities import Negotiation, NegotiationStatus, SystemResponse
+from src.core.domain.entities import Negotiation, NegotiationStatus
 from src.core.domain.value_objects import MCNumber
 
 

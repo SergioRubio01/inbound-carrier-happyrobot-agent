@@ -8,8 +8,7 @@ Created: 2024-08-14
 from typing import TypeVar, Generic, Type, Optional, List, Dict, Any
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, update, and_, or_, desc, asc, func
-from sqlalchemy.orm import selectinload
+from sqlalchemy import select, delete, and_, desc, asc, func
 
 from src.infrastructure.database.base import Base
 

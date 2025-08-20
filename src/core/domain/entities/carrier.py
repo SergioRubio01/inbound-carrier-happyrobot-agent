@@ -7,7 +7,7 @@ Created: 2024-08-14
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any
 from uuid import UUID, uuid4
 
 from ..value_objects import MCNumber, Location

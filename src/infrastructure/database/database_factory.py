@@ -6,7 +6,6 @@ Created: 2025-07-04
 """
 
 import logging
-from typing import Union
 
 from src.config.settings import Settings
 from src.infrastructure.database.connection import DatabaseConnection

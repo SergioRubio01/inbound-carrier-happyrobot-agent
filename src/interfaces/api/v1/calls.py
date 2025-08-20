@@ -169,7 +169,6 @@ async def finalize_call(request: FinalizeCallRequestModel, session: AsyncSession
         # Initialize repositories
         call_repo = PostgresCallRepository(session)
         carrier_repo = PostgresCarrierRepository(session)
-        load_repo = PostgresLoadRepository(session)
 
         # Get or create call record
         if request.call_id:

@@ -9,7 +9,7 @@ from typing import Optional, List, Dict, Any
 from uuid import UUID
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, func, or_
+from sqlalchemy import select, and_, func
 
 from src.core.domain.entities import Call, CallOutcome, Sentiment
 from src.core.domain.value_objects import MCNumber
@@ -226,8 +226,8 @@ class PostgresCallRepository(BaseRepository[CallModel, Call], ICallRepository):
             select(CallModel)
             .where(
                 and_(
-                    CallModel.follow_up_required == True,
-                    CallModel.follow_up_completed == False
+                    CallModel.follow_up_required is True,
+                    CallModel.follow_up_completed is False
                 )
             )
             .limit(limit)
@@ -295,7 +295,7 @@ class PostgresCallRepository(BaseRepository[CallModel, Call], ICallRepository):
             and_(
                 CallModel.start_time >= start_date,
                 CallModel.start_time <= end_date,
-                CallModel.follow_up_required == True
+                CallModel.follow_up_required is True
             )
         )
         follow_ups_result = await self.session.execute(follow_ups_stmt)

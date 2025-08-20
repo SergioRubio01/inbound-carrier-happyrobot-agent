@@ -10,7 +10,7 @@ from typing import Optional, Dict, Any
 from datetime import datetime
 
 from src.core.domain.entities import Carrier, CarrierNotEligibleException
-from src.core.domain.value_objects import MCNumber, Location
+from src.core.domain.value_objects import MCNumber
 from src.core.ports.repositories import ICarrierRepository
 from src.core.domain.exceptions.base import DomainException
 

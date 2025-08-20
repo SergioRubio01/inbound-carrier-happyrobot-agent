@@ -10,7 +10,7 @@ from typing import Optional, Dict, Any
 from datetime import datetime
 from uuid import UUID
 
-from src.core.domain.entities import Negotiation, SystemResponse, NegotiationStatus
+from src.core.domain.entities import Negotiation, SystemResponse
 from src.core.domain.value_objects import MCNumber, Rate
 from src.core.ports.repositories import ILoadRepository, ICarrierRepository
 from src.core.domain.exceptions.base import DomainException

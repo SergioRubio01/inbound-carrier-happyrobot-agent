@@ -14,7 +14,7 @@ from datetime import datetime
 # Database dependencies
 from src.interfaces.api.v1.dependencies.database import get_database_session
 from src.infrastructure.database.postgres import PostgresLoadRepository
-from src.core.domain.value_objects import EquipmentType, Location, Rate
+from src.core.domain.value_objects import EquipmentType, Rate
 from src.core.ports.repositories import LoadSearchCriteria
 
 router = APIRouter(prefix="/loads", tags=["Loads"])

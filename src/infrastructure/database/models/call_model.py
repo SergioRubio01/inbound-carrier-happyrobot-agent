@@ -7,7 +7,6 @@ Created: 2024-08-14
 
 from sqlalchemy import Column, String, Integer, Boolean, Text, TIMESTAMP, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID, JSONB, NUMERIC, ARRAY
-from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 import uuid
 

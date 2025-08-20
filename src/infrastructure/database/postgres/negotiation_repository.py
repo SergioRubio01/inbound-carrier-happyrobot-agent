@@ -9,7 +9,7 @@ from typing import Optional, List, Dict, Any
 from uuid import UUID
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, func, or_
+from sqlalchemy import select, and_, func
 
 from src.core.domain.entities import Negotiation, NegotiationStatus, SystemResponse
 from src.core.domain.value_objects import MCNumber, Rate
@@ -111,7 +111,7 @@ class PostgresNegotiationRepository(BaseRepository[NegotiationModel, Negotiation
         stmt = select(NegotiationModel).where(
             and_(
                 NegotiationModel.session_id == session_id,
-                NegotiationModel.is_active == True
+                NegotiationModel.is_active is True
             )
         ).order_by(NegotiationModel.created_at.desc())
 
@@ -196,7 +196,7 @@ class PostgresNegotiationRepository(BaseRepository[NegotiationModel, Negotiation
         """Get currently active negotiations."""
         stmt = (
             select(NegotiationModel)
-            .where(NegotiationModel.is_active == True)
+            .where(NegotiationModel.is_active is True)
             .limit(limit)
             .offset(offset)
             .order_by(NegotiationModel.session_start.desc())
