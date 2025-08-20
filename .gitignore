@@ -68,7 +68,8 @@ dist/
 
 *.json
 # But track Step Functions state machine definitions
-# And track package-lock.json for Pulumi
+# And track package.json and package-lock.json for Pulumi
+!infrastructure/pulumi/package.json
 !infrastructure/pulumi/package-lock.json
 *.tar.gz
 node_modules/
