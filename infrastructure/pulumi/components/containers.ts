@@ -186,6 +186,12 @@ export class ContainersComponent extends pulumi.ComponentResource {
         }, { parent: this });
 
 
+        // Get business logic configuration
+        const config = new pulumi.Config("happyrobot-fde");
+        const maxLoadWeightLbs = config.get("maxLoadWeightLbs") || "80000";
+        const maxReferenceNumberCounter = config.get("maxReferenceNumberCounter") || "99999";
+        const maxRateAmount = config.get("maxRateAmount") || "999999.99";
+
         // API Task Definition
         this.apiTaskDefinition = new aws.ecs.TaskDefinition(`${name}-api-task`, {
             family: `${name}-api`,
@@ -233,6 +239,18 @@ export class ContainersComponent extends pulumi.ComponentResource {
                         {
                             name: "POSTGRES_DB",
                             value: "happyrobot",
+                        },
+                        {
+                            name: "MAX_LOAD_WEIGHT_LBS",
+                            value: maxLoadWeightLbs,
+                        },
+                        {
+                            name: "MAX_REFERENCE_NUMBER_COUNTER",
+                            value: maxReferenceNumberCounter,
+                        },
+                        {
+                            name: "MAX_RATE_AMOUNT",
+                            value: maxRateAmount,
                         },
                     ],
                     secrets: [

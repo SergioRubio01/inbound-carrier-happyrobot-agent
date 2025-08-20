@@ -35,7 +35,7 @@ echo: false
 ## Core Tables
 
 ### 1. carriers
-Stores verified carrier information from FMCSA.
+Stores carrier information.
 
 ```sql
 CREATE TABLE carriers (
@@ -83,7 +83,7 @@ CREATE TABLE carriers (
 
     -- Verification
     last_verified_at TIMESTAMPTZ,
-    verification_source VARCHAR(50), -- FMCSA, MANUAL, THIRD_PARTY
+    verification_source VARCHAR(50), -- EXTERNAL_API, MANUAL, THIRD_PARTY
 
     -- Metadata
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -996,7 +996,7 @@ WHERE start_time < CURRENT_DATE - INTERVAL '90 days';
 | Query Type | Target Response Time |
 |------------|---------------------|
 | Load search by equipment | < 100ms |
-| MC verification lookup | < 50ms |
+| Carrier lookup | < 50ms |
 | Negotiation state check | < 50ms |
 | Dashboard metrics aggregation | < 500ms |
 | Call history retrieval | < 200ms |

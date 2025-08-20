@@ -6,10 +6,10 @@ Created: 2024-08-14
 """
 
 import uuid
-from datetime import date, datetime
+from datetime import date
 from typing import Optional
 
-from sqlalchemy import TIMESTAMP, Boolean, Date, Integer, String, Text
+from sqlalchemy import TIMESTAMP, Boolean, Column, Date, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, NUMERIC, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -85,12 +85,8 @@ class CarrierModel(Base, TimestampMixin):
     eligibility_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Verification
-    last_verified_at: Mapped[Optional[datetime]] = mapped_column(
-        TIMESTAMP(timezone=True), nullable=True
-    )
-    verification_source: Mapped[Optional[str]] = mapped_column(
-        String(50), nullable=True
-    )  # FMCSA, MANUAL, THIRD_PARTY
+    last_verified_at = Column(TIMESTAMP(timezone=True))
+    verification_source = Column(String(50))  # EXTERNAL_API, MANUAL, THIRD_PARTY
 
     # Metadata
     created_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)

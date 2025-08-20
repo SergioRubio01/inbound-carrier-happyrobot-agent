@@ -9,13 +9,17 @@ from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Union
 
+from src.config.settings import settings
+
 from ..exceptions.base import DomainException
 
 
 class InvalidRateException(DomainException):
     """Exception raised when rate is invalid."""
 
-    pass
+    def __init__(self, message: str):
+        self.message = message
+        super().__init__(self.message)
 
 
 @dataclass(frozen=True)
@@ -29,8 +33,9 @@ class Rate:
         if self.amount < 0:
             raise InvalidRateException("Rate cannot be negative")
 
-        if self.amount > Decimal("999999.99"):
-            raise InvalidRateException("Rate cannot exceed $999,999.99")
+        max_amount = Decimal(settings.max_rate_amount)
+        if self.amount > max_amount:
+            raise InvalidRateException(f"Rate cannot exceed ${max_amount:,.2f}")
 
         # Ensure amount is rounded to 2 decimal places
         rounded_amount = self.amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)

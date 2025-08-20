@@ -66,6 +66,11 @@ class ILoadRepository(ABC):
         pass
 
     @abstractmethod
+    async def get_active_by_id(self, load_id: UUID) -> Optional[Load]:
+        """Get active (non-deleted) load by ID."""
+        pass
+
+    @abstractmethod
     async def get_by_reference_number(self, reference_number: str) -> Optional[Load]:
         """Get load by reference number."""
         pass
@@ -121,4 +126,18 @@ class ILoadRepository(ABC):
         self, start_date: date, end_date: date
     ) -> Dict[str, Any]:
         """Get aggregated load metrics for date range."""
+        pass
+
+    @abstractmethod
+    async def list_all(
+        self,
+        status: Optional[LoadStatus] = None,
+        equipment_type: Optional[str] = None,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None,
+        limit: int = 20,
+        offset: int = 0,
+        sort_by: str = "created_at_desc",
+    ) -> tuple[List[Load], int]:
+        """List all loads with filters and return total count."""
         pass

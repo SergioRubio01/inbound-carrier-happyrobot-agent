@@ -4,6 +4,10 @@ config:
   happyrobot-fde:dbInstanceClass: db.t3.micro
   happyrobot-fde:dbAllocatedStorage: "20"
   # happyrobot-fde:certificateArn: "arn:aws:acm:eu-south-2:ACCOUNT_ID:certificate/CERT_ID"  # Uncomment when SSL certificate is available
+  # Business Logic Configuration
+  happyrobot-fde:maxLoadWeightLbs: "80000"
+  happyrobot-fde:maxReferenceNumberCounter: "99999"
+  happyrobot-fde:maxRateAmount: "999999.99"
 
   happyrobot-fde:dbPassword:
     secure: AAABAGE+8K1eEJtGzHjq7lWzT3tWNKDQ04OUbo694CVY/nLS9yInbM0ms6T5vGs=

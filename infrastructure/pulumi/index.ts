@@ -12,6 +12,12 @@ const environment = config.get("environment") || "dev";
 const projectName = "happyrobot-fde";
 const resourcePrefix = `happyrobot-${environment}`; // Prefix for all resources
 
+// Business logic configuration (passed to containers component)
+// These are configured in Pulumi.happyrobot-fde.yaml:
+// - maxLoadWeightLbs: Maximum weight for loads in pounds (default: 80000)
+// - maxReferenceNumberCounter: Maximum counter for reference numbers (default: 99999)
+// - maxRateAmount: Maximum rate amount in dollars (default: 999999.99)
+
 // Common tags for all resources
 const commonTags = {
     Project: projectName,

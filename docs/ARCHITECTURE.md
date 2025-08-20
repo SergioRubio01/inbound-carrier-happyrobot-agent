@@ -170,7 +170,6 @@ The HappyRobot FDE platform implements a hexagonal architecture pattern for the 
 │  └────────────────────────────────────────────────────────┘ │
 │  ┌────────────────────────────────────────────────────────┐ │
 │  │                 Service Interfaces                     │ │
-│  │  - IFMCSAService                                       │ │
 │  │  - INotificationService                                │ │
 │  │  - ISentimentAnalysisService                           │ │
 │  └────────────────────────────────────────────────────────┘ │
@@ -188,7 +187,6 @@ The HappyRobot FDE platform implements a hexagonal architecture pattern for the 
 │  └────────────────────────────────────────────────────────┘ │
 │  ┌────────────────────────────────────────────────────────┐ │
 │  │                 External Services                      │ │
-│  │  - FMCSAApiService                                     │ │
 │  │  - TwilioNotificationService                           │ │
 │  │  - AWSComprehendSentimentService                       │ │
 │  └────────────────────────────────────────────────────────┘ │
@@ -204,46 +202,7 @@ The HappyRobot FDE platform implements a hexagonal architecture pattern for the 
 
 ## Data Flow Diagrams
 
-### 1. Carrier Verification Flow
-```
-┌──────────┐     ┌──────────┐     ┌──────────┐     ┌──────────┐
-│HappyRobot│     │  FastAPI │     │  UseCase │     │   FMCSA  │
-│  Agent   │     │ Endpoint │     │  Layer   │     │  Service │
-└────┬─────┘     └────┬─────┘     └────┬─────┘     └────┬─────┘
-     │                 │                 │                 │
-     │ POST /verify    │                 │                 │
-     │ {mc_number}     │                 │                 │
-     ├────────────────►│                 │                 │
-     │                 │                 │                 │
-     │                 │ Validate Request│                 │
-     │                 ├────────────────►│                 │
-     │                 │                 │                 │
-     │                 │                 │ Check FMCSA API│
-     │                 │                 ├────────────────►│
-     │                 │                 │                 │
-     │                 │                 │◄────────────────┤
-     │                 │                 │ Carrier Data    │
-     │                 │                 │                 │
-     │                 │                 ├──┐              │
-     │                 │                 │  │ Apply        │
-     │                 │                 │  │ Eligibility  │
-     │                 │                 │  │ Rules        │
-     │                 │                 │◄─┘              │
-     │                 │                 │                 │
-     │                 │                 ├──┐              │
-     │                 │                 │  │ Store in     │
-     │                 │                 │  │ Database     │
-     │                 │                 │◄─┘              │
-     │                 │                 │                 │
-     │                 │◄────────────────┤                 │
-     │                 │ Eligibility     │                 │
-     │                 │                 │                 │
-     │◄────────────────┤                 │                 │
-     │ Response        │                 │                 │
-     │                 │                 │                 │
-```
-
-### 2. Load Search and Matching Flow
+### 1. Load Search and Matching Flow
 ```
 ┌──────────┐     ┌──────────┐     ┌──────────┐     ┌──────────┐
 │HappyRobot│     │  FastAPI │     │  UseCase │     │PostgreSQL│
@@ -479,7 +438,6 @@ The HappyRobot FDE platform implements a hexagonal architecture pattern for the 
 │                    HappyRobot FDE API                       │
 │  ┌─────────────────────────────────────────────────────┐   │
 │  │                 Webhook Endpoints                   │   │
-│  │  - /api/v1/fmcsa/verify                            │   │
 │  │  - /api/v1/loads/search                            │   │
 │  │  - /api/v1/negotiations/evaluate                   │   │
 │  │  - /api/v1/calls/handoff                           │   │
@@ -489,12 +447,7 @@ The HappyRobot FDE platform implements a hexagonal architecture pattern for the 
 ```
 
 ### External Service Integrations
-1. **FMCSA API**
-   - REST API for carrier verification
-   - Cached responses for performance
-   - Fallback to manual verification
-
-2. **AWS Services**
+1. **AWS Services**
    - Secrets Manager: Credential storage
    - CloudWatch: Logging and metrics
    - S3: Call recording storage (future)
