@@ -64,6 +64,11 @@ class ILoadRepository(ABC):
         pass
 
     @abstractmethod
+    async def get_active_by_id(self, load_id: UUID) -> Optional[Load]:
+        """Get active (non-deleted) load by ID."""
+        pass
+
+    @abstractmethod
     async def get_by_reference_number(self, reference_number: str) -> Optional[Load]:
         """Get load by reference number."""
         pass

@@ -174,6 +174,16 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
         model = result.scalar_one_or_none()
         return self._model_to_entity(model) if model else None
 
+    async def get_active_by_id(self, load_id: UUID) -> Optional[Load]:
+        """Get active (non-deleted) load by ID."""
+        stmt = select(LoadModel).where(
+            LoadModel.load_id == load_id,
+            LoadModel.deleted_at.is_(None)
+        )
+        result = await self.session.execute(stmt)
+        model = result.scalar_one_or_none()
+        return self._model_to_entity(model) if model else None
+
     async def get_by_reference_number(self, reference_number: str) -> Optional[Load]:
         """Get load by reference number."""
         stmt = select(LoadModel).where(LoadModel.reference_number == reference_number)

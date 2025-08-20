@@ -6,11 +6,12 @@ Created: 2024-08-14
 Updated: 2024-08-20
 """
 
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, Path
 from pydantic import BaseModel, Field
 from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, date
+from uuid import UUID
 
 # Configuration
 from src.config.settings import settings
@@ -22,6 +23,7 @@ from src.infrastructure.database.postgres import PostgresLoadRepository
 # Use cases
 from src.core.application.use_cases.create_load_use_case import CreateLoadUseCase
 from src.core.application.use_cases.list_loads_use_case import ListLoadsUseCase
+from src.core.application.use_cases.delete_load_use_case import DeleteLoadUseCase
 
 # Domain objects
 from src.core.domain.value_objects import Location
@@ -266,5 +268,119 @@ async def list_loads(
         error_msg = str(e)
         if "validation" in error_msg.lower() or "invalid" in error_msg.lower():
             raise HTTPException(status_code=400, detail=error_msg)
+        else:
+            raise HTTPException(status_code=500, detail=f"Internal server error: {error_msg}")
+
+
+@router.get("/{load_id}", response_model=LoadSummaryModel)
+async def get_load_by_id(
+    load_id: UUID = Path(..., description="Load ID"),
+    session: AsyncSession = Depends(get_database_session)
+):
+    """
+    Get a single load by its ID.
+
+    Retrieves detailed information about a specific load using its unique identifier.
+    Only returns active (non-deleted) loads.
+
+    Args:
+        load_id: The unique identifier of the load
+        session: Database session dependency
+
+    Returns:
+        LoadSummaryModel: Load information
+
+    Raises:
+        HTTPException: 404 if load not found, 500 for server errors
+    """
+    try:
+        # Initialize repository
+        load_repo = PostgresLoadRepository(session)
+
+        # Get the load (only active loads)
+        load = await load_repo.get_active_by_id(load_id)
+        if not load:
+            raise HTTPException(status_code=404, detail=f"Load with ID {load_id} not found")
+
+        # Convert to load summary using the same logic as in list_loads
+        pickup_datetime = datetime.combine(
+            load.pickup_date,
+            load.pickup_time_start or datetime.min.time()
+        )
+
+        delivery_datetime = datetime.combine(
+            load.delivery_date,
+            load.delivery_time_start or datetime.min.time()
+        )
+
+        return LoadSummaryModel(
+            load_id=str(load.load_id),
+            origin=f"{load.origin.city}, {load.origin.state}",
+            destination=f"{load.destination.city}, {load.destination.state}",
+            pickup_datetime=pickup_datetime,
+            delivery_datetime=delivery_datetime,
+            equipment_type=load.equipment_type.name,
+            loadboard_rate=load.loadboard_rate.to_float(),
+            notes=load.notes,
+            weight=load.weight,
+            commodity_type=load.commodity_type,
+            status=load.status.value,
+            created_at=load.created_at
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+@router.delete("/{load_id}", status_code=204)
+async def delete_load(
+    load_id: UUID = Path(..., description="Load ID"),
+    session: AsyncSession = Depends(get_database_session)
+):
+    """
+    Delete a load by its ID.
+
+    Performs a soft delete of the specified load. Business rules apply:
+    - Cannot delete loads that are IN_TRANSIT or DELIVERED
+    - Cannot delete loads that are already deleted
+    - Cannot delete inactive loads
+
+    Args:
+        load_id: The unique identifier of the load to delete
+        session: Database session dependency
+
+    Returns:
+        No content (204 status code)
+
+    Raises:
+        HTTPException: 404 if load not found, 409 for business rule violations, 500 for server errors
+    """
+    try:
+        # Initialize repository and use case
+        load_repo = PostgresLoadRepository(session)
+        use_case = DeleteLoadUseCase(load_repo)
+
+        # Convert request to use case request
+        from src.core.application.use_cases.delete_load_use_case import DeleteLoadRequest
+
+        use_case_request = DeleteLoadRequest(load_id=load_id)
+
+        # Execute use case
+        await use_case.execute(use_case_request)
+
+        # Commit the transaction
+        await session.commit()
+
+        # Return 204 No Content
+        return
+
+    except Exception as e:
+        error_msg = str(e)
+        if "not found" in error_msg.lower():
+            raise HTTPException(status_code=404, detail=error_msg)
+        elif any(phrase in error_msg.lower() for phrase in ["cannot delete", "in transit", "delivered", "already deleted", "not active"]):
+            raise HTTPException(status_code=409, detail=error_msg)
         else:
             raise HTTPException(status_code=500, detail=f"Internal server error: {error_msg}")
