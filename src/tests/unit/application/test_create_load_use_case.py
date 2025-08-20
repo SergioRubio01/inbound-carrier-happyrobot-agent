@@ -71,9 +71,7 @@ class MockLoadRepository(ILoadRepository):
         return [load for load in self.loads.values() if load.status == status]
 
     async def get_loads_by_carrier(self, carrier_id, limit=100, offset=0):
-        return (
-            []
-        )  # This method is no longer applicable since we removed carrier booking tracking
+        return []  # No longer used - removed carrier booking tracking
 
     async def count_loads_by_criteria(self, criteria):
         return len(self.loads)
