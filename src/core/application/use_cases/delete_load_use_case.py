@@ -87,11 +87,3 @@ class DeleteLoadUseCase:
 
         if load.status == LoadStatus.DELIVERED:
             raise LoadDeletionException(f"Cannot delete load {load.reference_number} - load has been delivered")
-
-        # Cannot delete already deleted loads
-        if load.deleted_at is not None:
-            raise LoadDeletionException(f"Load {load.reference_number} has already been deleted")
-
-        # Cannot delete inactive loads
-        if not load.is_active:
-            raise LoadDeletionException(f"Cannot delete load {load.reference_number} - load is not active")
