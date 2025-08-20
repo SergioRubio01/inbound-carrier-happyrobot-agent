@@ -99,10 +99,6 @@ class UpdateLoadUseCase:
 
     async def _validate_update_rules(self, load: Load, request: UpdateLoadRequest) -> None:
         """Validate business rules for load update."""
-        # Cannot update loads that are deleted
-        if load.deleted_at is not None:
-            raise LoadUpdateException(f"Cannot update load {load.reference_number} - load has been deleted")
-
         # Cannot update delivered loads
         if load.status == LoadStatus.DELIVERED:
             raise LoadUpdateException(f"Cannot update load {load.reference_number} - load has been delivered")
@@ -206,22 +202,3 @@ class UpdateLoadUseCase:
         # Validate weight limits
         if load.weight > settings.max_load_weight_lbs:
             raise LoadUpdateException(f"Weight cannot exceed {settings.max_load_weight_lbs:,} pounds")
-
-        # Validate hazmat fields
-        if load.hazmat and not load.hazmat_class:
-            raise LoadUpdateException("Hazmat class is required when load is hazmat")
-
-        # Validate priority score
-        if load.priority_score < 0 or load.priority_score > 100:
-            raise LoadUpdateException("Priority score must be between 0 and 100")
-
-        # Validate rate relationships
-        if load.minimum_rate and load.maximum_rate:
-            if load.minimum_rate.to_float() > load.maximum_rate.to_float():
-                raise LoadUpdateException("Minimum rate cannot be greater than maximum rate")
-
-        if load.target_rate:
-            if load.minimum_rate and load.target_rate.to_float() < load.minimum_rate.to_float():
-                raise LoadUpdateException("Target rate cannot be less than minimum rate")
-            if load.maximum_rate and load.target_rate.to_float() > load.maximum_rate.to_float():
-                raise LoadUpdateException("Target rate cannot be greater than maximum rate")
