@@ -61,7 +61,11 @@ class PostgresCarrierRepository(
             bond_required=model.bond_required,
             bond_on_file=model.bond_on_file,
             safety_rating=model.safety_rating,
-            safety_rating_date=model.safety_rating_date,
+            safety_rating_date=(
+                datetime.combine(model.safety_rating_date, datetime.min.time())
+                if model.safety_rating_date
+                else None
+            ),
             safety_scores=model.safety_scores,
             primary_contact=model.primary_contact,
             address=address,
@@ -123,7 +127,10 @@ class PostgresCarrierRepository(
         """Create a new carrier."""
         model = self._entity_to_model(carrier)
         created_model = await super().create(model)
-        return self._model_to_entity(created_model)
+        result = self._model_to_entity(created_model)
+        if result is None:
+            raise RuntimeError("Failed to create carrier")
+        return result
 
     async def get_by_id(self, carrier_id: UUID) -> Optional[Carrier]:  # type: ignore[override]
         """Get carrier by ID."""
@@ -146,7 +153,10 @@ class PostgresCarrierRepository(
         model.version += 1
 
         updated_model = await super().update(model)
-        return self._model_to_entity(updated_model)
+        result = self._model_to_entity(updated_model)
+        if result is None:
+            raise RuntimeError("Failed to update carrier")
+        return result
 
     async def delete(self, carrier_id: UUID) -> bool:
         """Delete carrier (soft delete)."""
@@ -173,7 +183,7 @@ class PostgresCarrierRepository(
                 and_(
                     CarrierModel.operating_status == "AUTHORIZED_FOR_HIRE",
                     CarrierModel.status == "ACTIVE",
-                    CarrierModel.insurance_on_file is True,
+                    CarrierModel.insurance_on_file.is_(True),
                 )
             )
             .limit(limit)
@@ -182,7 +192,8 @@ class PostgresCarrierRepository(
 
         result = await self.session.execute(stmt)
         models = result.scalars().all()
-        return [self._model_to_entity(model) for model in models]
+        entities = [self._model_to_entity(model) for model in models]
+        return [e for e in entities if e is not None]
 
     async def search_carriers(
         self,
@@ -194,7 +205,7 @@ class PostgresCarrierRepository(
         """Search carriers by criteria."""
         stmt = select(CarrierModel)
 
-        conditions = []
+        conditions: List[Any] = []
         if legal_name:
             conditions.append(CarrierModel.legal_name.ilike(f"%{legal_name}%"))
         if operating_status:
@@ -207,7 +218,8 @@ class PostgresCarrierRepository(
 
         result = await self.session.execute(stmt)
         models = result.scalars().all()
-        return [self._model_to_entity(model) for model in models]
+        entities = [self._model_to_entity(model) for model in models]
+        return [e for e in entities if e is not None]
 
     async def exists_by_mc_number(self, mc_number: MCNumber) -> bool:
         """Check if carrier exists by MC number."""

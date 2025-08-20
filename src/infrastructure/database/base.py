@@ -12,8 +12,10 @@ Dependencies:
 - List major dependencies or related files
 """
 
-from sqlalchemy import Column, DateTime
-from sqlalchemy.orm import DeclarativeBase, declared_attr
+from datetime import datetime
+
+from sqlalchemy import DateTime
+from sqlalchemy.orm import DeclarativeBase, Mapped, declared_attr, mapped_column
 from sqlalchemy.sql import func
 
 
@@ -25,14 +27,14 @@ class Base(DeclarativeBase):
 # Mixin for created_at and updated_at timestamps
 class TimestampMixin:
     @declared_attr
-    def created_at(cls):
-        return Column(
+    def created_at(cls) -> Mapped[datetime]:
+        return mapped_column(
             DateTime(timezone=True), server_default=func.now(), nullable=False
         )
 
     @declared_attr
-    def updated_at(cls):
-        return Column(
+    def updated_at(cls) -> Mapped[datetime]:
+        return mapped_column(
             DateTime(timezone=True),
             server_default=func.now(),
             onupdate=func.now(),

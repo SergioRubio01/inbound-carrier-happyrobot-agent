@@ -75,7 +75,13 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
             route_notes=model.route_notes,
             loadboard_rate=loadboard_rate,
             fuel_surcharge=fuel_surcharge,
-            accessorials=model.accessorials,
+            accessorials=(
+                [model.accessorials]
+                if model.accessorials and isinstance(model.accessorials, dict)
+                else (
+                    model.accessorials if isinstance(model.accessorials, list) else None
+                )
+            ),
             minimum_rate=(
                 Rate.from_float(model.minimum_rate) if model.minimum_rate else None
             ),
@@ -191,7 +197,10 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
         """Create a new load."""
         model = self._entity_to_model(load)
         created_model = await super().create(model)
-        return self._model_to_entity(created_model)
+        result = self._model_to_entity(created_model)
+        if result is None:
+            raise RuntimeError("Failed to create load")
+        return result
 
     async def get_by_id(self, load_id: UUID) -> Optional[Load]:  # type: ignore[override]
         """Get load by ID."""
@@ -213,7 +222,10 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
         model.updated_at = datetime.utcnow()
         model.version += 1
         updated_model = await super().update(model)
-        return self._model_to_entity(updated_model)
+        result = self._model_to_entity(updated_model)
+        if result is None:
+            raise RuntimeError("Failed to update load")
+        return result
 
     async def delete(self, load_id: UUID) -> bool:
         """Delete load (soft delete)."""
@@ -228,6 +240,20 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
             await self.session.flush()
             return True
         return False
+
+    def _build_order_clause(self, sort_by: Optional[str] = None):
+        """Build order clause for sorting."""
+        if not sort_by:
+            return LoadModel.created_at.desc()
+
+        # Add mapping for different sort options
+        sort_mapping = {
+            "rate": LoadModel.loadboard_rate.desc(),
+            "miles": LoadModel.miles.asc(),
+            "pickup_date": LoadModel.pickup_date.asc(),
+            "created_at": LoadModel.created_at.desc(),
+        }
+        return sort_mapping.get(sort_by, LoadModel.created_at.desc())
 
     async def search_loads(self, criteria: LoadSearchCriteria) -> List[Load]:
         """Search loads by criteria."""
@@ -262,7 +288,7 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
         if criteria.status:
             conditions.append(LoadModel.status == criteria.status.value)
         if criteria.is_active:
-            conditions.append(LoadModel.is_active is True)
+            conditions.append(LoadModel.is_active.is_(True))  # noqa: E712
             conditions.append(LoadModel.deleted_at.is_(None))
 
         if conditions:
@@ -278,7 +304,8 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
 
         result = await self.session.execute(stmt)
         models = result.scalars().all()
-        return [self._model_to_entity(model) for model in models]
+        entities = [self._model_to_entity(model) for model in models]
+        return [e for e in entities if e is not None]
 
     async def get_available_loads(
         self, limit: int = 100, offset: int = 0
@@ -289,7 +316,7 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
             .where(
                 and_(
                     LoadModel.status == "AVAILABLE",
-                    LoadModel.is_active is True,
+                    LoadModel.is_active.is_(True),
                     LoadModel.deleted_at.is_(None),
                 )
             )
@@ -299,7 +326,8 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
 
         result = await self.session.execute(stmt)
         models = result.scalars().all()
-        return [self._model_to_entity(model) for model in models]
+        entities = [self._model_to_entity(model) for model in models]
+        return [e for e in entities if e is not None]
 
     async def get_loads_by_status(
         self, status: LoadStatus, limit: int = 100, offset: int = 0
@@ -314,7 +342,8 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
 
         result = await self.session.execute(stmt)
         models = result.scalars().all()
-        return [self._model_to_entity(model) for model in models]
+        entities = [self._model_to_entity(model) for model in models]
+        return [e for e in entities if e is not None]
 
     async def get_loads_by_carrier(
         self, carrier_id: UUID, limit: int = 100, offset: int = 0
@@ -329,11 +358,12 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
 
         result = await self.session.execute(stmt)
         models = result.scalars().all()
-        return [self._model_to_entity(model) for model in models]
+        entities = [self._model_to_entity(model) for model in models]
+        return [e for e in entities if e is not None]
 
     async def count_loads_by_criteria(self, criteria: LoadSearchCriteria) -> int:
         """Count loads matching criteria."""
-        stmt = select(func.count()).select_from(LoadModel)
+        stmt = select(func.count(LoadModel.load_id))
 
         conditions = []
         if criteria.equipment_type:
@@ -355,13 +385,14 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
                 LoadModel.expires_at.isnot(None),
                 LoadModel.expires_at <= text(f"NOW() + INTERVAL '{hours} hours'"),
                 LoadModel.status == "AVAILABLE",
-                LoadModel.is_active is True,
+                LoadModel.is_active.is_(True),
             )
         )
 
         result = await self.session.execute(stmt)
         models = result.scalars().all()
-        return [self._model_to_entity(model) for model in models]
+        entities = [self._model_to_entity(model) for model in models]
+        return [e for e in entities if e is not None]
 
     async def get_load_metrics(  # type: ignore[override]
         self, start_date: datetime, end_date: datetime
@@ -383,7 +414,7 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
             and_(
                 LoadModel.created_at >= start_date,
                 LoadModel.created_at <= end_date,
-                LoadModel.is_active is True,
+                LoadModel.is_active.is_(True),
             )
         )
         avg_value_result = await self.session.execute(avg_value_stmt)
@@ -394,7 +425,7 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
             and_(
                 LoadModel.created_at >= start_date,
                 LoadModel.created_at <= end_date,
-                LoadModel.is_active is True,
+                LoadModel.is_active.is_(True),
             )
         )
         avg_rate_result = await self.session.execute(avg_rate_stmt)

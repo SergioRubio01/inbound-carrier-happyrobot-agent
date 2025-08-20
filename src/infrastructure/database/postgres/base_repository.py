@@ -8,7 +8,7 @@ Created: 2024-08-14
 from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
 from uuid import UUID
 
-from sqlalchemy import and_, asc, delete, desc, func, select
+from sqlalchemy import and_, asc, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.infrastructure.database.base import Base
@@ -33,9 +33,8 @@ class BaseRepository(Generic[T, D]):
 
     async def get_by_id(self, record_id: UUID) -> Optional[T]:
         """Get record by ID."""
-        stmt = select(self.model_class).where(self.model_class.id == record_id)
-        result = await self.session.execute(stmt)
-        return result.scalar_one_or_none()  # type: ignore[return-value]
+        # This is overridden in child classes with specific field names
+        raise NotImplementedError("get_by_id must be implemented in child classes")
 
     async def update(self, model: T) -> T:
         """Update existing record."""
@@ -46,26 +45,23 @@ class BaseRepository(Generic[T, D]):
 
     async def delete(self, record_id: UUID) -> bool:
         """Delete record by ID."""
-        stmt = delete(self.model_class).where(self.model_class.id == record_id)
-        result = await self.session.execute(stmt)
-        return bool(result.rowcount > 0)  # type: ignore[attr-defined]
+        # This is overridden in child classes with specific field names
+        raise NotImplementedError("delete must be implemented in child classes")
 
     async def exists(self, record_id: UUID) -> bool:
         """Check if record exists."""
-        stmt = select(func.count()).where(self.model_class.id == record_id)
-        result = await self.session.execute(stmt)
-        count = result.scalar() or 0
-        return bool(count > 0)
+        # This is overridden in child classes with specific field names
+        raise NotImplementedError("exists must be implemented in child classes")
 
     async def list_all(self, limit: int = 100, offset: int = 0) -> List[T]:
         """List all records with pagination."""
         stmt = select(self.model_class).limit(limit).offset(offset)
         result = await self.session.execute(stmt)
-        return list(result.scalars().all())  # type: ignore[arg-type]
+        return list(result.scalars().all())
 
     async def count_all(self) -> int:
         """Count all records."""
-        stmt = select(func.count()).select_from(self.model_class)
+        stmt = select(func.count(self.model_class.__table__.c[0]))
         result = await self.session.execute(stmt)
         return int(result.scalar() or 0)
 

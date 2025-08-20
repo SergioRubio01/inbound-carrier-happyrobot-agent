@@ -140,7 +140,10 @@ class PostgresNegotiationRepository(
         """Create a new negotiation."""
         model = self._entity_to_model(negotiation)
         created_model = await super().create(model)
-        return self._model_to_entity(created_model)
+        result = self._model_to_entity(created_model)
+        if result is None:
+            raise RuntimeError("Failed to create negotiation")
+        return result
 
     async def get_by_id(self, negotiation_id: UUID) -> Optional[Negotiation]:  # type: ignore[override]
         """Get negotiation by ID."""
@@ -158,14 +161,14 @@ class PostgresNegotiationRepository(
             .where(
                 and_(
                     NegotiationModel.session_id == session_id,
-                    NegotiationModel.is_active is True,
+                    NegotiationModel.is_active.is_(True),
                 )
             )
             .order_by(NegotiationModel.created_at.desc())
         )
 
         result = await self.session.execute(stmt)
-        model = result.first()
+        model = result.scalar_one_or_none()
         return self._model_to_entity(model) if model else None
 
     async def update(self, negotiation: Negotiation) -> Negotiation:  # type: ignore[override]
@@ -174,7 +177,10 @@ class PostgresNegotiationRepository(
         model.updated_at = datetime.utcnow()
         model.version += 1
         updated_model = await super().update(model)
-        return self._model_to_entity(updated_model)
+        result = self._model_to_entity(updated_model)
+        if result is None:
+            raise RuntimeError("Failed to update negotiation")
+        return result
 
     async def delete(self, negotiation_id: UUID) -> bool:
         """Delete negotiation."""
@@ -217,7 +223,8 @@ class PostgresNegotiationRepository(
 
         result = await self.session.execute(stmt)
         models = result.scalars().all()
-        return [self._model_to_entity(model) for model in models]
+        entities = [self._model_to_entity(model) for model in models]
+        return [e for e in entities if e is not None]
 
     async def get_negotiations_by_call(self, call_id: UUID) -> List[Negotiation]:
         """Get all negotiations for a specific call."""
@@ -229,7 +236,8 @@ class PostgresNegotiationRepository(
 
         result = await self.session.execute(stmt)
         models = result.scalars().all()
-        return [self._model_to_entity(model) for model in models]
+        entities = [self._model_to_entity(model) for model in models]
+        return [e for e in entities if e is not None]
 
     async def get_negotiations_by_load(
         self, load_id: UUID, limit: int = 100, offset: int = 0
@@ -245,7 +253,8 @@ class PostgresNegotiationRepository(
 
         result = await self.session.execute(stmt)
         models = result.scalars().all()
-        return [self._model_to_entity(model) for model in models]
+        entities = [self._model_to_entity(model) for model in models]
+        return [e for e in entities if e is not None]
 
     async def get_active_negotiations(
         self, limit: int = 100, offset: int = 0
@@ -253,7 +262,7 @@ class PostgresNegotiationRepository(
         """Get currently active negotiations."""
         stmt = (
             select(NegotiationModel)
-            .where(NegotiationModel.is_active is True)
+            .where(NegotiationModel.is_active.is_(True))  # noqa: E712
             .limit(limit)
             .offset(offset)
             .order_by(NegotiationModel.session_start.desc())
@@ -261,7 +270,8 @@ class PostgresNegotiationRepository(
 
         result = await self.session.execute(stmt)
         models = result.scalars().all()
-        return [self._model_to_entity(model) for model in models]
+        entities = [self._model_to_entity(model) for model in models]
+        return [e for e in entities if e is not None]
 
     async def get_negotiations_by_status(
         self, status: NegotiationStatus, limit: int = 100, offset: int = 0
@@ -277,7 +287,8 @@ class PostgresNegotiationRepository(
 
         result = await self.session.execute(stmt)
         models = result.scalars().all()
-        return [self._model_to_entity(model) for model in models]
+        entities = [self._model_to_entity(model) for model in models]
+        return [e for e in entities if e is not None]
 
     async def get_negotiation_metrics(
         self, start_date: datetime, end_date: datetime
@@ -331,8 +342,8 @@ class PostgresNegotiationRepository(
         successful_negotiations = success_result.scalar()
 
         success_rate = (
-            (successful_negotiations / total_negotiations * 100)
-            if total_negotiations > 0
+            ((successful_negotiations or 0) / total_negotiations * 100)
+            if total_negotiations is not None and total_negotiations > 0
             else 0
         )
 
@@ -348,7 +359,7 @@ class PostgresNegotiationRepository(
         self, criteria: NegotiationSearchCriteria
     ) -> int:
         """Count negotiations matching criteria."""
-        stmt = select(func.count()).select_from(NegotiationModel)
+        stmt = select(func.count(NegotiationModel.negotiation_id))
 
         conditions = []
         if criteria.call_id:
@@ -376,7 +387,7 @@ class PostgresNegotiationRepository(
             stmt = stmt.where(and_(*conditions))
 
         result = await self.session.execute(stmt)
-        return result.scalar()
+        return int(result.scalar() or 0)
 
     async def get_carrier_negotiation_history(
         self, carrier_id: UUID, limit: int = 50
@@ -391,4 +402,5 @@ class PostgresNegotiationRepository(
 
         result = await self.session.execute(stmt)
         models = result.scalars().all()
-        return [self._model_to_entity(model) for model in models]
+        entities = [self._model_to_entity(model) for model in models]
+        return [e for e in entities if e is not None]

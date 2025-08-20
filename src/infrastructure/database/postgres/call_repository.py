@@ -12,8 +12,15 @@ from uuid import UUID
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.core.domain.entities import Call, CallOutcome, Sentiment
-from src.core.domain.value_objects import MCNumber
+from src.core.domain.entities import (
+    AgentType,
+    Call,
+    CallChannel,
+    CallOutcome,
+    CallType,
+    Sentiment,
+)
+from src.core.domain.value_objects import MCNumber, Rate
 from src.core.ports.repositories import CallSearchCriteria, ICallRepository
 from src.infrastructure.database.models import CallModel
 
@@ -46,17 +53,23 @@ class PostgresCallRepository(BaseRepository[CallModel, Call], ICallRepository):
             start_time=model.start_time,
             end_time=model.end_time,
             duration_seconds=model.duration_seconds,
-            call_type=model.call_type,
-            channel=model.channel,
-            agent_type=model.agent_type,
+            call_type=(
+                CallType(model.call_type) if model.call_type else CallType.INBOUND
+            ),
+            channel=CallChannel(model.channel) if model.channel else None,
+            agent_type=(
+                AgentType(model.agent_type) if model.agent_type else AgentType.AI
+            ),
             agent_id=model.agent_id,
             outcome=CallOutcome(model.outcome) if model.outcome else None,
             outcome_confidence=model.outcome_confidence,
             sentiment=Sentiment(model.sentiment) if model.sentiment else None,
             sentiment_score=model.sentiment_score,
             sentiment_breakdown=model.sentiment_breakdown,
-            initial_offer=model.initial_offer,
-            final_rate=model.final_rate,
+            initial_offer=(
+                Rate.from_float(model.initial_offer) if model.initial_offer else None
+            ),
+            final_rate=Rate.from_float(model.final_rate) if model.final_rate else None,
             rate_accepted=model.rate_accepted,
             extracted_data=model.extracted_data,
             transcript=model.transcript,
@@ -133,7 +146,10 @@ class PostgresCallRepository(BaseRepository[CallModel, Call], ICallRepository):
         """Create a new call."""
         model = self._entity_to_model(call)
         created_model = await super().create(model)
-        return self._model_to_entity(created_model)
+        result = self._model_to_entity(created_model)
+        if result is None:
+            raise RuntimeError("Failed to create call")
+        return result
 
     async def get_by_id(self, call_id: UUID) -> Optional[Call]:  # type: ignore[override]
         """Get call by ID."""
@@ -155,7 +171,10 @@ class PostgresCallRepository(BaseRepository[CallModel, Call], ICallRepository):
         model.updated_at = datetime.utcnow()
         model.version += 1
         updated_model = await super().update(model)
-        return self._model_to_entity(updated_model)
+        result = self._model_to_entity(updated_model)
+        if result is None:
+            raise RuntimeError("Failed to update call")
+        return result
 
     async def delete(self, call_id: UUID) -> bool:
         """Delete call."""
@@ -198,7 +217,8 @@ class PostgresCallRepository(BaseRepository[CallModel, Call], ICallRepository):
 
         result = await self.session.execute(stmt)
         models = result.scalars().all()
-        return [self._model_to_entity(model) for model in models]
+        entities = [self._model_to_entity(model) for model in models]
+        return [e for e in entities if e is not None]
 
     async def get_calls_by_carrier(
         self, carrier_id: UUID, limit: int = 100, offset: int = 0
@@ -214,7 +234,8 @@ class PostgresCallRepository(BaseRepository[CallModel, Call], ICallRepository):
 
         result = await self.session.execute(stmt)
         models = result.scalars().all()
-        return [self._model_to_entity(model) for model in models]
+        entities = [self._model_to_entity(model) for model in models]
+        return [e for e in entities if e is not None]
 
     async def get_calls_by_outcome(
         self, outcome: CallOutcome, limit: int = 100, offset: int = 0
@@ -230,7 +251,8 @@ class PostgresCallRepository(BaseRepository[CallModel, Call], ICallRepository):
 
         result = await self.session.execute(stmt)
         models = result.scalars().all()
-        return [self._model_to_entity(model) for model in models]
+        entities = [self._model_to_entity(model) for model in models]
+        return [e for e in entities if e is not None]
 
     async def get_calls_requiring_follow_up(
         self, limit: int = 100, offset: int = 0
@@ -240,8 +262,8 @@ class PostgresCallRepository(BaseRepository[CallModel, Call], ICallRepository):
             select(CallModel)
             .where(
                 and_(
-                    CallModel.follow_up_required is True,
-                    CallModel.follow_up_completed is False,
+                    CallModel.follow_up_required.is_(True),
+                    CallModel.follow_up_completed.is_(False),
                 )
             )
             .limit(limit)
@@ -251,7 +273,8 @@ class PostgresCallRepository(BaseRepository[CallModel, Call], ICallRepository):
 
         result = await self.session.execute(stmt)
         models = result.scalars().all()
-        return [self._model_to_entity(model) for model in models]
+        entities = [self._model_to_entity(model) for model in models]
+        return [e for e in entities if e is not None]
 
     async def get_active_calls(self, limit: int = 100, offset: int = 0) -> List[Call]:
         """Get currently active calls."""
@@ -265,7 +288,8 @@ class PostgresCallRepository(BaseRepository[CallModel, Call], ICallRepository):
 
         result = await self.session.execute(stmt)
         models = result.scalars().all()
-        return [self._model_to_entity(model) for model in models]
+        entities = [self._model_to_entity(model) for model in models]
+        return [e for e in entities if e is not None]
 
     async def get_call_metrics(
         self, start_date: datetime, end_date: datetime
@@ -308,7 +332,7 @@ class PostgresCallRepository(BaseRepository[CallModel, Call], ICallRepository):
             and_(
                 CallModel.start_time >= start_date,
                 CallModel.start_time <= end_date,
-                CallModel.follow_up_required is True,
+                CallModel.follow_up_required.is_(True),
             )
         )
         follow_ups_result = await self.session.execute(follow_ups_stmt)
@@ -323,7 +347,7 @@ class PostgresCallRepository(BaseRepository[CallModel, Call], ICallRepository):
 
     async def count_calls_by_criteria(self, criteria: CallSearchCriteria) -> int:
         """Count calls matching criteria."""
-        stmt = select(func.count()).select_from(CallModel)
+        stmt = select(func.count(CallModel.call_id))
 
         conditions = []
         if criteria.mc_number:

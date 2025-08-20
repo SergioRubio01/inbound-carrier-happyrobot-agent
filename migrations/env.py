@@ -69,9 +69,10 @@ def run_migrations_for_db(db_url):
     config.set_main_option("sqlalchemy.url", escaped_url)
 
     configuration = config.get_section(config.config_ini_section)
-    configuration["sqlalchemy.url"] = db_url
+    if configuration is not None:
+        configuration["sqlalchemy.url"] = db_url
     connectable = engine_from_config(
-        configuration,
+        configuration or {},
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )

@@ -123,7 +123,7 @@ class VerifyCarrierUseCase:
         # - Real-time data fetching
 
         # Return None to indicate carrier not found in external system
-        return {}  # type: ignore[return-value]
+        return {}
 
     def _create_carrier_from_fmcsa(
         self, mc_number: MCNumber, fmcsa_data: Dict[str, Any]

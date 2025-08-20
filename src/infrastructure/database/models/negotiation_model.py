@@ -6,11 +6,12 @@ Created: 2024-08-14
 """
 
 import uuid
-from typing import TYPE_CHECKING
+from datetime import datetime
+from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import TIMESTAMP, Boolean, Column, ForeignKey, Integer, String, Text
+from sqlalchemy import TIMESTAMP, Boolean, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, NUMERIC, UUID
-from sqlalchemy.orm import Mapped, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from src.infrastructure.database.base import Base, TimestampMixin
@@ -27,42 +28,56 @@ class NegotiationModel(Base, TimestampMixin):
     __tablename__ = "negotiations"
 
     # Primary Key
-    negotiation_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    negotiation_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
 
     # Association
-    call_id = Column(UUID(as_uuid=True), ForeignKey("calls.call_id"), index=True)
-    load_id = Column(
+    call_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("calls.call_id"), index=True, nullable=True
+    )
+    load_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("loads.load_id"), nullable=False, index=True
     )
-    carrier_id = Column(
-        UUID(as_uuid=True), ForeignKey("carriers.carrier_id"), index=True
+    carrier_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("carriers.carrier_id"), index=True, nullable=True
     )
-    mc_number = Column(String(20))
+    mc_number: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
 
     # Session Management
-    session_id = Column(String(100), nullable=False, index=True)
-    session_start = Column(TIMESTAMP(timezone=True), nullable=False, default=func.now())
-    session_end = Column(TIMESTAMP(timezone=True))
-    is_active = Column(Boolean, default=True, index=True)
+    session_id: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    session_start: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, default=func.now()
+    )
+    session_end: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=True
+    )
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
 
     # Negotiation Rounds
-    round_number = Column(Integer, nullable=False, index=True)
-    max_rounds = Column(Integer, default=3)
+    round_number: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    max_rounds: Mapped[int] = mapped_column(Integer, default=3)
 
     # Offer Details
-    carrier_offer = Column(NUMERIC(10, 2), nullable=False)
-    system_response = Column(
+    carrier_offer: Mapped[float] = mapped_column(NUMERIC(10, 2), nullable=False)
+    system_response: Mapped[str] = mapped_column(
         String(50), nullable=False
     )  # ACCEPTED, COUNTER_OFFER, REJECTED
-    counter_offer = Column(NUMERIC(10, 2))
+    counter_offer: Mapped[Optional[float]] = mapped_column(
+        NUMERIC(10, 2), nullable=True
+    )
 
     # Context
-    loadboard_rate = Column(NUMERIC(10, 2), nullable=False)
-    minimum_acceptable = Column(NUMERIC(10, 2))
-    maximum_acceptable = Column(NUMERIC(10, 2))
+    loadboard_rate: Mapped[float] = mapped_column(NUMERIC(10, 2), nullable=False)
+    minimum_acceptable: Mapped[Optional[float]] = mapped_column(
+        NUMERIC(10, 2), nullable=True
+    )
+    maximum_acceptable: Mapped[Optional[float]] = mapped_column(
+        NUMERIC(10, 2), nullable=True
+    )
 
     # Decision Logic
-    decision_factors = Column(JSONB)
+    decision_factors: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
     """
     Structure:
     {
@@ -72,22 +87,24 @@ class NegotiationModel(Base, TimestampMixin):
     """
 
     # Communication
-    message_to_carrier = Column(Text)
-    justification = Column(Text)
+    message_to_carrier: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    justification: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Result
-    final_status = Column(
-        String(30), index=True
+    final_status: Mapped[Optional[str]] = mapped_column(
+        String(30), index=True, nullable=True
     )  # DEAL_ACCEPTED, DEAL_REJECTED, ABANDONED, TIMEOUT
-    agreed_rate = Column(NUMERIC(10, 2))
+    agreed_rate: Mapped[Optional[float]] = mapped_column(NUMERIC(10, 2), nullable=True)
 
     # Timing
-    response_time_seconds = Column(Integer)
-    total_duration_seconds = Column(Integer)
+    response_time_seconds: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    total_duration_seconds: Mapped[Optional[int]] = mapped_column(
+        Integer, nullable=True
+    )
 
     # Metadata
-    created_by = Column(String(100))
-    version = Column(Integer, default=1)
+    created_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, default=1)
 
     # Relationships
     call: Mapped["CallModel"] = relationship("CallModel", foreign_keys=[call_id])

@@ -6,9 +6,12 @@ Created: 2024-08-14
 """
 
 import uuid
+from datetime import date, datetime
+from typing import Optional
 
-from sqlalchemy import TIMESTAMP, Boolean, Column, Date, Integer, String, Text
+from sqlalchemy import TIMESTAMP, Boolean, Date, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, NUMERIC, UUID
+from sqlalchemy.orm import Mapped, mapped_column
 
 from src.infrastructure.database.base import Base, TimestampMixin
 
@@ -19,51 +22,79 @@ class CarrierModel(Base, TimestampMixin):
     __tablename__ = "carriers"
 
     # Primary Key
-    carrier_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    carrier_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
 
     # Carrier Identification
-    mc_number = Column(String(20), unique=True, nullable=False, index=True)
-    dot_number = Column(String(20), index=True)
+    mc_number: Mapped[str] = mapped_column(
+        String(20), unique=True, nullable=False, index=True
+    )
+    dot_number: Mapped[Optional[str]] = mapped_column(
+        String(20), index=True, nullable=True
+    )
 
     # Company Information
-    legal_name = Column(String(255), nullable=False)
-    dba_name = Column(String(255))
+    legal_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    dba_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
     # Status Information
-    entity_type = Column(String(50), nullable=False)  # CARRIER, BROKER, BOTH
-    operating_status = Column(
+    entity_type: Mapped[str] = mapped_column(
+        String(50), nullable=False
+    )  # CARRIER, BROKER, BOTH
+    operating_status: Mapped[str] = mapped_column(
         String(50), nullable=False
     )  # AUTHORIZED_FOR_HIRE, NOT_AUTHORIZED, OUT_OF_SERVICE
-    status = Column(String(20), nullable=False)  # ACTIVE, INACTIVE
+    status: Mapped[str] = mapped_column(String(20), nullable=False)  # ACTIVE, INACTIVE
 
     # Insurance Information
-    insurance_on_file = Column(Boolean, default=False)
-    bipd_required = Column(NUMERIC(12, 2))
-    bipd_on_file = Column(NUMERIC(12, 2))
-    cargo_required = Column(NUMERIC(12, 2))
-    cargo_on_file = Column(NUMERIC(12, 2))
-    bond_required = Column(NUMERIC(12, 2))
-    bond_on_file = Column(NUMERIC(12, 2))
+    insurance_on_file: Mapped[bool] = mapped_column(Boolean, default=False)
+    bipd_required: Mapped[Optional[float]] = mapped_column(
+        NUMERIC(12, 2), nullable=True
+    )
+    bipd_on_file: Mapped[Optional[float]] = mapped_column(NUMERIC(12, 2), nullable=True)
+    cargo_required: Mapped[Optional[float]] = mapped_column(
+        NUMERIC(12, 2), nullable=True
+    )
+    cargo_on_file: Mapped[Optional[float]] = mapped_column(
+        NUMERIC(12, 2), nullable=True
+    )
+    bond_required: Mapped[Optional[float]] = mapped_column(
+        NUMERIC(12, 2), nullable=True
+    )
+    bond_on_file: Mapped[Optional[float]] = mapped_column(NUMERIC(12, 2), nullable=True)
 
     # Safety Information
-    safety_rating = Column(String(20))  # SATISFACTORY, CONDITIONAL, UNSATISFACTORY
-    safety_rating_date = Column(Date)
-    safety_scores = Column(JSONB)  # Stores BASICS scores
+    safety_rating: Mapped[Optional[str]] = mapped_column(
+        String(20), nullable=True
+    )  # SATISFACTORY, CONDITIONAL, UNSATISFACTORY
+    safety_rating_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    safety_scores: Mapped[Optional[dict]] = mapped_column(
+        JSONB, nullable=True
+    )  # Stores BASICS scores
 
     # Contact Information
-    primary_contact = Column(JSONB)  # {name, phone, email, title}
-    address = Column(JSONB)  # {street, city, state, zip, country}
+    primary_contact: Mapped[Optional[dict]] = mapped_column(
+        JSONB, nullable=True
+    )  # {name, phone, email, title}
+    address: Mapped[Optional[dict]] = mapped_column(
+        JSONB, nullable=True
+    )  # {street, city, state, zip, country}
 
     # Eligibility (computed property in business logic)
-    eligibility_notes = Column(Text)
+    eligibility_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Verification
-    last_verified_at = Column(TIMESTAMP(timezone=True))
-    verification_source = Column(String(50))  # FMCSA, MANUAL, THIRD_PARTY
+    last_verified_at: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=True
+    )
+    verification_source: Mapped[Optional[str]] = mapped_column(
+        String(50), nullable=True
+    )  # FMCSA, MANUAL, THIRD_PARTY
 
     # Metadata
-    created_by = Column(String(100))
-    version = Column(Integer, default=1)
+    created_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, default=1)
 
     @property
     def is_eligible(self) -> bool:

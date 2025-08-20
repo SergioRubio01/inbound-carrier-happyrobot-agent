@@ -2,7 +2,12 @@ import logging
 from typing import AsyncGenerator, Optional
 
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 from sqlalchemy.pool import AsyncAdaptedQueuePool
 
 from src.config.settings import Settings
@@ -35,11 +40,15 @@ class DatabaseConnection:
         )
         self.pool_size = pool_size
         self.max_overflow = max_overflow
-        self.engine = None
-        self.session_factory = None
+        self.engine: Optional[AsyncEngine] = None
+        self.session_factory: Optional[async_sessionmaker[AsyncSession]] = None
 
         if not self.database_url:
             raise ValueError("Database URL is required for database connection")
+
+        # Ensure database_url is not None for create_async_engine
+        if self.database_url is None:
+            raise ValueError("Database URL cannot be None")
 
     def initialize(self):
         """Initialize database connection and session factory"""
@@ -55,6 +64,8 @@ class DatabaseConnection:
         pool_pre_ping = True
 
         # Create engine with connection pooling
+        if self.database_url is None:
+            raise ValueError("Database URL cannot be None")
         self.engine = create_async_engine(
             self.database_url,
             poolclass=AsyncAdaptedQueuePool,
