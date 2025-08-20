@@ -167,7 +167,7 @@ class Negotiation:
             # Reject if we've reached max rounds or offer is too high
             response = SystemResponse.REJECTED
             self.message_to_carrier = f"I'm sorry, but ${self.carrier_offer} is beyond our budget. Our maximum for this load is ${self.maximum_acceptable}."
-            self.justification = f"Offer exceeds maximum acceptable rate or max rounds reached"
+            self.justification = "Offer exceeds maximum acceptable rate or max rounds reached"
 
         # Record decision factors
         self.decision_factors = {

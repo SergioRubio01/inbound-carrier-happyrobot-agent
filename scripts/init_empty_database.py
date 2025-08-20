@@ -8,8 +8,6 @@ alembic migration tracking.
 """
 
 import sys
-import os
-import asyncio
 import logging
 from pathlib import Path
 
@@ -34,7 +32,7 @@ def init_database():
 
     # Get sync database URL
     database_url = settings.get_sync_database_url
-    logger.info(f"Connecting to database...")
+    logger.info("Connecting to database...")
 
     # Create engine
     engine = create_engine(database_url)

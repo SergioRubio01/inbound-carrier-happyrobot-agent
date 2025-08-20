@@ -59,7 +59,7 @@ async def evaluate_negotiation(
     """
     try:
         from datetime import datetime
-        from uuid import UUID, uuid4
+        from uuid import UUID
 
         # Initialize repositories
         load_repo = PostgresLoadRepository(session)

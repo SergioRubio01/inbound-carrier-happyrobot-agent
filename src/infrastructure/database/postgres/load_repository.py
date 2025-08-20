@@ -7,9 +7,9 @@ Created: 2024-08-14
 
 from typing import Optional, List, Dict, Any
 from uuid import UUID
-from datetime import datetime, date
+from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, func, or_
+from sqlalchemy import select, and_, func
 
 from src.core.domain.entities import Load, LoadStatus, UrgencyLevel
 from src.core.domain.value_objects import EquipmentType, Location, Rate

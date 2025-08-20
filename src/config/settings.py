@@ -5,7 +5,6 @@ Author: HappyRobot Team
 Created: 2025-05-30
 """
 
-import json
 from urllib.parse import quote_plus
 
 from pydantic import Field
@@ -47,6 +46,18 @@ class Settings(BaseSettings):
 
     # Logging settings
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
+
+    # FMCSA API Configuration
+    fmcsa_api_key: str = Field(alias="FMCSA_API_KEY")
+    fmcsa_api_base_url: str = Field(
+        default="https://mobile.fmcsa.dot.gov/qc/services",
+        alias="FMCSA_API_BASE_URL"
+    )
+    fmcsa_api_timeout: int = Field(default=30, alias="FMCSA_API_TIMEOUT")
+    fmcsa_cache_ttl: int = Field(default=86400, alias="FMCSA_CACHE_TTL")  # 24 hours
+    fmcsa_enable_cache: bool = Field(default=True, alias="FMCSA_ENABLE_CACHE")
+    fmcsa_max_retries: int = Field(default=3, alias="FMCSA_MAX_RETRIES")
+    fmcsa_backoff_factor: float = Field(default=2.0, alias="FMCSA_BACKOFF_FACTOR")
 
     # Pydantic configuration
     model_config = SettingsConfigDict(

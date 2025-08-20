@@ -43,7 +43,7 @@ class DatabaseConnection:
 
     def initialize(self):
         """Initialize database connection and session factory"""
-        logger.info(f"Initializing standard database connection...")
+        logger.info("Initializing standard database connection...")
 
         pool_size = self.settings.database_pool_size if self.settings else self.pool_size
         max_overflow = (

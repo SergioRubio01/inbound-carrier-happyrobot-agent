@@ -7,7 +7,7 @@ Created: 2024-08-14
 
 from dataclasses import dataclass
 from typing import Optional, List, Dict, Any
-from datetime import datetime, date
+from datetime import datetime
 
 from src.core.domain.entities import Load
 from src.core.domain.value_objects import EquipmentType, Rate

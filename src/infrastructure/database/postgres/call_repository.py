@@ -9,7 +9,7 @@ from typing import Optional, List, Dict, Any
 from uuid import UUID
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, func, or_
+from sqlalchemy import select, and_, func
 
 from src.core.domain.entities import Call, CallOutcome, Sentiment
 from src.core.domain.value_objects import MCNumber

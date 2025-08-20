@@ -11,7 +11,7 @@ from uuid import UUID
 from datetime import date
 
 from src.core.domain.entities import Load, LoadStatus
-from src.core.domain.value_objects import EquipmentType, Location, Rate
+from src.core.domain.value_objects import EquipmentType, Rate
 
 
 class LoadSearchCriteria:
