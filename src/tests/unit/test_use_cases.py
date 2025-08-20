@@ -22,10 +22,10 @@ from src.core.domain.entities import Carrier, Load, LoadStatus, UrgencyLevel
 from src.core.domain.value_objects import EquipmentType, Location, MCNumber, Rate
 
 
-@pytest.mark.asyncio
 class TestVerifyCarrierUseCase:
     """Test VerifyCarrierUseCase."""
 
+    @pytest.mark.asyncio
     async def test_verify_eligible_carrier(self):
         """Test verifying an eligible carrier."""
         # Mock repository
@@ -56,6 +56,7 @@ class TestVerifyCarrierUseCase:
         assert result.carrier_info["legal_name"] == "Test Carrier LLC"
         mock_repo.get_by_mc_number.assert_called_once()
 
+    @pytest.mark.asyncio
     async def test_verify_ineligible_carrier(self):
         """Test verifying an ineligible carrier."""
         # Mock repository
@@ -84,6 +85,7 @@ class TestVerifyCarrierUseCase:
         assert result.reason is not None
         assert "CARRIER_NOT_AUTHORIZED" in result.reason
 
+    @pytest.mark.asyncio
     async def test_verify_nonexistent_carrier(self):
         """Test verifying a non-existent carrier."""
         # Mock repository
@@ -104,10 +106,10 @@ class TestVerifyCarrierUseCase:
             assert result.reason == "CARRIER_NOT_FOUND"
 
 
-@pytest.mark.asyncio
 class TestSearchLoadsUseCase:
     """Test SearchLoadsUseCase."""
 
+    @pytest.mark.asyncio
     async def test_search_loads_with_equipment_filter(self):
         """Test searching loads with equipment type filter."""
         # Mock repository
@@ -145,6 +147,7 @@ class TestSearchLoadsUseCase:
         assert result.loads[0]["equipment_type"] == "53-foot van"
         assert result.returned_count == 1
 
+    @pytest.mark.asyncio
     async def test_search_loads_empty_results(self):
         """Test searching loads with no results."""
         # Mock repository
@@ -162,10 +165,10 @@ class TestSearchLoadsUseCase:
         assert result.total_matches == 0
 
 
-@pytest.mark.asyncio
 class TestEvaluateNegotiationUseCase:
     """Test EvaluateNegotiationUseCase."""
 
+    @pytest.mark.asyncio
     async def test_evaluate_acceptable_offer(self):
         """Test evaluating an acceptable offer."""
         # Mock repositories
@@ -219,6 +222,7 @@ class TestEvaluateNegotiationUseCase:
         assert result.status == "ACCEPTED"
         assert result.message is not None
 
+    @pytest.mark.asyncio
     async def test_evaluate_high_offer_response(self):
         """Test evaluating a high offer response."""
         # Mock repositories
