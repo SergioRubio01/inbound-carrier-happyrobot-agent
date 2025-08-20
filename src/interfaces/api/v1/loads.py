@@ -1,160 +1,270 @@
 """
 File: loads.py
-Description: Load search API endpoints
+Description: Load management API endpoints
 Author: HappyRobot Team
 Created: 2024-08-14
+Updated: 2024-08-20
 """
 
-from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
-from typing import Optional, Dict, Any, List
+from fastapi import APIRouter, HTTPException, Depends, Query
+from pydantic import BaseModel, Field
+from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import datetime
+from datetime import datetime, date
+
+# Configuration
+from src.config.settings import settings
 
 # Database dependencies
 from src.interfaces.api.v1.dependencies.database import get_database_session
 from src.infrastructure.database.postgres import PostgresLoadRepository
-from src.core.domain.value_objects import EquipmentType, Rate
-from src.core.ports.repositories import LoadSearchCriteria
+
+# Use cases
+from src.core.application.use_cases.create_load_use_case import CreateLoadUseCase
+from src.core.application.use_cases.list_loads_use_case import ListLoadsUseCase
+
+# Domain objects
+from src.core.domain.value_objects import Location
 
 router = APIRouter(prefix="/loads", tags=["Loads"])
 
 
-class LocationModel(BaseModel):
+class LocationRequestModel(BaseModel):
     """Location model for requests."""
-    city: Optional[str] = None
-    state: Optional[str] = None
-    radius_miles: Optional[int] = None
+    city: str = Field(..., description="City name", min_length=1)
+    state: str = Field(..., description="2-letter state code", min_length=2, max_length=2)
+    zip: Optional[str] = Field(None, description="ZIP code")
 
 
-class DateRangeModel(BaseModel):
-    """Date range model for requests."""
-    start: Optional[str] = None
-    end: Optional[str] = None
+class CreateLoadRequestModel(BaseModel):
+    """Request model for creating a new load."""
+    origin: LocationRequestModel = Field(..., description="Load origin location")
+    destination: LocationRequestModel = Field(..., description="Load destination location")
+    pickup_datetime: datetime = Field(..., description="Pickup date and time")
+    delivery_datetime: datetime = Field(..., description="Delivery date and time")
+    equipment_type: str = Field(..., description="Required equipment type")
+    loadboard_rate: float = Field(..., gt=0, description="Loadboard rate in USD")
+    weight: int = Field(..., gt=0, le=settings.max_load_weight_lbs, description="Weight in pounds")
+    commodity_type: str = Field(..., description="Type of commodity")
+    notes: Optional[str] = Field(None, description="Additional notes")
+    reference_number: Optional[str] = Field(None, description="Custom reference number")
+    broker_company: Optional[str] = Field(None, description="Broker company name")
+    special_requirements: Optional[List[str]] = Field(None, description="Special requirements")
+    customer_name: Optional[str] = Field(None, description="Customer name")
+    dimensions: Optional[str] = Field(None, description="Load dimensions")
+    pieces: Optional[int] = Field(None, gt=0, description="Number of pieces")
+    hazmat: bool = Field(False, description="Whether load is hazmat")
+    hazmat_class: Optional[str] = Field(None, description="Hazmat class if applicable")
+    miles: Optional[int] = Field(None, gt=0, description="Estimated miles")
+    fuel_surcharge: Optional[float] = Field(None, ge=0, description="Fuel surcharge")
 
 
-class WeightRangeModel(BaseModel):
-    """Weight range model for requests."""
-    min: Optional[int] = None
-    max: Optional[int] = None
+class CreateLoadResponseModel(BaseModel):
+    """Response model for load creation."""
+    load_id: str = Field(..., description="Unique load ID")
+    reference_number: str = Field(..., description="Load reference number")
+    status: str = Field(..., description="Load status")
+    created_at: datetime = Field(..., description="Creation timestamp")
 
 
-class LoadSearchRequestModel(BaseModel):
-    """Request model for load search."""
-    equipment_type: str
-    origin: Optional[LocationModel] = None
-    destination: Optional[LocationModel] = None
-    pickup_date_range: Optional[DateRangeModel] = None
-    minimum_rate: Optional[float] = None
-    maximum_miles: Optional[int] = None
-    commodity_types: Optional[List[str]] = None
-    weight_range: Optional[WeightRangeModel] = None
-    limit: int = 10
-    sort_by: str = "rate_per_mile_desc"
+class LoadSummaryModel(BaseModel):
+    """Load summary model for list responses."""
+    load_id: str = Field(..., description="Unique load ID")
+    origin: str = Field(..., description="Origin as 'City, ST'")
+    destination: str = Field(..., description="Destination as 'City, ST'")
+    pickup_datetime: datetime = Field(..., description="Pickup date and time")
+    delivery_datetime: datetime = Field(..., description="Delivery date and time")
+    equipment_type: str = Field(..., description="Equipment type")
+    loadboard_rate: float = Field(..., description="Loadboard rate")
+    notes: Optional[str] = Field(None, description="Notes")
+    weight: int = Field(..., description="Weight in pounds")
+    commodity_type: str = Field(..., description="Commodity type")
+    status: str = Field(..., description="Load status")
+    created_at: datetime = Field(..., description="Creation timestamp")
 
 
-class LoadSearchResponseModel(BaseModel):
-    """Response model for load search."""
-    search_criteria: Dict[str, Any]
-    total_matches: int
-    returned_count: int
-    loads: List[Dict[str, Any]]
-    suggestions: Optional[Dict[str, Any]] = None
-    search_timestamp: str
+class ListLoadsResponseModel(BaseModel):
+    """Response model for load listing."""
+    loads: List[LoadSummaryModel] = Field(..., description="List of loads")
+    total_count: int = Field(..., description="Total number of loads")
+    page: int = Field(..., description="Current page number")
+    limit: int = Field(..., description="Items per page")
+    has_next: bool = Field(..., description="Whether there are more pages")
+    has_previous: bool = Field(..., description="Whether there are previous pages")
 
 
-@router.post("/search", response_model=LoadSearchResponseModel)
-async def search_loads(
-    request: LoadSearchRequestModel,
+@router.post("/", response_model=CreateLoadResponseModel, status_code=201)
+async def create_load(
+    request: CreateLoadRequestModel,
     session: AsyncSession = Depends(get_database_session)
 ):
     """
-    Search for available loads based on criteria.
+    Create a new load in the system.
 
-    This endpoint searches for loads that match the provided criteria including
-    equipment type, origin, destination, dates, and other filters.
+    Creates a new load with the provided details including origin, destination,
+    schedule, equipment requirements, and pricing information.
+
+    Args:
+        request: Load creation request with all required fields
+        session: Database session dependency
+
+    Returns:
+        CreateLoadResponseModel: Created load information with ID and status
+
+    Raises:
+        HTTPException: 400 for validation errors, 409 for duplicate reference numbers
     """
     try:
-        # Initialize repository
+        # Initialize repository and use case
         load_repo = PostgresLoadRepository(session)
+        use_case = CreateLoadUseCase(load_repo)
 
-        # Create search criteria from request
-        criteria = LoadSearchCriteria(
-            equipment_type=EquipmentType.from_name(request.equipment_type),
-            origin_state=request.origin.state if request.origin else None,
-            destination_state=request.destination.state if request.destination else None,
-            minimum_rate=Rate.from_float(request.minimum_rate) if request.minimum_rate else None,
-            maximum_miles=request.maximum_miles,
-            weight_min=request.weight_range.min if request.weight_range else None,
-            weight_max=request.weight_range.max if request.weight_range else None,
-            is_active=True,
-            limit=request.limit,
-            offset=0,
-            sort_by=request.sort_by
+        # Convert request model to use case request
+        from src.core.application.use_cases.create_load_use_case import CreateLoadRequest
+
+        origin = Location(
+            city=request.origin.city,
+            state=request.origin.state,
+            zip_code=request.origin.zip
         )
 
-        # Search loads using repository
-        loads = await load_repo.search_loads(criteria)
-        total_count = await load_repo.count_loads_by_criteria(criteria)
+        destination = Location(
+            city=request.destination.city,
+            state=request.destination.state,
+            zip_code=request.destination.zip
+        )
 
-        # Convert domain entities to API response format
-        load_data = []
-        for load in loads:
-            load_dict = {
-                "load_id": str(load.load_id),
-                "reference_number": load.reference_number,
-                "origin": {
-                    "city": load.origin.city,
-                    "state": load.origin.state,
-                    "zip": load.origin.zip_code
-                },
-                "destination": {
-                    "city": load.destination.city,
-                    "state": load.destination.state,
-                    "zip": load.destination.zip_code
-                },
-                "pickup_date": load.pickup_date.isoformat() if load.pickup_date else None,
-                "delivery_date": load.delivery_date.isoformat() if load.delivery_date else None,
-                "equipment_type": load.equipment_type.name,
-                "weight": load.weight,
-                "commodity": load.commodity_type,
-                "distance_miles": load.miles,
-                "loadboard_rate": float(load.loadboard_rate.to_float()),
-                "rate_per_mile": load.rate_per_mile,
-                "broker_company": load.broker_company,
-                "status": load.status.value,
-                "urgency": load.urgency.value,
-                "special_requirements": load.special_requirements,
-                "notes": load.notes
-            }
-            load_data.append(load_dict)
+        use_case_request = CreateLoadRequest(
+            origin=origin,
+            destination=destination,
+            pickup_datetime=request.pickup_datetime,
+            delivery_datetime=request.delivery_datetime,
+            equipment_type=request.equipment_type,
+            loadboard_rate=request.loadboard_rate,
+            weight=request.weight,
+            commodity_type=request.commodity_type,
+            notes=request.notes,
+            reference_number=request.reference_number,
+            broker_company=request.broker_company,
+            special_requirements=request.special_requirements,
+            customer_name=request.customer_name,
+            dimensions=request.dimensions,
+            pieces=request.pieces,
+            hazmat=request.hazmat,
+            hazmat_class=request.hazmat_class,
+            miles=request.miles,
+            fuel_surcharge=request.fuel_surcharge
+        )
 
-        # If no loads found, return empty results
+        # Execute use case
+        response = await use_case.execute(use_case_request)
 
-        return LoadSearchResponseModel(
-            search_criteria={
-                "equipment_type": request.equipment_type,
-                "origin_state": request.origin.state if request.origin else None,
-                "destination_state": request.destination.state if request.destination else None,
-                "minimum_rate": request.minimum_rate,
-                "maximum_miles": request.maximum_miles,
-                "applied_filters": len([f for f in [
-                    request.minimum_rate,
-                    request.maximum_miles,
-                    request.origin,
-                    request.destination
-                ] if f is not None])
-            },
-            total_matches=total_count,
-            returned_count=len(load_data),
-            loads=load_data,
-            suggestions={
-                "alternative_equipment": ["53-foot van", "Reefer", "Flatbed", "Power Only", "Step Deck"],
-                "rate_analysis": "No matches found with current criteria",
-                "recommendations": "Consider expanding search radius or adjusting rate requirements"
-            } if len(load_data) == 0 else None,
-            search_timestamp=datetime.utcnow().isoformat()
+        # Commit the transaction
+        await session.commit()
+
+        # Convert to API response
+        return CreateLoadResponseModel(
+            load_id=response.load_id,
+            reference_number=response.reference_number,
+            status=response.status,
+            created_at=response.created_at
         )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        error_msg = str(e)
+        if "duplicate" in error_msg.lower() or "already exists" in error_msg.lower():
+            raise HTTPException(status_code=409, detail=error_msg)
+        elif "validation" in error_msg.lower() or "required" in error_msg.lower():
+            raise HTTPException(status_code=400, detail=error_msg)
+        else:
+            raise HTTPException(status_code=500, detail=f"Internal server error: {error_msg}")
+
+
+@router.get("/", response_model=ListLoadsResponseModel)
+async def list_loads(
+    status: Optional[str] = Query(None, description="Filter by load status (AVAILABLE, BOOKED, etc.)"),
+    equipment_type: Optional[str] = Query(None, description="Filter by equipment type"),
+    start_date: Optional[date] = Query(None, description="Filter by pickup date start (YYYY-MM-DD)"),
+    end_date: Optional[date] = Query(None, description="Filter by pickup date end (YYYY-MM-DD)"),
+    page: int = Query(1, ge=1, description="Page number (starts at 1)"),
+    limit: int = Query(20, ge=1, le=100, description="Number of items per page (max 100)"),
+    sort_by: str = Query("created_at_desc", description="Sort field and direction"),
+    session: AsyncSession = Depends(get_database_session)
+):
+    """
+    List all loads with optional filtering and pagination.
+
+    Retrieves a paginated list of loads with optional filters for status,
+    equipment type, and date range.
+
+    Query Parameters:
+        - status: Filter by load status (AVAILABLE, BOOKED, IN_TRANSIT, etc.)
+        - equipment_type: Filter by equipment type (53-foot van, Flatbed, etc.)
+        - start_date: Start date for pickup date filter (YYYY-MM-DD)
+        - end_date: End date for pickup date filter (YYYY-MM-DD)
+        - page: Page number starting from 1
+        - limit: Items per page (1-100, default 20)
+        - sort_by: Sort options - created_at_desc, pickup_date_asc, rate_desc, etc.
+
+    Returns:
+        ListLoadsResponseModel: Paginated list of loads with metadata
+
+    Raises:
+        HTTPException: 400 for validation errors
+    """
+    try:
+        # Initialize repository and use case
+        load_repo = PostgresLoadRepository(session)
+        use_case = ListLoadsUseCase(load_repo)
+
+        # Convert request parameters to use case request
+        from src.core.application.use_cases.list_loads_use_case import ListLoadsRequest
+
+        use_case_request = ListLoadsRequest(
+            status=status,
+            equipment_type=equipment_type,
+            start_date=start_date,
+            end_date=end_date,
+            page=page,
+            limit=limit,
+            sort_by=sort_by
+        )
+
+        # Execute use case
+        response = await use_case.execute(use_case_request)
+
+        # Convert load summaries to API models
+        load_models = [
+            LoadSummaryModel(
+                load_id=load.load_id,
+                origin=load.origin,
+                destination=load.destination,
+                pickup_datetime=load.pickup_datetime,
+                delivery_datetime=load.delivery_datetime,
+                equipment_type=load.equipment_type,
+                loadboard_rate=load.loadboard_rate,
+                notes=load.notes,
+                weight=load.weight,
+                commodity_type=load.commodity_type,
+                status=load.status,
+                created_at=load.created_at
+            )
+            for load in response.loads
+        ]
+
+        # Return API response
+        return ListLoadsResponseModel(
+            loads=load_models,
+            total_count=response.total_count,
+            page=response.page,
+            limit=response.limit,
+            has_next=response.has_next,
+            has_previous=response.has_previous
+        )
+
+    except Exception as e:
+        error_msg = str(e)
+        if "validation" in error_msg.lower() or "invalid" in error_msg.lower():
+            raise HTTPException(status_code=400, detail=error_msg)
+        else:
+            raise HTTPException(status_code=500, detail=f"Internal server error: {error_msg}")

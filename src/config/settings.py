@@ -47,6 +47,11 @@ class Settings(BaseSettings):
     # Logging settings
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
 
+    # Business Logic Settings
+    max_load_weight_lbs: int = Field(default=80000, alias="MAX_LOAD_WEIGHT_LBS")
+    max_reference_number_counter: int = Field(default=99999, alias="MAX_REFERENCE_NUMBER_COUNTER")
+    max_rate_amount: str = Field(default="999999.99", alias="MAX_RATE_AMOUNT")
+
 
     # Pydantic configuration
     model_config = SettingsConfigDict(

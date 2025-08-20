@@ -7,7 +7,7 @@ Created: 2024-08-14
 
 from typing import Optional, List, Dict, Any
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, date
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, func
 
@@ -370,3 +370,77 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
             'average_load_value': average_load_value,
             'average_loadboard_rate': average_loadboard_rate
         }
+
+    async def list_all(self,
+                      status: Optional[LoadStatus] = None,
+                      equipment_type: Optional[str] = None,
+                      start_date: Optional[date] = None,
+                      end_date: Optional[date] = None,
+                      limit: int = 20,
+                      offset: int = 0,
+                      sort_by: str = "created_at_desc") -> tuple[List[Load], int]:
+        """List all loads with filters and return total count."""
+        # Build query with filters
+        stmt = select(LoadModel).where(LoadModel.deleted_at.is_(None))
+        count_stmt = select(func.count()).select_from(LoadModel).where(LoadModel.deleted_at.is_(None))
+
+        conditions = []
+
+        if status:
+            conditions.append(LoadModel.status == status.value)
+
+        if equipment_type:
+            conditions.append(LoadModel.equipment_type == equipment_type)
+
+        if start_date:
+            conditions.append(LoadModel.pickup_date >= start_date)
+
+        if end_date:
+            conditions.append(LoadModel.pickup_date <= end_date)
+
+        if conditions:
+            stmt = stmt.where(and_(*conditions))
+            count_stmt = count_stmt.where(and_(*conditions))
+
+        # Get total count
+        count_result = await self.session.execute(count_stmt)
+        total_count = count_result.scalar()
+
+        # Apply sorting
+        order_clause = self._build_order_clause(sort_by)
+        if order_clause is not None:
+            stmt = stmt.order_by(order_clause)
+        else:
+            # Default sort by created_at desc
+            stmt = stmt.order_by(LoadModel.created_at.desc())
+
+        # Apply pagination
+        stmt = stmt.limit(limit).offset(offset)
+
+        # Execute query
+        result = await self.session.execute(stmt)
+        models = result.scalars().all()
+        loads = [self._model_to_entity(model) for model in models]
+
+        return loads, total_count
+
+    def _build_order_clause(self, sort_by: str):
+        """Build SQLAlchemy order clause from sort string."""
+        if sort_by == "created_at_desc":
+            return LoadModel.created_at.desc()
+        elif sort_by == "created_at_asc":
+            return LoadModel.created_at.asc()
+        elif sort_by == "pickup_date_desc":
+            return LoadModel.pickup_date.desc()
+        elif sort_by == "pickup_date_asc":
+            return LoadModel.pickup_date.asc()
+        elif sort_by == "rate_desc":
+            return LoadModel.loadboard_rate.desc()
+        elif sort_by == "rate_asc":
+            return LoadModel.loadboard_rate.asc()
+        elif sort_by == "rate_per_mile_desc":
+            return (LoadModel.loadboard_rate / LoadModel.miles).desc()
+        elif sort_by == "rate_per_mile_asc":
+            return (LoadModel.loadboard_rate / LoadModel.miles).asc()
+        else:
+            return None
