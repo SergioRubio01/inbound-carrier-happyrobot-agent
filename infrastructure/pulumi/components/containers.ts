@@ -8,6 +8,7 @@ export interface ContainersArgs {
     databaseEndpoint: pulumi.Output<string>;
     databaseSecretArn: pulumi.Output<string>;
     environment: string;
+    apiKey: string;
     tags: Record<string, string>;
 }
 
@@ -216,6 +217,10 @@ export class ContainersComponent extends pulumi.ComponentResource {
                         {
                             name: "ENVIRONMENT",
                             value: args.environment,
+                        },
+                        {
+                            name: "API_KEY",
+                            value: args.apiKey,
                         },
                         {
                             name: "POSTGRES_HOST",

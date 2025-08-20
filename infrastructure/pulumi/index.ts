@@ -47,6 +47,7 @@ const containers = new ContainersComponent(`${resourcePrefix}-containers`, {
     databaseEndpoint: database.endpoint,
     databaseSecretArn: database.secretArn,
     environment,
+    apiKey: config.require("apiKey"),
     tags: commonTags,
 });
 
