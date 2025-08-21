@@ -23,9 +23,11 @@ def upgrade() -> None:
     connection = op.get_bind()
     inspector = sa.inspect(connection)
 
-    if 'call_metrics' in inspector.get_table_names():
+    if "call_metrics" in inspector.get_table_names():
         # Get existing indexes
-        existing_indexes = [idx['name'] for idx in inspector.get_indexes('call_metrics')]
+        existing_indexes = [
+            idx["name"] for idx in inspector.get_indexes("call_metrics")
+        ]
 
         # Add indexes for commonly queried fields in call_metrics table
         if "idx_call_metrics_response" not in existing_indexes:
@@ -35,7 +37,10 @@ def upgrade() -> None:
 
         if "idx_call_metrics_created_at" not in existing_indexes:
             op.create_index(
-                "idx_call_metrics_created_at", "call_metrics", ["created_at"], unique=False
+                "idx_call_metrics_created_at",
+                "call_metrics",
+                ["created_at"],
+                unique=False,
             )
 
         if "idx_call_metrics_response_created_at" not in existing_indexes:

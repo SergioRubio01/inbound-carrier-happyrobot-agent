@@ -31,7 +31,7 @@ def upgrade() -> None:
     inspector = sa.inspect(connection)
 
     # Only create call_metrics table if it doesn't exist
-    if 'call_metrics' not in inspector.get_table_names():
+    if "call_metrics" not in inspector.get_table_names():
         op.create_table(
             "call_metrics",
             sa.Column("metrics_id", postgresql.UUID(as_uuid=True), nullable=False),
@@ -63,27 +63,31 @@ def upgrade() -> None:
     # First check if the tables and columns exist before trying to drop them
 
     # Check if negotiations table has call_id column
-    negotiations_columns = [col['name'] for col in inspector.get_columns('negotiations')]
+    negotiations_columns = [
+        col["name"] for col in inspector.get_columns("negotiations")
+    ]
 
-    if 'call_id' in negotiations_columns:
+    if "call_id" in negotiations_columns:
         # Check for and drop index if it exists
-        negotiations_indexes = [idx['name'] for idx in inspector.get_indexes('negotiations')]
-        if 'ix_negotiations_call_id' in negotiations_indexes:
+        negotiations_indexes = [
+            idx["name"] for idx in inspector.get_indexes("negotiations")
+        ]
+        if "ix_negotiations_call_id" in negotiations_indexes:
             op.drop_index(op.f("ix_negotiations_call_id"), table_name="negotiations")
 
         # Check for and drop foreign key if it exists
-        negotiations_fkeys = inspector.get_foreign_keys('negotiations')
+        negotiations_fkeys = inspector.get_foreign_keys("negotiations")
         for fkey in negotiations_fkeys:
-            if 'call_id' in fkey['constrained_columns']:
-                op.drop_constraint(fkey['name'], "negotiations", type_="foreignkey")
+            if "call_id" in fkey["constrained_columns"]:
+                op.drop_constraint(fkey["name"], "negotiations", type_="foreignkey")
 
         # Drop the column
         op.drop_column("negotiations", "call_id")
 
     # Check if calls table exists before trying to drop it
-    if 'calls' in inspector.get_table_names():
+    if "calls" in inspector.get_table_names():
         # Drop indexes if they exist
-        calls_indexes = [idx['name'] for idx in inspector.get_indexes('calls')]
+        calls_indexes = [idx["name"] for idx in inspector.get_indexes("calls")]
         indexes_to_drop = [
             "ix_calls_caller_phone",
             "ix_calls_carrier_id",
@@ -95,7 +99,7 @@ def upgrade() -> None:
             "ix_calls_outcome",
             "ix_calls_sentiment",
             "ix_calls_start_time",
-            "ix_calls_transferred_to_human"
+            "ix_calls_transferred_to_human",
         ]
 
         for index_name in indexes_to_drop:
