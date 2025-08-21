@@ -47,6 +47,7 @@ def sample_metrics_model():
 
 
 @pytest.mark.unit
+@pytest.mark.asyncio
 async def test_create_metrics_success(repository, mock_session, sample_metrics_model):
     """Test successful metrics creation."""
     # Mock the create method to return the model
@@ -74,6 +75,7 @@ async def test_create_metrics_success(repository, mock_session, sample_metrics_m
 
 
 @pytest.mark.unit
+@pytest.mark.asyncio
 async def test_create_metrics_minimal_data(repository, mock_session):
     """Test metrics creation with minimal data."""
     minimal_model = CallMetricsModel(
@@ -102,6 +104,7 @@ async def test_create_metrics_minimal_data(repository, mock_session):
 
 
 @pytest.mark.unit
+@pytest.mark.asyncio
 async def test_get_metrics_by_id_found(repository, mock_session, sample_metrics_model):
     """Test getting metrics by ID when found."""
     mock_result = MagicMock()
@@ -115,6 +118,7 @@ async def test_get_metrics_by_id_found(repository, mock_session, sample_metrics_
 
 
 @pytest.mark.unit
+@pytest.mark.asyncio
 async def test_get_metrics_by_id_not_found(repository, mock_session):
     """Test getting metrics by ID when not found."""
     mock_result = MagicMock()
@@ -128,6 +132,7 @@ async def test_get_metrics_by_id_not_found(repository, mock_session):
 
 
 @pytest.mark.unit
+@pytest.mark.asyncio
 async def test_get_metrics_with_date_filters(
     repository, mock_session, sample_metrics_model
 ):
@@ -152,6 +157,7 @@ async def test_get_metrics_with_date_filters(
 
 
 @pytest.mark.unit
+@pytest.mark.asyncio
 async def test_get_metrics_without_filters(
     repository, mock_session, sample_metrics_model
 ):
@@ -168,6 +174,7 @@ async def test_get_metrics_without_filters(
 
 
 @pytest.mark.unit
+@pytest.mark.asyncio
 async def test_get_metrics_summary_with_data(repository, mock_session):
     """Test getting metrics summary with sample data."""
     # Mock total count query
@@ -216,6 +223,7 @@ async def test_get_metrics_summary_with_data(repository, mock_session):
 
 
 @pytest.mark.unit
+@pytest.mark.asyncio
 async def test_get_metrics_summary_no_data(repository, mock_session):
     """Test getting metrics summary with no data."""
     # Mock all queries to return zero/empty results
@@ -235,6 +243,7 @@ async def test_get_metrics_summary_no_data(repository, mock_session):
 
 
 @pytest.mark.unit
+@pytest.mark.asyncio
 async def test_exists_true(repository, mock_session):
     """Test exists method returns True when record exists."""
     mock_result = MagicMock()
@@ -248,6 +257,7 @@ async def test_exists_true(repository, mock_session):
 
 
 @pytest.mark.unit
+@pytest.mark.asyncio
 async def test_exists_false(repository, mock_session):
     """Test exists method returns False when record doesn't exist."""
     mock_result = MagicMock()
@@ -261,6 +271,7 @@ async def test_exists_false(repository, mock_session):
 
 
 @pytest.mark.unit
+@pytest.mark.asyncio
 async def test_delete_success(repository, mock_session, sample_metrics_model):
     """Test successful deletion."""
     mock_result = MagicMock()
@@ -276,6 +287,7 @@ async def test_delete_success(repository, mock_session, sample_metrics_model):
 
 
 @pytest.mark.unit
+@pytest.mark.asyncio
 async def test_delete_not_found(repository, mock_session):
     """Test deletion when record not found."""
     mock_result = MagicMock()
@@ -289,6 +301,7 @@ async def test_delete_not_found(repository, mock_session):
 
 
 @pytest.mark.unit
+@pytest.mark.asyncio
 async def test_get_metrics_by_session_id(
     repository, mock_session, sample_metrics_model
 ):
@@ -305,6 +318,7 @@ async def test_get_metrics_by_session_id(
 
 
 @pytest.mark.unit
+@pytest.mark.asyncio
 async def test_count_metrics_with_filters(repository, mock_session):
     """Test counting metrics with date filters."""
     mock_result = MagicMock()
@@ -321,6 +335,7 @@ async def test_count_metrics_with_filters(repository, mock_session):
 
 
 @pytest.mark.unit
+@pytest.mark.asyncio
 async def test_count_metrics_without_filters(repository, mock_session):
     """Test counting metrics without filters."""
     mock_result = MagicMock()
@@ -337,6 +352,7 @@ async def test_count_metrics_without_filters(repository, mock_session):
 
 
 @pytest.mark.unit
+@pytest.mark.asyncio
 async def test_delete_existing_metrics(repository, mock_session, sample_metrics_model):
     """Test deleting existing metrics returns True."""
     # Mock the create method to return the model
@@ -365,6 +381,7 @@ async def test_delete_existing_metrics(repository, mock_session, sample_metrics_
 
 
 @pytest.mark.unit
+@pytest.mark.asyncio
 async def test_delete_nonexistent_metrics(repository, mock_session):
     """Test deleting non-existent metrics returns False."""
     fake_id = uuid4()
@@ -383,6 +400,7 @@ async def test_delete_nonexistent_metrics(repository, mock_session):
 
 
 @pytest.mark.unit
+@pytest.mark.asyncio
 async def test_exists_method_comprehensive(
     repository, mock_session, sample_metrics_model
 ):
@@ -408,6 +426,7 @@ async def test_exists_method_comprehensive(
 
 
 @pytest.mark.unit
+@pytest.mark.asyncio
 async def test_delete_transaction_integrity(
     repository, mock_session, sample_metrics_model
 ):
@@ -428,6 +447,7 @@ async def test_delete_transaction_integrity(
 
 
 @pytest.mark.unit
+@pytest.mark.asyncio
 async def test_delete_with_database_exception(
     repository, mock_session, sample_metrics_model
 ):
@@ -449,6 +469,7 @@ async def test_delete_with_database_exception(
 
 
 @pytest.mark.unit
+@pytest.mark.asyncio
 async def test_delete_and_exists_integration(
     repository, mock_session, sample_metrics_model
 ):
@@ -481,6 +502,7 @@ async def test_delete_and_exists_integration(
 
 
 @pytest.mark.unit
+@pytest.mark.asyncio
 async def test_delete_query_construction(
     repository, mock_session, sample_metrics_model
 ):
@@ -506,6 +528,7 @@ async def test_delete_query_construction(
 
 
 @pytest.mark.unit
+@pytest.mark.asyncio
 async def test_delete_uuid_type_handling(repository, mock_session):
     """Test delete method properly handles UUID types."""
     from uuid import UUID

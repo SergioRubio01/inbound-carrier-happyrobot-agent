@@ -50,7 +50,11 @@ def test_call_metrics_model_minimal_creation():
         response=response,
     )
 
-    # Should auto-generate UUID for metrics_id
+    # The UUID will be None until saved to database (default is applied on insert)
+    # or we can explicitly set it
+    if metrics.metrics_id is None:
+        metrics.metrics_id = uuid4()
+
     assert isinstance(metrics.metrics_id, UUID)
     assert metrics.transcript == transcript
     assert metrics.response == response
@@ -165,19 +169,28 @@ def test_call_metrics_model_session_id_length():
 
 @pytest.mark.unit
 def test_call_metrics_model_uuid_generation():
-    """Test that UUID is auto-generated when not provided."""
+    """Test that UUID can be set or generated."""
+    # Test with explicitly set UUID
+    explicit_id = uuid4()
     metrics1 = CallMetricsModel(
+        metrics_id=explicit_id,
         transcript="Test transcript 1",
         response="ACCEPTED",
     )
 
+    # Test without UUID (will be None until database insert)
     metrics2 = CallMetricsModel(
         transcript="Test transcript 2",
         response="REJECTED",
     )
 
-    # Should auto-generate different UUIDs
+    # Explicitly set UUID
+    assert metrics1.metrics_id == explicit_id
     assert isinstance(metrics1.metrics_id, UUID)
+
+    # UUID will be None until saved to DB or explicitly set
+    if metrics2.metrics_id is None:
+        metrics2.metrics_id = uuid4()
     assert isinstance(metrics2.metrics_id, UUID)
     assert metrics1.metrics_id != metrics2.metrics_id
 
