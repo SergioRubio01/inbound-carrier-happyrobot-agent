@@ -173,7 +173,6 @@ async def get_metrics_summary(
         end_date = datetime.now(timezone.utc)
         start_date = end_date - timedelta(days=days)
 
-
         # Get additional metrics from database
         load_metrics_data = await load_repo.get_load_metrics(start_date, end_date)
         carrier_metrics_data = await carrier_repo.get_carrier_metrics(
