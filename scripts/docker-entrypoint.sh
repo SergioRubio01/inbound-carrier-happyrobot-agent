@@ -194,7 +194,6 @@ if [ "$ENVIRONMENT" = "dev" ] || [ "$ENVIRONMENT" = "local" ]; then
   exec uvicorn src.interfaces.api.app:create_app \
       --host 0.0.0.0 \
       --port 8000 \
-      --reload \
       --factory \
       --log-level info
 else

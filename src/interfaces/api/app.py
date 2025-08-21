@@ -18,6 +18,7 @@ from src.interfaces.api.v1.middleware import (
     AuthenticationMiddleware,
     CORSHandlerMiddleware,
     RateLimiterMiddleware,
+    SecurityHeadersMiddleware,
 )
 
 logger_app = logging.getLogger(__name__)
@@ -75,10 +76,12 @@ def create_app() -> FastAPI:
     )
 
     # Add custom middleware (order is important - last added runs first)
-    # Rate limiter to prevent abuse (runs third)
+    # Rate limiter to prevent abuse (runs fourth)
     app.add_middleware(RateLimiterMiddleware)
-    # AuthMiddleware for user authentication and role checks (runs second)
+    # AuthMiddleware for user authentication and role checks (runs third)
     app.add_middleware(AuthenticationMiddleware)
+    # Security headers middleware (runs second)
+    app.add_middleware(SecurityHeadersMiddleware, enable_hsts=settings.enable_https)
     # CORSHandlerMiddleware first to handle OPTIONS requests (runs first)
     app.add_middleware(CORSHandlerMiddleware)
 
