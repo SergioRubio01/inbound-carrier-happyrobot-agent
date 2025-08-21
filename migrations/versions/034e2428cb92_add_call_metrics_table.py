@@ -75,7 +75,9 @@ def upgrade() -> None:
                 idx["name"] for idx in inspector.get_indexes("negotiations")
             ]
             if "ix_negotiations_call_id" in negotiations_indexes:
-                op.drop_index(op.f("ix_negotiations_call_id"), table_name="negotiations")
+                op.drop_index(
+                    op.f("ix_negotiations_call_id"), table_name="negotiations"
+                )
 
             # Check for and drop foreign key if it exists
             negotiations_fkeys = inspector.get_foreign_keys("negotiations")
