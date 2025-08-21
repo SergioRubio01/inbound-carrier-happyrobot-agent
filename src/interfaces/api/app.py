@@ -42,12 +42,12 @@ def create_app() -> FastAPI:
                 "description": "Operations for metrics",
             },
             {
-                "name": "Negotiations",
-                "description": "Operations for negotiations",
-            },
-            {
                 "name": "Loads",
                 "description": "Operations for loads",
+            },
+            {
+                "name": "Negotiations",
+                "description": "Operations for price negotiations",
             },
         ],
     )
@@ -109,11 +109,11 @@ def create_app() -> FastAPI:
         return JSONResponse(status_code=422, content={"detail": exc.details})
 
     # Include API routers
-    from src.interfaces.api.v1 import loads, metrics, negotiations
+    from src.interfaces.api.v1 import loads, metrics, simple_negotiations
 
     app.include_router(loads.router, prefix="/api/v1")
-    app.include_router(negotiations.router, prefix="/api/v1")
     app.include_router(metrics.router, prefix="/api/v1")
+    app.include_router(simple_negotiations.router, prefix="/api/v1")
 
     # Add startup event handler
     @app.on_event("startup")

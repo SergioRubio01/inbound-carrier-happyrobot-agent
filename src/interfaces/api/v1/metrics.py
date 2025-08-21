@@ -15,7 +15,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.infrastructure.database.postgres import (
     PostgresCarrierRepository,
     PostgresLoadRepository,
-    PostgresNegotiationRepository,
 )
 
 # Database dependencies
@@ -47,7 +46,6 @@ async def get_metrics_summary(
     """
     try:
         # Initialize repositories
-        negotiation_repo = PostgresNegotiationRepository(session)
         load_repo = PostgresLoadRepository(session)
         carrier_repo = PostgresCarrierRepository(session)
 
@@ -55,15 +53,9 @@ async def get_metrics_summary(
         end_date = datetime.now(timezone.utc)
         start_date = end_date - timedelta(days=days)
 
-        # Get metrics from database
-        negotiation_metrics_data = await negotiation_repo.get_negotiation_metrics(
-            start_date, end_date
-        )
-
-        # Calculate conversion metrics
-        successful_negotiations = negotiation_metrics_data.get(
-            "successful_negotiations", 0
-        )
+        # Since negotiations table was removed, use placeholder data
+        # In a real implementation, this data would come from call metrics or other sources
+        successful_negotiations = 0
 
         # Get additional metrics from database
         load_metrics_data = await load_repo.get_load_metrics(start_date, end_date)
@@ -80,9 +72,7 @@ async def get_metrics_summary(
             },
             conversion_metrics={
                 "loads_booked": successful_negotiations,
-                "average_negotiation_rounds": negotiation_metrics_data.get(
-                    "average_rounds", 0
-                ),
+                "average_negotiation_rounds": 0,  # Placeholder - would come from call metrics
                 "first_offer_acceptance_rate": 45.2,  # Would need detailed analysis
                 "average_time_to_accept_minutes": 4.5,  # Would need detailed analysis
             },
@@ -91,25 +81,15 @@ async def get_metrics_summary(
                     "total_booked_revenue", 0.0
                 ),
                 "average_load_value": load_metrics_data.get("average_load_value", 0.0),
-                "average_agreed_rate": negotiation_metrics_data.get(
-                    "average_agreed_rate", 0.0
-                ),
+                "average_agreed_rate": 0.0,  # Placeholder - would come from call metrics
                 "average_loadboard_rate": load_metrics_data.get(
                     "average_loadboard_rate", 0.0
                 ),
-                "average_margin_percentage": negotiation_metrics_data.get(
-                    "average_margin_percentage", 0.0
-                ),
+                "average_margin_percentage": 0.0,  # Placeholder - would come from call metrics
                 "rate_variance": {
-                    "above_loadboard": negotiation_metrics_data.get(
-                        "above_loadboard_count", 0
-                    ),
-                    "at_loadboard": negotiation_metrics_data.get(
-                        "at_loadboard_count", 0
-                    ),
-                    "below_loadboard": negotiation_metrics_data.get(
-                        "below_loadboard_count", 0
-                    ),
+                    "above_loadboard": 0,  # Placeholder - would come from call metrics
+                    "at_loadboard": 0,  # Placeholder - would come from call metrics
+                    "below_loadboard": 0,  # Placeholder - would come from call metrics
                 },
             },
             carrier_metrics={
