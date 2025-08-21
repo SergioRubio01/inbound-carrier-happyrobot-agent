@@ -47,7 +47,6 @@ def valid_call_metrics_data():
 
 @pytest.mark.integration
 class TestDeleteCallMetrics:
-
     def test_delete_existing_metrics_success(self, client, valid_call_metrics_data):
         """Test successful deletion of existing metrics."""
         # First create a metric

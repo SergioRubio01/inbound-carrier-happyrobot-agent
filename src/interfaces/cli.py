@@ -129,7 +129,7 @@ class MetricsCLI:
             sample_metrics.append(
                 {
                     "metrics_id": f"sample-{i:04d}-{call_date.strftime('%Y%m%d')}",
-                    "transcript": f"Sample call transcript {i+1}...",
+                    "transcript": f"Sample call transcript {i + 1}...",
                     "response": ["ACCEPTED", "REJECTED", "ABANDONED"][i % 3],
                     "reason": "Rate negotiation" if i % 3 == 1 else None,
                     "final_loadboard_rate": 2500.0 + (i * 100) if i % 3 == 0 else None,
@@ -249,9 +249,9 @@ class MetricsCLI:
 
             metadata = f"""
             <para align="center">
-            Report Period: {start_date[:10] if start_date != 'N/A' else 'N/A'} to {end_date[:10] if end_date != 'N/A' else 'N/A'}<br/>
+            Report Period: {start_date[:10] if start_date != "N/A" else "N/A"} to {end_date[:10] if end_date != "N/A" else "N/A"}<br/>
             Generated: {generated_at}<br/>
-            Total Records: {metrics_data.get('total_count', 0)}
+            Total Records: {metrics_data.get("total_count", 0)}
             </para>
             """
             story.append(Paragraph(metadata, styles["Normal"]))

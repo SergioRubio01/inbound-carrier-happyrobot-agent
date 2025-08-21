@@ -466,7 +466,7 @@ class MetricsEndpointTester:
         print(f"   Total Tests: {total_tests}")
         print(f"   Passed: {self.passed}")
         print(f"   Failed: {self.failed}")
-        print(f"   Success Rate: {(self.passed/total_tests)*100:.1f}%")
+        print(f"   Success Rate: {(self.passed / total_tests) * 100:.1f}%")
 
         if self.failed > 0:
             print("\nFailed Tests:")
