@@ -33,6 +33,9 @@ repos:
       - id: ruff
         args: [--fix]
         files: ^(src|scripts|migrations)/.*\.py$|^main\.py$
+      - id: ruff-format
+        args: [--check]
+        files: ^(src|scripts|migrations)/.*\.py$|^main\.py$
 
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.8.0
