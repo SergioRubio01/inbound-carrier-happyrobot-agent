@@ -104,24 +104,11 @@ The solution uses the web call trigger and REST callbacks (no purchased phone nu
 - Action: HTTP POST to `POST /api/v1/negotiations/evaluate`
 - Payload includes `load_id`, `carrier_offer`, and `context`
 - Response returns `counter_offer` or `accepted: true`
-- If accepted → proceed to hand-off step
+- If accepted → proceed to hand-off step (HappyRobot workflow handles this)
 
-5) Hand-off to sales rep
-- Action: HTTP POST to `POST /api/v1/calls/handoff`
-- Payload includes `load_id`, `agreed_rate`, `carrier_contact`, and call summary
-- The API returns handoff metadata and dials/bridges using your internal process; for POC we just log and return a "ready to transfer" response.
-
-6) Extraction + classification
-- Action: HTTP POST to `POST /api/v1/calls/finalize`
-- Provide call transcript or structured values collected by the agent
-- API returns:
-  - `extracted_fields` (MC, DAT points, notes)
-  - `outcome_class` (accepted/declined/callback/no-eligible)
-  - `sentiment` (positive/neutral/negative)
-
-7) Metrics monitoring
+5) Metrics monitoring
 - The HappyRobot platform can query `GET /api/v1/metrics/summary` for KPIs such as:
-  - Total calls, eligible carriers, matched loads, accepted offers, average negotiation steps, average agreed rate vs. loadboard rate, sentiment distribution
+  - Total negotiations, eligible carriers, matched loads, accepted offers, average negotiation rounds, average agreed rate vs. loadboard rate
 
 Note: The exact JSON schemas are documented in `docs/IMPLEMENTATION_PLAN.md` with request/response examples you can paste into HappyRobot’s HTTP steps.
 

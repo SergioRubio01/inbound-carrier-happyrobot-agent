@@ -85,15 +85,12 @@ Exempt endpoints: `/health`, `/api/v1/health`, `/api/v1/docs`, `/api/v1/openapi.
 
 - `POST /api/v1/loads/search` - Search available loads
 - `POST /api/v1/negotiations/evaluate` - Handle price negotiation
-- `POST /api/v1/calls/handoff` - Transfer to sales rep
-- `POST /api/v1/calls/finalize` - Extract call data and classify outcome
 - `GET /api/v1/metrics/summary` - Dashboard KPIs
 
 ## Database Schema
 
 Main tables:
 - `loads`: Available freight loads with origin, destination, rates, equipment
-- `calls`: Call transcripts and metadata
 - `negotiations`: Negotiation history and outcomes
 - `carriers`: Verified carrier information
 

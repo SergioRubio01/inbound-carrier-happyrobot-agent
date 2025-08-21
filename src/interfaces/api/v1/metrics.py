@@ -13,7 +13,6 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.infrastructure.database.postgres import (
-    PostgresCallRepository,
     PostgresCarrierRepository,
     PostgresLoadRepository,
     PostgresNegotiationRepository,
@@ -29,10 +28,8 @@ class MetricsSummaryResponseModel(BaseModel):
     """Response model for metrics summary."""
 
     period: Dict[str, Any]
-    call_metrics: Dict[str, Any]
     conversion_metrics: Dict[str, Any]
     financial_metrics: Dict[str, Any]
-    sentiment_analysis: Dict[str, Any]
     carrier_metrics: Dict[str, Any]
     performance_indicators: Dict[str, Any]
     generated_at: str
@@ -45,12 +42,11 @@ async def get_metrics_summary(
     """
     Get aggregated KPIs for dashboard display.
 
-    This endpoint returns comprehensive metrics including call volumes,
-    conversion rates, financial data, and performance indicators.
+    This endpoint returns comprehensive metrics including conversion rates,
+    financial data, and performance indicators.
     """
     try:
         # Initialize repositories
-        call_repo = PostgresCallRepository(session)
         negotiation_repo = PostgresNegotiationRepository(session)
         load_repo = PostgresLoadRepository(session)
         carrier_repo = PostgresCarrierRepository(session)
@@ -60,18 +56,13 @@ async def get_metrics_summary(
         start_date = end_date - timedelta(days=days)
 
         # Get metrics from database
-        call_metrics_data = await call_repo.get_call_metrics(start_date, end_date)
         negotiation_metrics_data = await negotiation_repo.get_negotiation_metrics(
             start_date, end_date
         )
 
         # Calculate conversion metrics
-        total_calls = call_metrics_data.get("total_calls", 0)
         successful_negotiations = negotiation_metrics_data.get(
             "successful_negotiations", 0
-        )
-        booking_rate = (
-            (successful_negotiations / total_calls * 100) if total_calls > 0 else 0
         )
 
         # Get additional metrics from database
@@ -87,18 +78,8 @@ async def get_metrics_summary(
                 "end": end_date.isoformat(),
                 "days": days,
             },
-            call_metrics={
-                "total_calls": total_calls,
-                "unique_carriers": len(set(call_metrics_data.get("carrier_ids", []))),
-                "average_duration_seconds": call_metrics_data.get(
-                    "average_duration_seconds", 0
-                ),
-                "peak_hour": "14:00",  # Would need hourly analysis
-                "by_outcome": call_metrics_data.get("outcomes", {}),
-            },
             conversion_metrics={
                 "loads_booked": successful_negotiations,
-                "booking_rate": round(booking_rate, 2),
                 "average_negotiation_rounds": negotiation_metrics_data.get(
                     "average_rounds", 0
                 ),
@@ -131,13 +112,6 @@ async def get_metrics_summary(
                     ),
                 },
             },
-            sentiment_analysis={
-                "positive": call_metrics_data.get("positive_sentiment_count", 0),
-                "neutral": call_metrics_data.get("neutral_sentiment_count", 0),
-                "negative": call_metrics_data.get("negative_sentiment_count", 0),
-                "average_score": call_metrics_data.get("average_sentiment_score", 0.0),
-                "trend": call_metrics_data.get("sentiment_trend", "STABLE"),
-            },
             carrier_metrics={
                 "repeat_callers": carrier_metrics_data.get("repeat_callers", 0),
                 "new_carriers": carrier_metrics_data.get("new_carriers", 0),
@@ -152,9 +126,6 @@ async def get_metrics_summary(
                 "api_availability": 99.95,  # System uptime - would come from monitoring
                 "average_response_time_ms": 125,  # API response times - would come from monitoring
                 "error_rate": 0.02,  # Error rate - would come from monitoring
-                "handoff_success_rate": call_metrics_data.get(
-                    "handoff_success_rate", 0.0
-                ),
             },
             generated_at=datetime.now(timezone.utc).isoformat(),
         )

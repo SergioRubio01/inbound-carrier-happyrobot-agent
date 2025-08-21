@@ -53,7 +53,6 @@ class Negotiation:
     negotiation_id: UUID = field(default_factory=uuid4)
 
     # Association
-    call_id: Optional[UUID] = None
     load_id: Optional[UUID] = field(default=None)
     carrier_id: Optional[UUID] = None
     mc_number: Optional[MCNumber] = None

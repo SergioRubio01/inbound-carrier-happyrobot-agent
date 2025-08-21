@@ -17,7 +17,6 @@ from sqlalchemy.sql import func
 from src.infrastructure.database.base import Base, TimestampMixin
 
 if TYPE_CHECKING:
-    from .call_model import CallModel
     from .carrier_model import CarrierModel
     from .load_model import LoadModel
 
@@ -33,9 +32,6 @@ class NegotiationModel(Base, TimestampMixin):
     )
 
     # Association
-    call_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("calls.call_id"), index=True, nullable=True
-    )
     load_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("loads.load_id"), nullable=False, index=True
     )
@@ -107,7 +103,6 @@ class NegotiationModel(Base, TimestampMixin):
     version: Mapped[int] = mapped_column(Integer, default=1)
 
     # Relationships
-    call: Mapped["CallModel"] = relationship("CallModel", foreign_keys=[call_id])
     load: Mapped["LoadModel"] = relationship("LoadModel", foreign_keys=[load_id])
     carrier: Mapped["CarrierModel"] = relationship(
         "CarrierModel", foreign_keys=[carrier_id]

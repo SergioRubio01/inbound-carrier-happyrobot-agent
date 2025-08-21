@@ -134,7 +134,6 @@ class TestNegotiation:
         """Test creating a negotiation entity."""
         negotiation = Negotiation(
             negotiation_id=uuid.uuid4(),
-            call_id=uuid.uuid4(),
             load_id=uuid.uuid4(),
             carrier_id=uuid.uuid4(),
             mc_number=MCNumber.from_string("MC123456"),
