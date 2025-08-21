@@ -62,9 +62,9 @@ def test_create_load_success(client, valid_load_data):
             "text": response.text,
         }
         # Use the error details in the assertion message
-        assert (
-            False
-        ), f"Expected 201, got {error_details['status_code']}: {error_details}"
+        assert False, (
+            f"Expected 201, got {error_details['status_code']}: {error_details}"
+        )
 
     assert response.status_code == 201
     data = response.json()

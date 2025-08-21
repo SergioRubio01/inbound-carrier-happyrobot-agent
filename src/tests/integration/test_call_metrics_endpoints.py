@@ -59,9 +59,9 @@ def test_create_call_metrics_success(client, valid_call_metrics_data):
             "text": response.text,
         }
         # Use the error details in the assertion message
-        assert (
-            False
-        ), f"Expected 201, got {error_details['status_code']}: {error_details}"
+        assert False, (
+            f"Expected 201, got {error_details['status_code']}: {error_details}"
+        )
 
     assert response.status_code == 201
     data = response.json()

@@ -199,9 +199,7 @@ class MetricsCLI:
             for reason, count in sorted(
                 rejection_reasons.items(), key=lambda x: x[1], reverse=True
             )
-        ][
-            :10
-        ]  # Top 10
+        ][:10]  # Top 10
 
         return {
             "total_calls": total_calls,
