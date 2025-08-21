@@ -1,18 +1,21 @@
 """
 File: metrics.py
-Description: Metrics API endpoints
+Description: Simplified Metrics API endpoints for call metrics storage and retrieval
 Author: HappyRobot Team
 Created: 2024-08-14
+Updated: 2025-01-08 - Phase 1 metrics simplification
 """
 
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional
+from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.infrastructure.database.postgres import (
+    PostgresCallMetricsRepository,
     PostgresCarrierRepository,
     PostgresLoadRepository,
 )
@@ -23,17 +26,134 @@ from src.interfaces.api.v1.dependencies.database import get_database_session
 router = APIRouter(prefix="/metrics", tags=["Metrics"])
 
 
+# Request/Response models for call metrics
+class CallMetricsRequestModel(BaseModel):
+    """Request model for creating call metrics."""
+
+    transcript: str = Field(
+        ..., min_length=1, max_length=50000, description="Full conversation transcript"
+    )
+    response: str = Field(
+        ...,
+        min_length=1,
+        max_length=50,
+        description="Call response (ACCEPTED, REJECTED, etc.)",
+    )
+    reason: Optional[str] = Field(
+        None, max_length=2000, description="Reason for the response"
+    )
+    final_loadboard_rate: Optional[float] = Field(
+        None, ge=0.01, le=1000000.00, description="Final agreed loadboard rate"
+    )
+    session_id: Optional[str] = Field(
+        None, min_length=1, max_length=100, description="Session identifier"
+    )
+
+
+class CallMetricsResponseModel(BaseModel):
+    """Response model for call metrics."""
+
+    metrics_id: UUID
+    transcript: str
+    response: str
+    reason: Optional[str]
+    final_loadboard_rate: Optional[float]
+    session_id: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+
+class CallMetricsCreateResponseModel(BaseModel):
+    """Response model for creating call metrics."""
+
+    metrics_id: UUID
+    message: str
+    created_at: datetime
+
+
+class CallMetricsListResponse(BaseModel):
+    """Response model for list of call metrics."""
+
+    metrics: List[CallMetricsResponseModel]
+    total_count: int
+    start_date: Optional[datetime]
+    end_date: Optional[datetime]
+
+
+class CallMetricsSummaryResponse(BaseModel):
+    """Response model for call metrics summary statistics."""
+
+    total_calls: int
+    acceptance_rate: float
+    average_final_rate: float
+    response_distribution: Dict[str, int]
+    top_rejection_reasons: List[Dict[str, Any]]
+    period: Dict[str, Any]
+
+
 class MetricsSummaryResponseModel(BaseModel):
     """Response model for metrics summary."""
 
     period: Dict[str, Any]
-    conversion_metrics: Dict[str, Any]
     financial_metrics: Dict[str, Any]
     carrier_metrics: Dict[str, Any]
-    performance_indicators: Dict[str, Any]
     generated_at: str
 
 
+# New simplified call metrics endpoints
+@router.post(
+    "/call",
+    response_model=CallMetricsCreateResponseModel,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_call_metrics(
+    request: CallMetricsRequestModel,
+    session: AsyncSession = Depends(get_database_session),
+):
+    """
+    Store call metrics data.
+
+    This endpoint stores essential call data including transcript, response,
+    reason, and final loadboard rate for later analysis and reporting.
+    """
+    try:
+        # Initialize repository
+        metrics_repo = PostgresCallMetricsRepository(session)
+
+        # Create the metrics record
+        metrics = await metrics_repo.create_metrics(
+            transcript=request.transcript,
+            response=request.response,
+            reason=request.reason,
+            final_loadboard_rate=request.final_loadboard_rate,
+            session_id=request.session_id,
+        )
+
+        # Commit the transaction
+        await session.commit()
+
+        return CallMetricsCreateResponseModel(
+            metrics_id=metrics.metrics_id,
+            message="Metrics stored successfully",
+            created_at=metrics.created_at,
+        )
+
+    except ValueError as e:
+        await session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid data provided: {str(e)}",
+        )
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to store metrics: {str(e)}",
+        )
+
+
+# Legacy summary endpoint (kept for backward compatibility)
+# NOTE: This endpoint is maintained for existing integrations
 @router.get("/summary", response_model=MetricsSummaryResponseModel)
 async def get_metrics_summary(
     session: AsyncSession = Depends(get_database_session), days: int = 14
@@ -41,8 +161,8 @@ async def get_metrics_summary(
     """
     Get aggregated KPIs for dashboard display.
 
-    This endpoint returns comprehensive metrics including conversion rates,
-    financial data, and performance indicators.
+    DEPRECATED: This endpoint is deprecated. Use /api/v1/metrics/call endpoints instead.
+    This endpoint will be removed in a future version.
     """
     try:
         # Initialize repositories
@@ -53,9 +173,6 @@ async def get_metrics_summary(
         end_date = datetime.now(timezone.utc)
         start_date = end_date - timedelta(days=days)
 
-        # Since negotiations table was removed, use placeholder data
-        # In a real implementation, this data would come from call metrics or other sources
-        successful_negotiations = 0
 
         # Get additional metrics from database
         load_metrics_data = await load_repo.get_load_metrics(start_date, end_date)
@@ -70,12 +187,6 @@ async def get_metrics_summary(
                 "end": end_date.isoformat(),
                 "days": days,
             },
-            conversion_metrics={
-                "loads_booked": successful_negotiations,
-                "average_negotiation_rounds": 0,  # Placeholder - would come from call metrics
-                "first_offer_acceptance_rate": 45.2,  # Would need detailed analysis
-                "average_time_to_accept_minutes": 4.5,  # Would need detailed analysis
-            },
             financial_metrics={
                 "total_booked_revenue": load_metrics_data.get(
                     "total_booked_revenue", 0.0
@@ -85,12 +196,6 @@ async def get_metrics_summary(
                 "average_loadboard_rate": load_metrics_data.get(
                     "average_loadboard_rate", 0.0
                 ),
-                "average_margin_percentage": 0.0,  # Placeholder - would come from call metrics
-                "rate_variance": {
-                    "above_loadboard": 0,  # Placeholder - would come from call metrics
-                    "at_loadboard": 0,  # Placeholder - would come from call metrics
-                    "below_loadboard": 0,  # Placeholder - would come from call metrics
-                },
             },
             carrier_metrics={
                 "repeat_callers": carrier_metrics_data.get("repeat_callers", 0),
@@ -102,13 +207,201 @@ async def get_metrics_summary(
                     "avg_verification_time_ms", 0
                 ),
             },
-            performance_indicators={
-                "api_availability": 99.95,  # System uptime - would come from monitoring
-                "average_response_time_ms": 125,  # API response times - would come from monitoring
-                "error_rate": 0.02,  # Error rate - would come from monitoring
-            },
             generated_at=datetime.now(timezone.utc).isoformat(),
         )
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+# Phase 2: GET endpoints for call metrics retrieval
+@router.get("/call/summary", response_model=CallMetricsSummaryResponse)
+async def get_call_metrics_summary(
+    start_date: Optional[datetime] = Query(
+        None, description="Start date for filtering (ISO 8601 format)"
+    ),
+    end_date: Optional[datetime] = Query(
+        None, description="End date for filtering (ISO 8601 format)"
+    ),
+    session: AsyncSession = Depends(get_database_session),
+) -> CallMetricsSummaryResponse:
+    """Get aggregated statistics for call metrics."""
+    try:
+        # Initialize repository
+        call_metrics_repo = PostgresCallMetricsRepository(session)
+
+        # Get summary statistics
+        summary_data = await call_metrics_repo.get_metrics_summary(
+            start_date=start_date,
+            end_date=end_date,
+        )
+
+        return CallMetricsSummaryResponse(
+            total_calls=summary_data["total_calls"],
+            acceptance_rate=summary_data["acceptance_rate"],
+            average_final_rate=summary_data["average_final_rate"],
+            response_distribution=summary_data["response_distribution"],
+            top_rejection_reasons=summary_data["top_rejection_reasons"],
+            period={
+                "start": start_date.isoformat() if start_date else None,
+                "end": end_date.isoformat() if end_date else None,
+            },
+        )
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid parameters: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+@router.get("/call/{metrics_id}", response_model=CallMetricsResponseModel)
+async def get_call_metrics_by_id(
+    metrics_id: UUID,
+    session: AsyncSession = Depends(get_database_session),
+) -> CallMetricsResponseModel:
+    """Get specific call metrics by ID."""
+    try:
+        # Initialize repository
+        call_metrics_repo = PostgresCallMetricsRepository(session)
+
+        # Get metrics by ID
+        metrics = await call_metrics_repo.get_by_id(metrics_id)
+
+        if not metrics:
+            raise HTTPException(status_code=404, detail="Call metrics not found")
+
+        return CallMetricsResponseModel(
+            metrics_id=metrics.metrics_id,
+            transcript=str(metrics.transcript),
+            response=str(metrics.response),
+            reason=str(metrics.reason) if metrics.reason else None,
+            final_loadboard_rate=(
+                float(metrics.final_loadboard_rate)
+                if metrics.final_loadboard_rate
+                else None
+            ),
+            session_id=str(metrics.session_id) if metrics.session_id else None,
+            created_at=metrics.created_at,
+            updated_at=metrics.updated_at,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+@router.get("/call", response_model=CallMetricsListResponse)
+async def get_call_metrics(
+    start_date: Optional[datetime] = Query(
+        None, description="Start date for filtering (ISO 8601 format)"
+    ),
+    end_date: Optional[datetime] = Query(
+        None, description="End date for filtering (ISO 8601 format)"
+    ),
+    limit: int = Query(
+        default=100,
+        le=1000,
+        description="Maximum number of results to return (max 1000)",
+    ),
+    session: AsyncSession = Depends(get_database_session),
+) -> CallMetricsListResponse:
+    """Retrieve call metrics with optional date filtering and pagination."""
+    try:
+        # Initialize repository
+        call_metrics_repo = PostgresCallMetricsRepository(session)
+
+        # Get metrics with filters
+        metrics_data = await call_metrics_repo.get_metrics(
+            start_date=start_date,
+            end_date=end_date,
+            limit=limit,
+        )
+
+        # Convert to response models
+        metrics_response = [
+            CallMetricsResponseModel(
+                metrics_id=metric.metrics_id,
+                transcript=str(metric.transcript),
+                response=str(metric.response),
+                reason=str(metric.reason) if metric.reason else None,
+                final_loadboard_rate=(
+                    float(metric.final_loadboard_rate)
+                    if metric.final_loadboard_rate
+                    else None
+                ),
+                session_id=str(metric.session_id) if metric.session_id else None,
+                created_at=metric.created_at,
+                updated_at=metric.updated_at,
+            )
+            for metric in metrics_data
+        ]
+
+        # Get total count - use count query for better performance
+        total_count = await call_metrics_repo.count_metrics(
+            start_date=start_date,
+            end_date=end_date,
+        )
+
+        return CallMetricsListResponse(
+            metrics=metrics_response,
+            total_count=total_count,
+            start_date=start_date,
+            end_date=end_date,
+        )
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid parameters: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+@router.delete("/call/{metrics_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_call_metrics(
+    metrics_id: UUID,
+    session: AsyncSession = Depends(get_database_session),
+) -> None:
+    """
+    Delete specific call metrics by ID.
+
+    This endpoint permanently removes call metrics data from the system.
+    The operation cannot be undone.
+
+    Args:
+        metrics_id: The unique identifier of the metrics record to delete
+
+    Returns:
+        - 204 No Content: Metrics successfully deleted
+        - 404 Not Found: Metrics with given ID does not exist
+        - 500 Internal Server Error: Database or system error
+    """
+    try:
+        # Initialize repository
+        call_metrics_repo = PostgresCallMetricsRepository(session)
+
+        # Attempt to delete the metrics
+        deleted = await call_metrics_repo.delete(metrics_id)
+
+        if not deleted:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Call metrics with ID {metrics_id} not found",
+            )
+
+        # Commit the transaction
+        await session.commit()
+
+        # Return 204 No Content on successful deletion
+        return None
+
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        await session.rollback()
+        raise
+    except Exception as e:
+        # Handle unexpected errors
+        await session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete metrics: {str(e)}",
+        )

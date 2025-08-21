@@ -15,7 +15,8 @@ from src.core.application.use_cases.search_loads import (
 from src.core.domain.entities import Load, LoadStatus, UrgencyLevel
 from src.core.domain.value_objects import EquipmentType, Location, Rate
 
-# TODO: Uncomment when VerifyCarrierUseCase is implemented
+# NOTE: VerifyCarrierUseCase tests are deferred pending implementation
+# The use case needs to be implemented in src/core/application/use_cases/
 # class TestVerifyCarrierUseCase:
 #     """Test VerifyCarrierUseCase."""
 #

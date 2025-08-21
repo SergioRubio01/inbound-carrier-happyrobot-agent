@@ -3,11 +3,9 @@
 ## Table of Contents
 - [Overview](#overview)
 - [Tech Stack](#tech-stack-as-required)
-- [Architecture Summary](#architecture-summary)
 - [Repository Layout](#repository-layout)
 - [Local Development](#local-development)
-- [HappyRobot Platform: Manual Steps](#happyrobot-platform-manual-steps-to-connect-the-agentic-workflow)
-- [Deployment (AWS ECS / RDS)](#deployment-aws-ecs--rds)
+- [Deployment](#deployment)
 - [Contributing](#contributing)
 
 ## Overview
@@ -22,18 +20,6 @@ The API serves as the backend for HappyRobot platform integration. For this POC 
 - **FastAPI** for REST API (Python 3.12)
 - Security: **HTTPS (in AWS with ALB/ACM)** and **API Key** authentication for all API endpoints
 - Note: No WebSocket, no Redis, no backup services in this architecture
-
-## Architecture summary
-- A single FastAPI service exposes REST endpoints for:
-  - Load search and selection
-  - Negotiation handling (state limited to 3 back-and-forths)
-  - Call extraction, outcome classification, and sentiment tagging
-  - Metrics aggregation for the dashboard
-- A PostgreSQL database stores loads and call transcripts/metadata.
-- The HappyRobot agent invokes these endpoints via web call triggers.
-- The API provides metrics endpoints for monitoring and reporting.
-
-For a detailed architecture overview, see [ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Repository layout
 - `src/`: API source code
@@ -84,44 +70,8 @@ All endpoints require an API key via either header:
 
 Exempt: `/health`, `/api/v1/health`, `/api/v1/openapi.json`, `/api/v1/docs`, `/api/v1/redoc`.
 
-## HappyRobot platform: manual steps to connect the agentic-workflow
-The solution uses the web call trigger and REST callbacks (no purchased phone numbers).
-
-1) Create an agent “Inbound Carrier Sales”
-- Capability: Voice
-- Trigger: Web Call Trigger
-- Greeting prompt (example):
-  "Thank you for calling Acme Logistics. I can help match your truck to available loads. May I have your MC number to get started?"
-
-2) Load matching step
-- Action: HTTP POST to `POST /api/v1/loads/search`
-- Payload includes carrier lane, equipment, dates gathered during the call
-- Response returns a set of viable loads with details to pitch
-- Agent pitches the top 1–3 loads:
-  "I have a load from {{origin}} to {{destination}} picking up {{pickup_datetime}} with {{equipment_type}} at ${{loadboard_rate}}. Would you like to proceed or make an offer?"
-
-4) Negotiation loop (up to 3 back-and-forths)
-- Action: HTTP POST to `POST /api/v1/negotiations/evaluate`
-- Payload includes `load_id`, `carrier_offer`, and `context`
-- Response returns `counter_offer` or `accepted: true`
-- If accepted → proceed to hand-off step (HappyRobot workflow handles this)
-
-5) Metrics monitoring
-- The HappyRobot platform can query `GET /api/v1/metrics/summary` for KPIs such as:
-  - Total negotiations, eligible carriers, matched loads, accepted offers, average negotiation rounds, average agreed rate vs. loadboard rate
-
-Note: The exact JSON schemas are documented in `docs/IMPLEMENTATION_PLAN.md` with request/response examples you can paste into HappyRobot’s HTTP steps.
-
-## Deployment (AWS ECS / RDS)
-This section provides a high-level overview. For detailed, step-by-step instructions, please refer to the [Deployment Guide](docs/DEPLOYMENT.md).
-
-High level steps:
-1) Provision RDS PostgreSQL and import the schema
-2) Build and push API image to ECR:
-   - API image from `Dockerfile.api`
-3) Create ECS Fargate service for the API behind an ALB with a single task under the cluster HappyRobot-FDE
-4) Attach HTTPS certificate via ACM to ALB
-5) Configure environment variables and secrets (RDS URL, `API_KEY`, etc.) in ECS Task Definition
+## Deployment
+For detailed deployment instructions to AWS ECS/RDS, please refer to the [Deployment Guide](docs/DEPLOYMENT.md).
 
 ## Contributing
 We welcome contributions! Please see our [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to set up your development environment, run tests, and submit a pull request.

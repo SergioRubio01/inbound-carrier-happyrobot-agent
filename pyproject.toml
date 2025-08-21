@@ -1,6 +1,6 @@
 [project]
 name = "happyrobotfde"
-version = "0.2.0"
+version = "0.3.0"
 description = "FDE Technical Challenge: Inbound Carrier Sales"
 authors = [
     {name = "Rubio",email = "100428611@alumnos.uc3m.es"}
@@ -23,7 +23,11 @@ dependencies = [
     "alembic (>=1.16.4,<2.0.0)",
     "pre-commit (>=4.3.0,<5.0.0)",
     "psycopg2-binary (>=2.9.10,<3.0.0)",
-    "tenacity (>=9.1.2,<10.0.0)"
+    "tenacity (>=9.1.2,<10.0.0)",
+    "reportlab (>=4.0.0,<5.0.0)",
+    "httpx (>=0.28.1,<0.29.0)",
+    "types-requests (>=2.31.0,<3.0.0)",
+    "types-reportlab (>=4.2.0,<5.0.0)"
 ]
 
 
@@ -87,6 +91,7 @@ pretty = true
 show_column_numbers = true
 show_error_codes = true
 show_error_context = true
+exclude = ["migrations/"]
 
 [[tool.mypy.overrides]]
 module = [
@@ -101,7 +106,15 @@ module = [
     "moto.*",
     "fakeredis.*",
     "factory.*",
-    "faker.*"
+    "faker.*",
+    "reportlab.*",
+    "reportlab.lib.*",
+    "reportlab.lib.enums.*",
+    "reportlab.lib.pagesizes.*",
+    "reportlab.lib.styles.*",
+    "reportlab.lib.units.*",
+    "reportlab.platypus.*",
+    "requests.*"
 ]
 ignore_missing_imports = true
 
