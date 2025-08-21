@@ -2581,6 +2581,33 @@ doc = ["reno", "sphinx"]
 test = ["pytest", "tornado (>=4.5)", "typeguard"]
 
 [[package]]
+name = "types-reportlab"
+version = "4.4.1.20250809"
+description = "Typing stubs for reportlab"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "types_reportlab-4.4.1.20250809-py3-none-any.whl", hash = "sha256:e3872d997305fefd0d44da4ced04951910ab079643a4426780590b9b138cb827"},
+    {file = "types_reportlab-4.4.1.20250809.tar.gz", hash = "sha256:ccbec6667f206e4802d66646cff5cff294165ccd5440285621b57afb867f10b7"},
+]
+
+[[package]]
+name = "types-requests"
+version = "2.32.4.20250809"
+description = "Typing stubs for requests"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "types_requests-2.32.4.20250809-py3-none-any.whl", hash = "sha256:f73d1832fb519ece02c85b1f09d5f0dd3108938e7d47e7f94bbfa18a6782b163"},
+    {file = "types_requests-2.32.4.20250809.tar.gz", hash = "sha256:d8060de1c8ee599311f56ff58010fb4902f462a1470802cf9f6ed27bc46c4df3"},
+]
+
+[package.dependencies]
+urllib3 = ">=2"
+
+[[package]]
 name = "typing-extensions"
 version = "4.14.1"
 description = "Backported and Experimental Type Hints for Python 3.9+"
@@ -2698,4 +2725,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<4.0"
-content-hash = "243c19cf942e7393d57603a82945ee3c9798238460cb0edd7f3f113b15ad95b7"
+content-hash = "0ba31d41ee678e7416e548890f68b8e51596071cb3654fd818bcbd130dd32f68"

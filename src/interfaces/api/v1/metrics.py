@@ -312,15 +312,15 @@ async def get_call_metrics_by_id(
 
         return CallMetricsResponseModel(
             metrics_id=metrics.metrics_id,
-            transcript=metrics.transcript,
-            response=metrics.response,
-            reason=metrics.reason,
+            transcript=str(metrics.transcript),
+            response=str(metrics.response),
+            reason=str(metrics.reason) if metrics.reason else None,
             final_loadboard_rate=(
                 float(metrics.final_loadboard_rate)
                 if metrics.final_loadboard_rate
                 else None
             ),
-            session_id=metrics.session_id,
+            session_id=str(metrics.session_id) if metrics.session_id else None,
             created_at=metrics.created_at,
             updated_at=metrics.updated_at,
         )
@@ -362,15 +362,15 @@ async def get_call_metrics(
         metrics_response = [
             CallMetricsResponseModel(
                 metrics_id=metric.metrics_id,
-                transcript=metric.transcript,
-                response=metric.response,
-                reason=metric.reason,
+                transcript=str(metric.transcript),
+                response=str(metric.response),
+                reason=str(metric.reason) if metric.reason else None,
                 final_loadboard_rate=(
                     float(metric.final_loadboard_rate)
                     if metric.final_loadboard_rate
                     else None
                 ),
-                session_id=metric.session_id,
+                session_id=str(metric.session_id) if metric.session_id else None,
                 created_at=metric.created_at,
                 updated_at=metric.updated_at,
             )

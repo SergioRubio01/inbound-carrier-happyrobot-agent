@@ -11,7 +11,7 @@ import asyncio
 import json
 import sys
 from datetime import datetime, timedelta
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import httpx
 from reportlab.lib import colors
@@ -20,6 +20,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.platypus import (
+    Flowable,
     PageBreak,
     Paragraph,
     SimpleDocTemplate,
@@ -216,7 +217,7 @@ class MetricsCLI:
         """Generate PDF report from metrics data."""
         try:
             doc = SimpleDocTemplate(output_file, pagesize=A4)
-            story = []
+            story: List[Flowable] = []
             styles = getSampleStyleSheet()
 
             # Custom styles
