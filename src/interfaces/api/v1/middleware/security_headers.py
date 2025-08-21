@@ -94,20 +94,36 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
 
         # Content-Security-Policy: Prevent XSS and data injection attacks
-        # This is a restrictive policy suitable for an API
-        csp_policy = (
-            "default-src 'self'; "
-            "script-src 'self'; "
-            "style-src 'self' 'unsafe-inline'; "
-            "img-src 'self' data:; "
-            "connect-src 'self'; "
-            "font-src 'self'; "
-            "object-src 'none'; "
-            "base-uri 'self'; "
-            "form-action 'self'; "
-            "frame-ancestors 'none'; "
-            "upgrade-insecure-requests"
-        )
+        # Use relaxed policy for documentation endpoints, restrictive for others
+        if self._is_documentation_endpoint(request.url.path):
+            # Relaxed CSP for Swagger UI and ReDoc to function properly
+            csp_policy = (
+                "default-src 'self' https:; "
+                "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com; "
+                "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
+                "img-src 'self' data: https:; "
+                "connect-src 'self' https:; "
+                "font-src 'self' data: https://fonts.gstatic.com; "
+                "object-src 'none'; "
+                "base-uri 'self'; "
+                "form-action 'self'; "
+                "frame-ancestors 'none'"
+            )
+        else:
+            # Restrictive policy for API endpoints
+            csp_policy = (
+                "default-src 'self'; "
+                "script-src 'self'; "
+                "style-src 'self' 'unsafe-inline'; "
+                "img-src 'self' data:; "
+                "connect-src 'self'; "
+                "font-src 'self'; "
+                "object-src 'none'; "
+                "base-uri 'self'; "
+                "form-action 'self'; "
+                "frame-ancestors 'none'; "
+                "upgrade-insecure-requests"
+            )
         response.headers["Content-Security-Policy"] = csp_policy
 
         # Permissions-Policy: Control browser features
@@ -183,7 +199,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             return False
 
         # Documentation endpoints can be cached
-        if any(doc_path in path for doc_path in ["/docs", "/redoc", "/openapi.json"]):
+        if self._is_documentation_endpoint(path):
             return False
 
         # All other API endpoints contain sensitive business data
@@ -192,3 +208,23 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
         # Default to sensitive for unknown endpoints
         return True
+
+    def _is_documentation_endpoint(self, path: str) -> bool:
+        """
+        Check if the endpoint is for API documentation.
+
+        Args:
+            path: The request path
+
+        Returns:
+            True if the endpoint is for API documentation
+        """
+        doc_paths = [
+            "/docs",
+            "/redoc",
+            "/openapi.json",
+            "/api/v1/docs",
+            "/api/v1/redoc",
+            "/api/v1/openapi.json",
+        ]
+        return any(doc_path in path for doc_path in doc_paths)
