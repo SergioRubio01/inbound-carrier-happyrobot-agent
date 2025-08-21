@@ -62,27 +62,29 @@ def upgrade() -> None:
 
     # First check if the tables and columns exist before trying to drop them
 
-    # Check if negotiations table has call_id column
-    negotiations_columns = [
-        col["name"] for col in inspector.get_columns("negotiations")
-    ]
-
-    if "call_id" in negotiations_columns:
-        # Check for and drop index if it exists
-        negotiations_indexes = [
-            idx["name"] for idx in inspector.get_indexes("negotiations")
+    # Check if negotiations table exists before trying to access it
+    if "negotiations" in inspector.get_table_names():
+        # Check if negotiations table has call_id column
+        negotiations_columns = [
+            col["name"] for col in inspector.get_columns("negotiations")
         ]
-        if "ix_negotiations_call_id" in negotiations_indexes:
-            op.drop_index(op.f("ix_negotiations_call_id"), table_name="negotiations")
 
-        # Check for and drop foreign key if it exists
-        negotiations_fkeys = inspector.get_foreign_keys("negotiations")
-        for fkey in negotiations_fkeys:
-            if "call_id" in fkey["constrained_columns"] and fkey["name"]:
-                op.drop_constraint(fkey["name"], "negotiations", type_="foreignkey")
+        if "call_id" in negotiations_columns:
+            # Check for and drop index if it exists
+            negotiations_indexes = [
+                idx["name"] for idx in inspector.get_indexes("negotiations")
+            ]
+            if "ix_negotiations_call_id" in negotiations_indexes:
+                op.drop_index(op.f("ix_negotiations_call_id"), table_name="negotiations")
 
-        # Drop the column
-        op.drop_column("negotiations", "call_id")
+            # Check for and drop foreign key if it exists
+            negotiations_fkeys = inspector.get_foreign_keys("negotiations")
+            for fkey in negotiations_fkeys:
+                if "call_id" in fkey["constrained_columns"] and fkey["name"]:
+                    op.drop_constraint(fkey["name"], "negotiations", type_="foreignkey")
+
+            # Drop the column
+            op.drop_column("negotiations", "call_id")
 
     # Check if calls table exists before trying to drop it
     if "calls" in inspector.get_table_names():
