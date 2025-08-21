@@ -66,6 +66,12 @@ dist/
 *.csv
 *.ipynb
 
+# SSL Certificates (for local HTTPS development)
+certs/
+*.crt
+*.key
+*.csr
+
 *.json
 # But track Step Functions state machine definitions
 # And track package.json and package-lock.json for Pulumi

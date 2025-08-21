@@ -63,7 +63,8 @@ const loadBalancer = new LoadBalancerComponent(`${resourcePrefix}-loadbalancer`,
     publicSubnets: networking.publicSubnets,
     albSecurityGroup: networking.albSecurityGroup,
     apiTargetGroup: containers.apiTargetGroup,
-    certificateArn: config.get("certificateArn"), // Optional SSL certificate
+    certificateArn: config.get("certificateArn"), // Optional SSL certificate for custom domains
+    enableHttps: config.getBoolean("enableHttps") || false, // Enable HTTPS support
     environment,
     tags: commonTags,
 });

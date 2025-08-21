@@ -39,6 +39,7 @@ class Settings(BaseSettings):
 
     # Security settings
     api_key: str = Field(default="dev-local-api-key", alias="API_KEY")
+    enable_https: bool = Field(default=False, alias="ENABLE_HTTPS")
 
     # API Base URL
     api_base_url: str = Field(default="http://localhost:8000", alias="API_BASE_URL")
