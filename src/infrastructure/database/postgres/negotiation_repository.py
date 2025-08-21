@@ -40,7 +40,6 @@ class PostgresNegotiationRepository(
 
         return Negotiation(
             negotiation_id=model.negotiation_id,
-            call_id=model.call_id,
             load_id=model.load_id,
             carrier_id=model.carrier_id,
             mc_number=(
@@ -91,7 +90,6 @@ class PostgresNegotiationRepository(
         """Convert domain entity to database model."""
         return NegotiationModel(
             negotiation_id=entity.negotiation_id,
-            call_id=entity.call_id,
             load_id=entity.load_id,
             carrier_id=entity.carrier_id,
             mc_number=str(entity.mc_number) if entity.mc_number else None,
@@ -194,8 +192,6 @@ class PostgresNegotiationRepository(
 
         conditions = []
 
-        if criteria.call_id:
-            conditions.append(NegotiationModel.call_id == criteria.call_id)
         if criteria.load_id:
             conditions.append(NegotiationModel.load_id == criteria.load_id)
         if criteria.carrier_id:
@@ -220,19 +216,6 @@ class PostgresNegotiationRepository(
 
         stmt = stmt.limit(criteria.limit).offset(criteria.offset)
         stmt = stmt.order_by(NegotiationModel.session_start.desc())
-
-        result = await self.session.execute(stmt)
-        models = result.scalars().all()
-        entities = [self._model_to_entity(model) for model in models]
-        return [e for e in entities if e is not None]
-
-    async def get_negotiations_by_call(self, call_id: UUID) -> List[Negotiation]:
-        """Get all negotiations for a specific call."""
-        stmt = (
-            select(NegotiationModel)
-            .where(NegotiationModel.call_id == call_id)
-            .order_by(NegotiationModel.round_number.asc())
-        )
 
         result = await self.session.execute(stmt)
         models = result.scalars().all()
@@ -362,8 +345,6 @@ class PostgresNegotiationRepository(
         stmt = select(func.count(NegotiationModel.negotiation_id))
 
         conditions = []
-        if criteria.call_id:
-            conditions.append(NegotiationModel.call_id == criteria.call_id)
         if criteria.load_id:
             conditions.append(NegotiationModel.load_id == criteria.load_id)
         if criteria.carrier_id:

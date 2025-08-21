@@ -53,7 +53,7 @@ docker-compose exec api alembic upgrade head
 # 1. Navigate to http://localhost:5050
 # 2. Login with admin@happyrobot.com / admin1234
 # 3. Add server: postgres:5432 (happyrobot/happyrobot)
-# 4. Check tables: carriers, loads, calls, negotiations
+# 4. Check tables: carriers, loads, negotiations
 ```
 
 ### Step 4: Verify Services
@@ -229,7 +229,6 @@ curl https://<alb-url>/health
 3. Configure webhooks:
    - Load Search: `https://<alb-url>/api/v1/loads/search`
    - Negotiation: `https://<alb-url>/api/v1/negotiations/evaluate`
-   - Call Finalize: `https://<alb-url>/api/v1/calls/finalize`
 4. Add API key header: `X-API-Key: <your-api-key>`
 5. Test voice agent workflow
 

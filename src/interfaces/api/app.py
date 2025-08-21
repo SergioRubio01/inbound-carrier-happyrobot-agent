@@ -37,10 +37,6 @@ def create_app() -> FastAPI:
         # Define OpenAPI tags with descriptions and ordering
         openapi_tags=[
             {
-                "name": "Calls",
-                "description": "Operations for calls",
-            },
-            {
                 "name": "Metrics",
                 "description": "Operations for metrics",
             },
@@ -110,11 +106,10 @@ def create_app() -> FastAPI:
         return JSONResponse(status_code=422, content={"detail": exc.details})
 
     # Include API routers
-    from src.interfaces.api.v1 import calls, loads, metrics, negotiations
+    from src.interfaces.api.v1 import loads, metrics, negotiations
 
     app.include_router(loads.router, prefix="/api/v1")
     app.include_router(negotiations.router, prefix="/api/v1")
-    app.include_router(calls.router, prefix="/api/v1")
     app.include_router(metrics.router, prefix="/api/v1")
 
     # Add startup event handler

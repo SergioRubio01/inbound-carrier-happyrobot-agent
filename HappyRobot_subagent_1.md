@@ -4,162 +4,215 @@
 Implementation Planner for HappyRobot FDE Platform
 
 ## Task Completed
-Created comprehensive implementation plan for PUT endpoint to update load registries
+Created comprehensive implementation plan for REMOVING all calls-related endpoints and infrastructure from the codebase
 
 ## Overview of Implementation Plan Created
 
 ### Scope
-Designed a complete solution for implementing a PUT `/api/v1/loads/{load_id}` endpoint that enables updating existing load records while maintaining data integrity and following hexagonal architecture patterns.
+Designed a complete solution for removing the calls functionality including:
+- API endpoints (`/api/v1/calls/handoff` and `/api/v1/calls/finalize`)
+- Database table and all related infrastructure
+- Domain entities, repositories, and all supporting code
 
-### Key Components Planned
-1. **UpdateLoadUseCase**: Application layer business logic
-2. **API Endpoint**: FastAPI PUT endpoint with validation
-3. **Repository Updates**: Optimistic locking support
-4. **Comprehensive Testing**: Unit and integration tests
-5. **Documentation**: OpenAPI/Swagger updates
+### Document Created
+`docs/IMPLEMENTATION_PLAN_DELETE_CALLS.md` - A comprehensive 5-phase plan with 15 specific tasks
+
+### Key Components Identified for Removal
+1. **API Layer**: 2 endpoints in `calls.py`
+2. **Database**: `calls` table with 11 indexes
+3. **Domain Layer**: Call entity and enums
+4. **Infrastructure**: PostgreSQL repository implementation
+5. **Port Interfaces**: ICallRepository interface
 
 ## Key Architectural Decisions Made
 
-### 1. Update Strategy
-- **Decision**: Full update (PUT) rather than partial update (PATCH)
-- **Rationale**: Aligns with REST standards, simplifies validation, ensures complete data consistency
+### 1. Complete Removal Strategy
+- **Decision**: Full removal rather than deprecation
+- **Rationale**: Avoid technical debt, clean architecture, clear boundaries
 
-### 2. Optimistic Locking
-- **Decision**: Use version field for concurrency control
-- **Rationale**: Prevents lost updates without database locks, maintains performance
+### 2. Migration-First Approach
+- **Decision**: Create database migration but delay execution
+- **Rationale**: Ensures code and schema changes are synchronized
 
-### 3. Business Rule Enforcement
-- **Decision**: Strict validation in use case layer
-- **Rationale**: Centralized business logic, consistent with existing patterns
+### 3. Phased Implementation
+- **Decision**: 5 distinct phases with validation checkpoints
+- **Rationale**: Minimizes risk, allows for validation at each step
 
-### 4. Immutable Fields
-- **Decision**: Prevent updates to system fields (load_id, reference_number, created_at)
-- **Rationale**: Maintains data integrity and audit trail
+### 4. Atomic Commits
+- **Decision**: Each component removal as separate commit
+- **Rationale**: Easier rollback if issues discovered
 
-### 5. Status Transition Control
-- **Decision**: Define explicit allowed status transitions
-- **Rationale**: Prevents invalid state changes, maintains business workflow integrity
+### 5. Comprehensive Testing
+- **Decision**: Full test suite run after each major change
+- **Rationale**: Early detection of integration issues
 
 ## Agent Assignments and Rationale
 
-### Backend Agent (Agent 2)
-**Assigned Tasks**:
-- Task 1: Create UpdateLoadUseCase
-- Task 2: Extend Repository
-- Task 3: Implement PUT Endpoint
-- Task 6: Update Documentation
+### Backend Agent (11 tasks)
+**Primary Responsibilities**:
+- Database migration creation
+- File deletions (calls.py, call.py, call_model.py, call_repository.py)
+- Import cleanup across 8+ files
+- Update negotiations model and metrics endpoint
+- Documentation updates
 
 **Rationale**:
-- Expert in Python/FastAPI and hexagonal architecture
-- Familiar with existing codebase patterns
-- Can ensure consistency across implementation
+- Deep understanding of codebase structure
+- Expertise in Python/FastAPI
+- Familiar with Alembic migrations
 
-### QA Agent (Agent 3)
-**Assigned Tasks**:
-- Task 4: Unit Tests for UpdateLoadUseCase
-- Task 5: Integration Tests for PUT Endpoint
+### QA Agent (3 tasks)
+**Primary Responsibilities**:
+- Remove call-related tests
+- Update integration tests
+- Validate system integrity
 
 **Rationale**:
-- Specialized in testing strategies
-- Can identify edge cases and error scenarios
-- Ensures comprehensive test coverage
+- Testing expertise
+- Can identify hidden dependencies
+- Ensures no broken functionality remains
+
+### AWS ECS Troubleshooter (1 task)
+**Primary Responsibilities**:
+- Review infrastructure configuration
+- Validate deployment readiness
+
+**Rationale**:
+- Infrastructure expertise
+- Can identify deployment risks
 
 ## Risk Assessments Identified
 
-### Technical Risks
-1. **Concurrent Updates** (Medium Risk)
-   - Mitigation: Optimistic locking with version field
+### Critical Risks
+1. **Irreversible Data Loss**
+   - Impact: Complete loss of calls table data
+   - Mitigation: Mandatory database backup before migration
+   - Recovery: Downgrade migration prepared
 
-2. **Data Integrity** (Low Risk)
-   - Mitigation: Comprehensive validation rules
+2. **Breaking API Changes**
+   - Impact: External systems calling removed endpoints will fail
+   - Mitigation: Consumer notification required (1 week advance)
+   - Recovery: Stub endpoints returning HTTP 410 Gone
 
-3. **Performance Impact** (Low Risk)
-   - Mitigation: Single row updates with indexed lookups
+3. **Cascade Effects**
+   - Impact: Negotiations table loses call_id foreign key
+   - Mitigation: Thorough testing of negotiation workflows
 
-### Business Risks
-1. **Invalid State Transitions** (Medium Risk)
-   - Mitigation: Explicit transition rules validation
+### Operational Risks
+1. **Long Implementation Window** (4.5 hours estimated)
+   - Mitigation: Schedule maintenance window
 
-2. **Audit Trail Loss** (Low Risk)
-   - Mitigation: Automatic updated_at and version tracking
+2. **Complex Rollback**
+   - Mitigation: Detailed rollback procedures documented
 
-3. **Unauthorized Modifications** (Low Risk)
-   - Mitigation: API key authentication requirement
+3. **Loss of Metrics**
+   - Impact: Dashboards may break
+   - Mitigation: Update dashboard configurations simultaneously
 
 ## Coordination Strategies Recommended
 
-### Development Sequence
-1. **Phase 1**: Core implementation by backend agent
-2. **Phase 2**: Testing by QA agent (can start after Task 1)
-3. **Phase 3**: Documentation and final integration
+### Execution Timeline
+1. **Phase 1** (30 min): Database migration preparation
+2. **Phase 2** (2 hours): Code removal and updates
+3. **Phase 3** (30 min): Documentation updates
+4. **Phase 4** (1 hour): Testing and validation
+5. **Phase 5** (30 min): Deployment preparation
 
-### Inter-Agent Dependencies
-- QA agent depends on backend agent completing Task 1 (use case)
-- Integration tests depend on Task 3 (endpoint implementation)
-- Parallel work possible on unit tests and endpoint development
-
-### Communication Points
-- Backend agent should document any deviations from plan
-- QA agent should report any missing test scenarios
-- Both agents should update their summary files upon completion
-
-## Implementation Patterns Established
-
-### Code Organization
-```
-src/
-├── core/
-│   └── application/
-│       └── use_cases/
-│           └── update_load_use_case.py  [NEW]
-├── interfaces/
-│   └── api/
-│       └── v1/
-│           └── loads.py  [MODIFY]
-└── tests/
-    ├── unit/
-    │   └── application/
-    │       └── test_update_load_use_case.py  [NEW]
-    └── integration/
-        └── test_update_load_endpoint.py  [NEW]
+### Critical Dependencies
+```mermaid
+graph TD
+    A[Create Migration] --> B[Remove API Layer]
+    B --> C[Remove Domain Layer]
+    C --> D[Remove Infrastructure]
+    D --> E[Update Dependencies]
+    E --> F[Test Everything]
+    F --> G[Deploy]
 ```
 
-### Validation Pattern
-- Request validation at API layer (Pydantic)
-- Business rule validation in use case
-- Domain validation in entity methods
+### Communication Protocol
+1. Pre-implementation notification to API consumers
+2. Progress updates at each phase completion
+3. Post-implementation verification report
+4. 24-hour monitoring period
 
-### Error Handling Pattern
-- Custom exceptions for specific failures
-- HTTP status codes mapped to exception types
-- Detailed error messages for debugging
+## Implementation Validation Checklist
+
+### Code Validation
+- All call-related files deleted
+- No import errors (`python -m py_compile`)
+- Type checking passes (`mypy .`)
+- Linting passes (`ruff check .`)
+- All tests pass (`pytest`)
+
+### Database Validation
+```sql
+-- Verify calls table removed
+SELECT * FROM information_schema.tables WHERE table_name = 'calls';
+-- Should return 0 rows
+
+-- Verify negotiations updated
+SELECT column_name FROM information_schema.columns
+WHERE table_name = 'negotiations' AND column_name = 'call_id';
+-- Should return 0 rows
+```
+
+### API Validation
+```bash
+# These should return 404
+curl -X POST http://localhost:8000/api/v1/calls/handoff
+curl -X POST http://localhost:8000/api/v1/calls/finalize
+
+# Metrics should work without call data
+curl http://localhost:8000/api/v1/metrics/summary
+```
+
+## Alternative Approaches Considered
+
+### Gradual Deprecation (Rejected)
+- Add deprecation warnings
+- Implement stub endpoints
+- Remove over multiple sprints
+- **Rejected because**: Clean removal preferred, avoids technical debt
+
+### Feature Flag Approach (Optional)
+- Disable endpoints via configuration
+- Test in production before removal
+- **Status**: Suggested as optional safety measure
 
 ## Success Metrics Defined
 
-### Functional Requirements
-- ✓ Complete load updates working
-- ✓ Business rules enforced
-- ✓ Optimistic locking functional
-- ✓ Status transitions validated
+### Technical Success
+- Zero import errors
+- All remaining tests pass
+- No 500 errors in production
+- Database migration completes cleanly
 
-### Quality Requirements
-- Unit test coverage > 90%
-- Integration tests passing
-- Response time < 200ms
-- Zero data integrity issues
+### Business Success
+- No disruption to remaining functionality
+- Clear communication to stakeholders
+- Successful removal within maintenance window
 
-### Documentation Requirements
-- OpenAPI spec updated
-- Endpoint docstrings complete
-- Test documentation provided
+## Recommendations for Implementation
+
+### Critical Actions
+1. **Backup database** before any changes
+2. **Notify consumers** at least 1 week in advance
+3. **Test locally** with full docker-compose stack
+4. **Monitor closely** for 24 hours post-deployment
+
+### Safety Measures
+1. Keep downgrade migration ready
+2. Prepare stub endpoints as backup
+3. Document all changes in version control
+4. Have rollback plan tested and ready
 
 ## Conclusion
 
-The implementation plan provides a robust, scalable solution for load updates that:
-- Maintains consistency with existing architecture
-- Ensures data integrity through comprehensive validation
-- Provides excellent error handling and user feedback
-- Includes thorough testing strategy
-- Follows REST best practices
+The implementation plan provides a systematic, low-risk approach to removing the calls functionality. The hexagonal architecture makes this removal relatively clean with clear boundaries between components. The plan prioritizes:
 
-The plan is ready for execution by the assigned agents, with clear tasks, dependencies, and success criteria defined.
+- **Safety**: Through backups and rollback procedures
+- **Communication**: Clear notification to all stakeholders
+- **Validation**: Comprehensive testing at each phase
+- **Documentation**: Complete audit trail of changes
+
+The estimated 4.5 hour implementation window is realistic given the scope, and the phased approach allows for early detection of any issues. With proper execution, this removal will simplify the codebase while maintaining system stability.
