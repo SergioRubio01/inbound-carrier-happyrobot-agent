@@ -9,6 +9,7 @@ export interface ContainersArgs {
     databaseSecretArn: pulumi.Output<string>;
     environment: string;
     apiKey: string;
+    enableHttps?: boolean; // Enable HTTPS for security headers
     tags: Record<string, string>;
 }
 
@@ -239,6 +240,10 @@ export class ContainersComponent extends pulumi.ComponentResource {
                         {
                             name: "POSTGRES_DB",
                             value: "happyrobot",
+                        },
+                        {
+                            name: "ENABLE_HTTPS",
+                            value: args.enableHttps ? "true" : "false",
                         },
                         {
                             name: "MAX_LOAD_WEIGHT_LBS",

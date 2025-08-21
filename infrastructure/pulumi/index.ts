@@ -54,6 +54,7 @@ const containers = new ContainersComponent(`${resourcePrefix}-containers`, {
     databaseSecretArn: database.secretArn,
     environment,
     apiKey: config.require("apiKey"),
+    enableHttps: config.getBoolean("enableHttps") || false, // Pass HTTPS config to containers
     tags: commonTags,
 });
 
