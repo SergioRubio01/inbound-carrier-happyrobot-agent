@@ -78,7 +78,7 @@ def upgrade() -> None:
         # Check for and drop foreign key if it exists
         negotiations_fkeys = inspector.get_foreign_keys("negotiations")
         for fkey in negotiations_fkeys:
-            if "call_id" in fkey["constrained_columns"]:
+            if "call_id" in fkey["constrained_columns"] and fkey["name"]:
                 op.drop_constraint(fkey["name"], "negotiations", type_="foreignkey")
 
         # Drop the column
