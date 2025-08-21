@@ -19,7 +19,6 @@ class NegotiationSearchCriteria:
 
     def __init__(
         self,
-        call_id: Optional[UUID] = None,
         load_id: Optional[UUID] = None,
         carrier_id: Optional[UUID] = None,
         mc_number: Optional[MCNumber] = None,
@@ -31,7 +30,6 @@ class NegotiationSearchCriteria:
         limit: int = 100,
         offset: int = 0,
     ):
-        self.call_id = call_id
         self.load_id = load_id
         self.carrier_id = carrier_id
         self.mc_number = mc_number
@@ -77,11 +75,6 @@ class INegotiationRepository(ABC):
         self, criteria: NegotiationSearchCriteria
     ) -> List[Negotiation]:
         """Search negotiations by criteria."""
-        pass
-
-    @abstractmethod
-    async def get_negotiations_by_call(self, call_id: UUID) -> List[Negotiation]:
-        """Get all negotiations for a specific call."""
         pass
 
     @abstractmethod

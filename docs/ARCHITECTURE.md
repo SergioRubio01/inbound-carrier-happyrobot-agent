@@ -440,8 +440,6 @@ The HappyRobot FDE platform implements a hexagonal architecture pattern for the 
 │  │                 Webhook Endpoints                   │   │
 │  │  - /api/v1/loads/search                            │   │
 │  │  - /api/v1/negotiations/evaluate                   │   │
-│  │  - /api/v1/calls/handoff                           │   │
-│  │  - /api/v1/calls/finalize                          │   │
 │  └─────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────┘
 ```
