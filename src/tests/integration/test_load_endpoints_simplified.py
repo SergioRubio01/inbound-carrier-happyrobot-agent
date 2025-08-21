@@ -53,11 +53,18 @@ def test_create_load_success(client, valid_load_data):
     """Test successful load creation."""
     response = client.post("/api/v1/loads/", json=valid_load_data)
 
-    # Debug the error
+    # Assert successful creation
     if response.status_code != 201:
-        print(f"Status code: {response.status_code}")
-        print(f"Response content: {response.content}")
-        print(f"Response text: {response.text}")
+        # Log error details for debugging
+        error_details = {
+            "status_code": response.status_code,
+            "content": response.content.decode() if response.content else None,
+            "text": response.text,
+        }
+        # Use the error details in the assertion message
+        assert False, (
+            f"Expected 201, got {error_details['status_code']}: {error_details}"
+        )
 
     assert response.status_code == 201
     data = response.json()

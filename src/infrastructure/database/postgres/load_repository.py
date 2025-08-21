@@ -130,7 +130,7 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
         existing_model = result.scalar_one_or_none()
 
         if not existing_model:
-            raise Exception(f"Load not found. Load ID: {load.load_id}")
+            raise ValueError(f"Load not found. Load ID: {load.load_id}")
 
         # Update the existing model directly with the new values
         if load.origin:
