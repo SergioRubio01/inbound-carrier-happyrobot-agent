@@ -84,14 +84,12 @@ Exempt endpoints: `/health`, `/api/v1/health`, `/api/v1/docs`, `/api/v1/openapi.
 ## Key API Endpoints
 
 - `POST /api/v1/loads/search` - Search available loads
-- `POST /api/v1/negotiations/evaluate` - Handle price negotiation
 - `GET /api/v1/metrics/summary` - Dashboard KPIs
 
 ## Database Schema
 
 Main tables:
 - `loads`: Available freight loads with origin, destination, rates, equipment
-- `negotiations`: Negotiation history and outcomes
 - `carriers`: Verified carrier information
 
 ## Environment Variables
@@ -120,9 +118,8 @@ Local development:
 The system integrates with HappyRobot voice agents via REST webhooks:
 1. Agent authenticates and verifies carriers (handled by HappyRobot workflow platform)
 2. Searches and presents matching loads
-3. Handles up to 3 rounds of price negotiation
-4. Transfers accepted deals to sales reps
-5. Extracts and classifies call outcomes
+3. Transfers accepted deals to sales reps
+4. Extracts and classifies call outcomes
 
 Each step uses HTTP POST to the API endpoints with appropriate JSON payloads.
 

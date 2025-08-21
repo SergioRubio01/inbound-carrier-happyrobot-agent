@@ -9,12 +9,10 @@ from .base_repository import BaseRepository
 from .call_metrics_repository import PostgresCallMetricsRepository
 from .carrier_repository import PostgresCarrierRepository
 from .load_repository import PostgresLoadRepository
-from .negotiation_repository import PostgresNegotiationRepository
 
 __all__ = [
     "BaseRepository",
     "PostgresCallMetricsRepository",
     "PostgresCarrierRepository",
     "PostgresLoadRepository",
-    "PostgresNegotiationRepository",
 ]

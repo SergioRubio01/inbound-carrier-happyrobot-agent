@@ -3,17 +3,7 @@
 import uuid
 from datetime import datetime, timezone
 
-import pytest
-
-from src.core.domain.entities import (
-    Carrier,
-    Load,
-    LoadStatus,
-    Negotiation,
-    NegotiationStatus,
-    SystemResponse,
-    UrgencyLevel,
-)
+from src.core.domain.entities import Carrier, Load, LoadStatus, UrgencyLevel
 from src.core.domain.value_objects import EquipmentType, Location, MCNumber, Rate
 
 
@@ -124,65 +114,3 @@ class TestLoad:
         rate_per_mile = load.rate_per_mile
         assert rate_per_mile is not None
         assert rate_per_mile.to_float() == 4.0  # $2000 / 500 miles
-
-
-class TestNegotiation:
-    """Test Negotiation entity."""
-
-    @pytest.mark.unit
-    def test_negotiation_creation(self):
-        """Test creating a negotiation entity."""
-        negotiation = Negotiation(
-            negotiation_id=uuid.uuid4(),
-            load_id=uuid.uuid4(),
-            carrier_id=uuid.uuid4(),
-            mc_number=MCNumber.from_string("MC123456"),
-            session_id="session123",
-            session_start=datetime.now(timezone.utc),
-            is_active=True,
-            round_number=1,
-            max_rounds=3,
-            carrier_offer=Rate.from_float(2800),
-            system_response=SystemResponse.COUNTER_OFFER,
-            counter_offer=Rate.from_float(2600),
-            loadboard_rate=Rate.from_float(2500),
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
-        )
-
-        assert negotiation.round_number == 1
-        assert (
-            negotiation.carrier_offer is not None
-            and negotiation.carrier_offer.to_float() == 2800
-        )
-        assert negotiation.system_response == SystemResponse.COUNTER_OFFER
-        assert (
-            negotiation.counter_offer is not None
-            and negotiation.counter_offer.to_float() == 2600
-        )
-
-    def test_negotiation_completion(self):
-        """Test negotiation completion logic."""
-        negotiation = Negotiation(
-            negotiation_id=uuid.uuid4(),
-            load_id=uuid.uuid4(),
-            session_id="session123",
-            session_start=datetime.now(timezone.utc),
-            is_active=False,
-            round_number=2,
-            max_rounds=3,
-            carrier_offer=Rate.from_float(2600),
-            system_response=SystemResponse.ACCEPTED,
-            loadboard_rate=Rate.from_float(2500),
-            final_status=NegotiationStatus.DEAL_ACCEPTED,
-            agreed_rate=Rate.from_float(2600),
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
-        )
-
-        assert not negotiation.is_active
-        assert negotiation.final_status == NegotiationStatus.DEAL_ACCEPTED
-        assert (
-            negotiation.agreed_rate is not None
-            and negotiation.agreed_rate.to_float() == 2600
-        )

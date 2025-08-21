@@ -6,18 +6,14 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from src.core.application.use_cases.evaluate_negotiation import (
-    EvaluateNegotiationRequest,
-    EvaluateNegotiationUseCase,
-)
 from src.core.application.use_cases.search_loads import (
     LoadSearchRequest,
     SearchLoadsUseCase,
 )
 
 # VerifyCarrier use case is not implemented yet
-from src.core.domain.entities import Carrier, Load, LoadStatus, UrgencyLevel
-from src.core.domain.value_objects import EquipmentType, Location, MCNumber, Rate
+from src.core.domain.entities import Load, LoadStatus, UrgencyLevel
+from src.core.domain.value_objects import EquipmentType, Location, Rate
 
 # NOTE: VerifyCarrierUseCase tests are deferred pending implementation
 # The use case needs to be implemented in src/core/application/use_cases/
@@ -162,115 +158,3 @@ class TestSearchLoadsUseCase:
         # Assert
         assert len(result.loads) == 0
         assert result.total_matches == 0
-
-
-class TestEvaluateNegotiationUseCase:
-    """Test EvaluateNegotiationUseCase."""
-
-    @pytest.mark.asyncio
-    async def test_evaluate_acceptable_offer(self):
-        """Test evaluating an acceptable offer."""
-        # Mock repositories
-        mock_load_repo = AsyncMock()
-
-        # Mock load
-        mock_load = Load(
-            load_id=uuid.uuid4(),
-            origin=Location("Chicago", "IL", "60601"),
-            destination=Location("Atlanta", "GA", "30301"),
-            pickup_date=datetime.now(timezone.utc).date(),
-            delivery_date=datetime.now(timezone.utc).date(),
-            equipment_type=EquipmentType.from_name("53-foot van"),
-            weight=35000,
-            miles=716,
-            loadboard_rate=Rate.from_float(2500),
-            status=LoadStatus.AVAILABLE,
-            urgency=UrgencyLevel.NORMAL,
-            is_active=True,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
-        )
-        mock_load_repo.get_by_id.return_value = mock_load
-
-        # Mock carrier repository
-        mock_carrier_repo = AsyncMock()
-        mock_carrier = Carrier(
-            carrier_id=uuid.uuid4(),
-            mc_number=MCNumber.from_string("MC123456"),
-            legal_name="Test Carrier LLC",
-            entity_type="CARRIER",
-            operating_status="AUTHORIZED_FOR_HIRE",
-            status="ACTIVE",
-            insurance_on_file=True,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
-        )
-        mock_carrier_repo.get_by_mc_number.return_value = mock_carrier
-
-        # Execute use case
-        use_case = EvaluateNegotiationUseCase(mock_load_repo, mock_carrier_repo)
-        request = EvaluateNegotiationRequest(
-            load_id=str(mock_load.load_id),
-            mc_number="MC123456",
-            carrier_offer=2500.0,
-            negotiation_round=1,
-        )
-        result = await use_case.execute(request)
-
-        # Assert
-        assert result.status == "ACCEPTED"
-        assert result.message is not None
-
-    @pytest.mark.asyncio
-    async def test_evaluate_high_offer_response(self):
-        """Test evaluating a high offer response."""
-        # Mock repositories
-        mock_load_repo = AsyncMock()
-
-        # Mock load
-        mock_load = Load(
-            load_id=uuid.uuid4(),
-            origin=Location("Chicago", "IL", "60601"),
-            destination=Location("Atlanta", "GA", "30301"),
-            pickup_date=datetime.now(timezone.utc).date(),
-            delivery_date=datetime.now(timezone.utc).date(),
-            equipment_type=EquipmentType.from_name("53-foot van"),
-            weight=35000,
-            miles=716,
-            loadboard_rate=Rate.from_float(2500),
-            status=LoadStatus.AVAILABLE,
-            urgency=UrgencyLevel.NORMAL,
-            is_active=True,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
-        )
-        mock_load_repo.get_by_id.return_value = mock_load
-
-        # Mock carrier repository
-        mock_carrier_repo = AsyncMock()
-        mock_carrier = Carrier(
-            carrier_id=uuid.uuid4(),
-            mc_number=MCNumber.from_string("MC123456"),
-            legal_name="Test Carrier LLC",
-            entity_type="CARRIER",
-            operating_status="AUTHORIZED_FOR_HIRE",
-            status="ACTIVE",
-            insurance_on_file=True,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
-        )
-        mock_carrier_repo.get_by_mc_number.return_value = mock_carrier
-
-        # Execute use case
-        use_case = EvaluateNegotiationUseCase(mock_load_repo, mock_carrier_repo)
-        request = EvaluateNegotiationRequest(
-            load_id=str(mock_load.load_id),
-            mc_number="MC123456",
-            carrier_offer=2800.0,  # Above loadboard rate
-            negotiation_round=1,
-        )
-        result = await use_case.execute(request)
-
-        # Assert - the result may be ACCEPTED, COUNTER_OFFER, or REJECTED depending on urgency factors
-        assert result.status in ["ACCEPTED", "COUNTER_OFFER", "REJECTED"]
-        assert result.message is not None

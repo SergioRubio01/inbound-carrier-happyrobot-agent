@@ -18,7 +18,6 @@ from src.infrastructure.database.postgres import (
     PostgresCallMetricsRepository,
     PostgresCarrierRepository,
     PostgresLoadRepository,
-    PostgresNegotiationRepository,
 )
 
 # Database dependencies
@@ -96,7 +95,6 @@ class MetricsSummaryResponseModel(BaseModel):
     """Response model for metrics summary."""
 
     period: Dict[str, Any]
-    conversion_metrics: Dict[str, Any]
     financial_metrics: Dict[str, Any]
     carrier_metrics: Dict[str, Any]
     generated_at: str
@@ -168,23 +166,12 @@ async def get_metrics_summary(
     """
     try:
         # Initialize repositories
-        negotiation_repo = PostgresNegotiationRepository(session)
         load_repo = PostgresLoadRepository(session)
         carrier_repo = PostgresCarrierRepository(session)
 
         # Calculate date range
         end_date = datetime.now(timezone.utc)
         start_date = end_date - timedelta(days=days)
-
-        # Get metrics from database
-        negotiation_metrics_data = await negotiation_repo.get_negotiation_metrics(
-            start_date, end_date
-        )
-
-        # Calculate conversion metrics
-        successful_negotiations = negotiation_metrics_data.get(
-            "successful_negotiations", 0
-        )
 
         # Get additional metrics from database
         load_metrics_data = await load_repo.get_load_metrics(start_date, end_date)
@@ -199,43 +186,15 @@ async def get_metrics_summary(
                 "end": end_date.isoformat(),
                 "days": days,
             },
-            conversion_metrics={
-                "loads_booked": successful_negotiations,
-                "average_negotiation_rounds": negotiation_metrics_data.get(
-                    "average_rounds", 0
-                ),
-                "first_offer_acceptance_rate": negotiation_metrics_data.get(
-                    "first_offer_acceptance_rate", 0.0
-                ),
-                "average_time_to_accept_minutes": negotiation_metrics_data.get(
-                    "average_time_to_accept_minutes", 0.0
-                ),
-            },
             financial_metrics={
                 "total_booked_revenue": load_metrics_data.get(
                     "total_booked_revenue", 0.0
                 ),
                 "average_load_value": load_metrics_data.get("average_load_value", 0.0),
-                "average_agreed_rate": negotiation_metrics_data.get(
-                    "average_agreed_rate", 0.0
-                ),
+                "average_agreed_rate": 0.0,  # Placeholder - would come from call metrics
                 "average_loadboard_rate": load_metrics_data.get(
                     "average_loadboard_rate", 0.0
                 ),
-                "average_margin_percentage": negotiation_metrics_data.get(
-                    "average_margin_percentage", 0.0
-                ),
-                "rate_variance": {
-                    "above_loadboard": negotiation_metrics_data.get(
-                        "above_loadboard_count", 0
-                    ),
-                    "at_loadboard": negotiation_metrics_data.get(
-                        "at_loadboard_count", 0
-                    ),
-                    "below_loadboard": negotiation_metrics_data.get(
-                        "below_loadboard_count", 0
-                    ),
-                },
             },
             carrier_metrics={
                 "repeat_callers": carrier_metrics_data.get("repeat_callers", 0),
