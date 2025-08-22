@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from typing import List, Optional
 
-from src.core.domain.entities import Load, LoadStatus
+from src.core.domain.entities import Load
 from src.core.domain.exceptions.base import DomainException
 from src.core.ports.repositories import ILoadRepository
 
@@ -26,7 +26,7 @@ class LoadListException(DomainException):
 class ListLoadsRequest:
     """Request for listing loads."""
 
-    status: Optional[str] = None
+    booked: Optional[bool] = None
     equipment_type: Optional[str] = None
     start_date: Optional[date] = None
     end_date: Optional[date] = None
@@ -49,7 +49,7 @@ class LoadSummary:
     notes: Optional[str]
     weight: int
     commodity_type: str
-    status: str
+    booked: bool
     created_at: datetime
 
 
@@ -80,17 +80,11 @@ class ListLoadsUseCase:
             # Calculate offset from page
             offset = (request.page - 1) * request.limit
 
-            # Convert status string to enum if provided
-            status_enum = None
-            if request.status:
-                try:
-                    status_enum = LoadStatus(request.status.upper())
-                except ValueError:
-                    raise LoadListException(f"Invalid status: {request.status}")
+            # No status filtering needed - using booked field instead
 
             # Get loads from repository
             loads, total_count = await self.load_repository.list_all(
-                status=status_enum,
+                booked=request.booked,
                 equipment_type=request.equipment_type,
                 start_date=request.start_date,
                 end_date=request.end_date,
@@ -188,6 +182,6 @@ class ListLoadsUseCase:
             notes=load.notes,
             weight=load.weight,
             commodity_type=load.commodity_type or "",
-            status=load.status.value,
+            booked=load.booked,
             created_at=load.created_at,
         )

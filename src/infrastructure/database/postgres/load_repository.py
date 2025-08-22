@@ -12,7 +12,7 @@ from uuid import UUID
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.core.domain.entities import Load, LoadStatus
+from src.core.domain.entities import Load
 from src.core.domain.value_objects import EquipmentType, Location, Rate
 from src.core.ports.repositories import ILoadRepository, LoadSearchCriteria
 from src.infrastructure.database.models import LoadModel
@@ -57,7 +57,6 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
             weight=model.weight,
             commodity_type=model.commodity_type,
             loadboard_rate=loadboard_rate,
-            status=LoadStatus(model.status),
             notes=model.notes,
             dimensions=getattr(model, "dimensions", None),
             num_of_pieces=getattr(model, "num_of_pieces", None),
@@ -88,7 +87,6 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
             weight=entity.weight,
             commodity_type=entity.commodity_type,
             loadboard_rate=entity.loadboard_rate.to_float(),
-            status=entity.status.value,
             notes=entity.notes,
             dimensions=entity.dimensions,
             num_of_pieces=entity.num_of_pieces,
@@ -167,7 +165,11 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
         existing_model.weight = load.weight
         existing_model.commodity_type = load.commodity_type
         existing_model.notes = load.notes
-        existing_model.status = load.status.value
+        existing_model.dimensions = load.dimensions
+        existing_model.num_of_pieces = load.num_of_pieces
+        existing_model.miles = load.miles
+        existing_model.booked = load.booked
+        existing_model.session_id = load.session_id
         existing_model.updated_at = datetime.utcnow()
 
         await self.session.flush()
@@ -232,8 +234,8 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
             conditions.append(LoadModel.weight >= criteria.weight_min)
         if criteria.weight_max:
             conditions.append(LoadModel.weight <= criteria.weight_max)
-        if criteria.status:
-            conditions.append(LoadModel.status == criteria.status.value)
+        if criteria.booked is not None:
+            conditions.append(LoadModel.booked.is_(criteria.booked))
         if criteria.is_active:
             conditions.append(LoadModel.is_active)
 
@@ -259,23 +261,7 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
         """Get list of available loads."""
         stmt = (
             select(LoadModel)
-            .where(and_(LoadModel.status == "AVAILABLE", LoadModel.is_active))
-            .limit(limit)
-            .offset(offset)
-        )
-
-        result = await self.session.execute(stmt)
-        models = result.scalars().all()
-        entities = [self._model_to_entity(model) for model in models]
-        return [e for e in entities if e is not None]
-
-    async def get_loads_by_status(
-        self, status: LoadStatus, limit: int = 100, offset: int = 0
-    ) -> List[Load]:
-        """Get loads by status."""
-        stmt = (
-            select(LoadModel)
-            .where(LoadModel.status == status.value)
+            .where(and_(LoadModel.booked.is_(False), LoadModel.is_active))
             .limit(limit)
             .offset(offset)
         )
@@ -319,7 +305,7 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
         # Total booked revenue
         total_revenue_stmt = select(func.sum(LoadModel.loadboard_rate)).where(
             and_(
-                LoadModel.status == "BOOKED",
+                LoadModel.booked.is_(True),
                 LoadModel.created_at >= start_date,
                 LoadModel.created_at <= end_date,
             )
@@ -357,7 +343,7 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
 
     async def list_all(
         self,
-        status: Optional[LoadStatus] = None,
+        booked: Optional[bool] = None,
         equipment_type: Optional[str] = None,
         start_date: Optional[date] = None,
         end_date: Optional[date] = None,
@@ -374,8 +360,8 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
 
         conditions = []
 
-        if status:
-            conditions.append(LoadModel.status == status.value)
+        if booked is not None:
+            conditions.append(LoadModel.booked.is_(booked))
 
         if equipment_type:
             conditions.append(LoadModel.equipment_type == equipment_type)

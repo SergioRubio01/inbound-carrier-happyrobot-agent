@@ -6,13 +6,12 @@ Created: 2024-08-14
 """
 
 from .carrier import Carrier, CarrierNotEligibleException
-from .load import Load, LoadNotAvailableException, LoadStatus, UrgencyLevel
+from .load import Load, LoadNotAvailableException, UrgencyLevel
 
 __all__ = [
     "Carrier",
     "CarrierNotEligibleException",
     "Load",
     "LoadNotAvailableException",
-    "LoadStatus",
     "UrgencyLevel",
 ]

@@ -10,7 +10,7 @@ from datetime import date
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from src.core.domain.entities import Load, LoadStatus
+from src.core.domain.entities import Load
 from src.core.domain.value_objects import EquipmentType, Rate
 
 
@@ -29,7 +29,7 @@ class LoadSearchCriteria:
         maximum_miles: Optional[int] = None,
         weight_min: Optional[int] = None,
         weight_max: Optional[int] = None,
-        status: Optional[LoadStatus] = None,
+        booked: Optional[bool] = None,
         is_active: bool = True,
         sort_by: Optional[str] = None,
         limit: int = 10,
@@ -45,7 +45,7 @@ class LoadSearchCriteria:
         self.maximum_miles = maximum_miles
         self.weight_min = weight_min
         self.weight_max = weight_max
-        self.status = status
+        self.booked = booked
         self.is_active = is_active
         self.sort_by = sort_by
         self.limit = limit
@@ -94,14 +94,7 @@ class ILoadRepository(ABC):
     async def get_available_loads(
         self, limit: int = 100, offset: int = 0
     ) -> List[Load]:
-        """Get list of available loads."""
-        pass
-
-    @abstractmethod
-    async def get_loads_by_status(
-        self, status: LoadStatus, limit: int = 100, offset: int = 0
-    ) -> List[Load]:
-        """Get loads by status."""
+        """Get list of available loads (not booked and active)."""
         pass
 
     @abstractmethod
@@ -131,7 +124,7 @@ class ILoadRepository(ABC):
     @abstractmethod
     async def list_all(
         self,
-        status: Optional[LoadStatus] = None,
+        booked: Optional[bool] = None,
         equipment_type: Optional[str] = None,
         start_date: Optional[date] = None,
         end_date: Optional[date] = None,

@@ -18,7 +18,7 @@ from src.core.application.use_cases.update_load_use_case import (
     UpdateLoadResponse,
     UpdateLoadUseCase,
 )
-from src.core.domain.entities.load import Load, LoadStatus, UrgencyLevel
+from src.core.domain.entities.load import Load, UrgencyLevel
 from src.core.domain.value_objects import EquipmentType, Location, Rate
 from src.core.ports.repositories.load_repository import ILoadRepository
 
@@ -45,7 +45,7 @@ def sample_load():
         loadboard_rate=Rate.from_float(2500.0),
         weight=25000,
         commodity_type="Electronics",
-        status=LoadStatus.AVAILABLE,
+        booked=False,
         urgency=UrgencyLevel.NORMAL,
         is_active=True,
         version=1,
@@ -88,7 +88,7 @@ class TestUpdateLoadUseCase:
         assert isinstance(result, UpdateLoadResponse)
         assert result.load_id == str(sample_load.load_id)
         assert result.reference_number == sample_load.reference_number
-        assert result.status == sample_load.status.value
+        assert result.booked == sample_load.booked
         # Version is not part of the response, just verify the result is valid
         mock_load_repository.get_active_by_id.assert_called_once_with(
             sample_load.load_id
@@ -154,7 +154,7 @@ class TestUpdateLoadUseCase:
             loadboard_rate=sample_load.loadboard_rate,
             weight=30000,
             commodity_type=sample_load.commodity_type,
-            status=sample_load.status,
+            booked=sample_load.booked,
             is_active=sample_load.is_active,
             created_at=sample_load.created_at,
             updated_at=datetime.utcnow(),
@@ -173,69 +173,30 @@ class TestUpdateLoadUseCase:
         mock_load_repository.update.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_cannot_update_delivered_load(
-        self, use_case, mock_load_repository, sample_load
-    ):
-        """Test that delivered loads cannot be updated."""
-        # Arrange
-        sample_load.status = LoadStatus.DELIVERED
-        mock_load_repository.get_active_by_id.return_value = sample_load
-
-        request = UpdateLoadRequest(load_id=sample_load.load_id, weight=30000)
-
-        # Act & Assert
-        with pytest.raises(LoadUpdateException) as exc_info:
-            await use_case.execute(request)
-
-        assert "has been delivered" in str(exc_info.value)
-        mock_load_repository.update.assert_not_called()
-
-    @pytest.mark.asyncio
-    async def test_invalid_status_transition(
-        self, use_case, mock_load_repository, sample_load
-    ):
-        """Test invalid status transition."""
-        # Arrange - Use CANCELLED status instead of DELIVERED to test transition validation
-        sample_load.status = LoadStatus.CANCELLED
-        mock_load_repository.get_active_by_id.return_value = sample_load
-
-        request = UpdateLoadRequest(
-            load_id=sample_load.load_id,
-            status="AVAILABLE",  # Cannot go from CANCELLED to AVAILABLE
-        )
-
-        # Act & Assert
-        with pytest.raises(LoadUpdateException) as exc_info:
-            await use_case.execute(request)
-
-        assert "Invalid status transition" in str(exc_info.value)
-        mock_load_repository.update.assert_not_called()
-
-    @pytest.mark.asyncio
     async def test_valid_status_transition(
         self, use_case, mock_load_repository, sample_load
     ):
         """Test valid status transition."""
         # Arrange
-        sample_load.status = LoadStatus.AVAILABLE
+        sample_load.booked = False
         mock_load_repository.get_active_by_id.return_value = sample_load
 
         updated_load = Load(**sample_load.__dict__)
-        updated_load.status = LoadStatus.BOOKED
+        updated_load.booked = True
         updated_load.version = 2
         updated_load.updated_at = datetime.utcnow()
         mock_load_repository.update.return_value = updated_load
 
         request = UpdateLoadRequest(
             load_id=sample_load.load_id,
-            status="BOOKED",  # Valid: AVAILABLE -> BOOKED
+            booked=True,  # Valid: AVAILABLE -> BOOKED
         )
 
         # Act
         result = await use_case.execute(request)
 
         # Assert
-        assert result.status == "BOOKED"
+        assert result.booked is True
         mock_load_repository.update.assert_called_once()
 
     @pytest.mark.asyncio

@@ -71,7 +71,7 @@ class CreateLoadResponseModel(BaseModel):
 
     load_id: str = Field(..., description="Unique load ID")
     reference_number: str = Field(..., description="Load reference number")
-    status: str = Field(..., description="Load status")
+    booked: bool = Field(..., description="Is load booked")
     created_at: datetime = Field(..., description="Creation timestamp")
 
 
@@ -99,7 +99,6 @@ class UpdateLoadRequestModel(BaseModel):
     )
     commodity_type: Optional[str] = Field(None, description="Type of commodity")
     notes: Optional[str] = Field(None, description="Additional notes")
-    status: Optional[str] = Field(None, description="Load status")
     dimensions: Optional[str] = Field(None, description="Load dimensions")
     num_of_pieces: Optional[int] = Field(None, ge=0, description="Number of pieces")
     miles: Optional[str] = Field(None, description="Distance in miles")
@@ -112,7 +111,7 @@ class UpdateLoadResponseModel(BaseModel):
 
     load_id: str = Field(..., description="Unique load ID")
     reference_number: Optional[str] = Field(None, description="Load reference number")
-    status: str = Field(..., description="Load status")
+    booked: bool = Field(..., description="Is load booked")
     updated_at: datetime = Field(..., description="Update timestamp")
 
 
@@ -129,12 +128,11 @@ class LoadSummaryModel(BaseModel):
     notes: Optional[str] = Field(None, description="Notes")
     weight: int = Field(..., description="Weight in pounds")
     commodity_type: str = Field(..., description="Commodity type")
-    status: str = Field(..., description="Load status")
+    booked: bool = Field(..., description="Is load booked")
     created_at: datetime = Field(..., description="Creation timestamp")
     dimensions: Optional[str] = Field(None, description="Load dimensions")
     num_of_pieces: Optional[int] = Field(None, description="Number of pieces")
     miles: Optional[str] = Field(None, description="Distance in miles")
-    booked: Optional[bool] = Field(None, description="Is load booked")
     session_id: Optional[str] = Field(None, description="Session identifier")
 
 
@@ -219,7 +217,7 @@ async def create_load(
         return CreateLoadResponseModel(
             load_id=response.load_id,
             reference_number=response.reference_number,
-            status=response.status,
+            booked=response.booked,
             created_at=response.created_at,
         )
 
@@ -237,8 +235,8 @@ async def create_load(
 
 @router.get("/", response_model=ListLoadsResponseModel)
 async def list_loads(
-    status: Optional[str] = Query(
-        None, description="Filter by load status (AVAILABLE, BOOKED, etc.)"
+    booked: Optional[bool] = Query(
+        None, description="Filter by booked status (true/false)"
     ),
     equipment_type: Optional[str] = Query(None, description="Filter by equipment type"),
     start_date: Optional[date] = Query(
@@ -261,7 +259,7 @@ async def list_loads(
     equipment type, and date range.
 
     Query Parameters:
-        - status: Filter by load status (AVAILABLE, BOOKED, IN_TRANSIT, etc.)
+        - booked: Filter by booked status (true/false)
         - equipment_type: Filter by equipment type (53-foot van, Flatbed, etc.)
         - start_date: Start date for pickup date filter (YYYY-MM-DD)
         - end_date: End date for pickup date filter (YYYY-MM-DD)
@@ -284,7 +282,7 @@ async def list_loads(
         from src.core.application.use_cases.list_loads_use_case import ListLoadsRequest
 
         use_case_request = ListLoadsRequest(
-            status=status,
+            booked=booked,
             equipment_type=equipment_type,
             start_date=start_date,
             end_date=end_date,
@@ -309,12 +307,11 @@ async def list_loads(
                 notes=load.notes,
                 weight=load.weight,
                 commodity_type=load.commodity_type,
-                status=load.status,
+                booked=load.booked,
                 created_at=load.created_at,
                 dimensions=getattr(load, "dimensions", None),
                 num_of_pieces=getattr(load, "num_of_pieces", None),
                 miles=getattr(load, "miles", None),
-                booked=getattr(load, "booked", None),
                 session_id=getattr(load, "session_id", None),
             )
             for load in response.loads
@@ -411,12 +408,11 @@ async def get_load_by_id(
             notes=load.notes,
             weight=load.weight,
             commodity_type=load.commodity_type or "",
-            status=load.status.value,
+            booked=load.booked,
             created_at=load.created_at,
             dimensions=load.dimensions,
             num_of_pieces=load.num_of_pieces,
             miles=load.miles,
-            booked=load.booked,
             session_id=load.session_id,
         )
 
@@ -435,7 +431,6 @@ async def delete_load(
     Delete a load by its ID.
 
     Performs a soft delete of the specified load. Business rules apply:
-    - Cannot delete loads that are IN_TRANSIT or DELIVERED
     - Cannot delete loads that are already deleted
     - Cannot delete inactive loads
 
@@ -478,8 +473,6 @@ async def delete_load(
             phrase in error_msg.lower()
             for phrase in [
                 "cannot delete",
-                "in transit",
-                "delivered",
                 "already deleted",
                 "not active",
             ]
@@ -504,13 +497,8 @@ async def update_load(
     where only specified fields are changed.
 
     Business rules apply:
-    - Cannot update deleted or delivered loads
-    - Status transitions must follow valid patterns:
-      * AVAILABLE → PENDING, BOOKED, CANCELLED
-      * PENDING → AVAILABLE, BOOKED, CANCELLED
-      * BOOKED → IN_TRANSIT, CANCELLED
-      * IN_TRANSIT → DELIVERED
-      * CANCELLED/DELIVERED → Cannot be changed
+    - Cannot update inactive loads
+    - Booked status can be updated directly (true/false)
 
     Args:
         load_id: The unique identifier of the load to update
@@ -565,7 +553,6 @@ async def update_load(
             weight=request.weight,
             commodity_type=request.commodity_type,
             notes=request.notes,
-            status=request.status,
             dimensions=request.dimensions,
             num_of_pieces=request.num_of_pieces,
             miles=request.miles,
@@ -583,7 +570,7 @@ async def update_load(
         return UpdateLoadResponseModel(
             load_id=response.load_id,
             reference_number=response.reference_number,
-            status=response.status,
+            booked=response.booked,
             updated_at=response.updated_at,
         )
 
@@ -595,9 +582,7 @@ async def update_load(
             phrase in error_msg.lower()
             for phrase in [
                 "cannot update",
-                "invalid status transition",
-                "has been deleted",
-                "has been delivered",
+                "not active",
             ]
         ):
             raise HTTPException(status_code=409, detail=error_msg)
