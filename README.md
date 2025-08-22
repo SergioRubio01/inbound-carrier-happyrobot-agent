@@ -3,7 +3,7 @@
 ## Table of Contents
 - [Overview](#overview)
 - [Tech Stack](#tech-stack-as-required)
-- [Repository Layout](#repository-layout)
+- [API Endpoints](#api-endpoints)
 - [Local Development](#local-development)
 - [Deployment](#deployment)
 - [Metrics and Reporting](#metrics-and-reporting)
@@ -22,10 +22,16 @@ The API serves as the backend for HappyRobot platform integration. For this POC 
 - Security: **HTTPS (in AWS with ALB/ACM)** and **API Key** authentication for all API endpoints
 - Note: No WebSocket, no Redis, no backup services in this architecture
 
-## Repository layout
-- `src/`: API source code
-- `docker-compose.yml`: local dev with Postgres, pgAdmin, and API
-- `docs/DEPLOYMENT.md`: detailed deployment guide
+## API Endpoints
+For comprehensive API documentation, see [ENDPOINTS.md](ENDPOINTS.md). The API provides:
+- **Load Management**: Create, list, update, and delete freight loads
+- **Metrics**: Store and retrieve call analytics, sentiment analysis, and KPIs
+- **Negotiations**: Calculate counter-offers for rate negotiations
+- **Health Checks**: Monitor service availability
+
+Interactive API documentation available at:
+- Swagger UI: `http://localhost:8000/api/v1/docs`
+- ReDoc: `http://localhost:8000/api/v1/redoc`
 
 ## Local development
 
