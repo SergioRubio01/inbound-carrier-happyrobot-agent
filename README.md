@@ -14,6 +14,9 @@ This repository contains a working proof-of-concept for automating inbound carri
 
 The API serves as the backend for HappyRobot platform integration. For this POC we only use REST—no WebSockets are required.
 
+### Live Demo
+View the HappyRobot agent demo: [Link](https://v2.platform.happyrobot.ai/deployments/exf7ber7y7h4/ggw4cb1ar3o1)
+
 ## Tech stack (as required)
 - **AWS RDS for PostgreSQL** (with pgAdmin locally)
 - **ECS (Fargate)** for backend deployment
