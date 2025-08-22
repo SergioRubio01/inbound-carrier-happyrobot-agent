@@ -485,6 +485,8 @@ async def delete_load(
 
 
 @router.put("/{load_id}", response_model=UpdateLoadResponseModel)
+@router.post("/{load_id}", response_model=UpdateLoadResponseModel)
+@router.patch("/{load_id}", response_model=UpdateLoadResponseModel)
 async def update_load(
     request: UpdateLoadRequestModel,
     load_id: UUID = Path(..., description="Load ID"),
