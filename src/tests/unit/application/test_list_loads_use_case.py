@@ -55,6 +55,10 @@ class MockLoadRepository:
             urgency=UrgencyLevel.NORMAL,
             created_at=datetime.utcnow() - timedelta(hours=4),
             notes="Test load 1",
+            miles="1500",
+            num_of_pieces=12,
+            dimensions="8x4x6",
+            session_id="session_123",
         )
 
         # Booked load
@@ -75,6 +79,10 @@ class MockLoadRepository:
             urgency=UrgencyLevel.HIGH,
             created_at=datetime.utcnow() - timedelta(hours=8),
             notes="Test load 2",
+            miles="450",
+            num_of_pieces=8,
+            dimensions="12x8x6",
+            session_id="session_456",
         )
 
         # Different equipment type
@@ -95,6 +103,10 @@ class MockLoadRepository:
             urgency=UrgencyLevel.LOW,
             created_at=datetime.utcnow() - timedelta(hours=12),
             notes="Test load 3",
+            miles="900",
+            num_of_pieces=5,
+            dimensions="20x8x4",
+            session_id=None,
         )
 
         self.loads = [load1, load2, load3]
@@ -376,3 +388,55 @@ class TestListLoadsUseCase:
         # Check format of location strings
         assert "," in load_summary.origin  # Should be "City, ST"
         assert "," in load_summary.destination
+
+    @pytest.mark.asyncio
+    async def test_load_summary_includes_new_fields(self, list_loads_use_case):
+        """Test that load summaries now include miles, num_of_pieces, dimensions, and session_id fields."""
+        request = ListLoadsRequest(limit=3)
+
+        response = await list_loads_use_case.execute(request)
+
+        assert len(response.loads) == 3
+
+        # Check that all loads have the new fields
+        for load_summary in response.loads:
+            assert hasattr(load_summary, "miles")
+            assert hasattr(load_summary, "num_of_pieces")
+            assert hasattr(load_summary, "dimensions")
+            assert hasattr(load_summary, "session_id")
+
+        # Check specific values from our test data
+
+        # Find load1 (has session_123)
+        load1_summary = None
+        load2_summary = None
+        load3_summary = None
+
+        for ls in response.loads:
+            if ls.session_id == "session_123":
+                load1_summary = ls
+            elif ls.session_id == "session_456":
+                load2_summary = ls
+            elif ls.session_id is None:
+                load3_summary = ls
+
+        # Verify load1 fields
+        assert load1_summary is not None
+        assert load1_summary.miles == "1500"
+        assert load1_summary.num_of_pieces == 12
+        assert load1_summary.dimensions == "8x4x6"
+        assert load1_summary.session_id == "session_123"
+
+        # Verify load2 fields
+        assert load2_summary is not None
+        assert load2_summary.miles == "450"
+        assert load2_summary.num_of_pieces == 8
+        assert load2_summary.dimensions == "12x8x6"
+        assert load2_summary.session_id == "session_456"
+
+        # Verify load3 fields (has None session_id)
+        assert load3_summary is not None
+        assert load3_summary.miles == "900"
+        assert load3_summary.num_of_pieces == 5
+        assert load3_summary.dimensions == "20x8x4"
+        assert load3_summary.session_id is None
