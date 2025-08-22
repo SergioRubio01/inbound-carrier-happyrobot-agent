@@ -33,7 +33,7 @@ class CallMetricsModel(Base, TimestampMixin):
     transcript = Column(Text, nullable=False)
     response = Column(
         String(50), nullable=False
-    )  # "Success", "Rate too high", "Incorrect MC", "Fallback error"
+    )  # Success, Rate too high, Incorrect MC, Fallback error
     response_reason = Column(Text, nullable=True)
     sentiment = Column(
         Enum("Positive", "Neutral", "Negative", name="sentiment_enum"), nullable=True

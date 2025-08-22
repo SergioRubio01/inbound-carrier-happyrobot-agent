@@ -114,62 +114,68 @@ class PostgresCallMetricsRepository(BaseRepository[CallMetricsModel, CallMetrics
         success_count = response_distribution.get("Success", 0)
         success_rate = (success_count / total_calls) if total_calls > 0 else 0.0
 
-        # Sentiment distribution
-        sentiment_stmt = (
-            select(CallMetricsModel.sentiment, func.count(CallMetricsModel.sentiment))
-            .where(CallMetricsModel.sentiment.is_not(None))
-            .group_by(CallMetricsModel.sentiment)
-        )
+        # Get sentiment distribution
+        sentiment_stmt = select(
+            CallMetricsModel.sentiment, func.count(CallMetricsModel.sentiment)
+        ).group_by(CallMetricsModel.sentiment)
         if base_filter is not None:
             sentiment_stmt = sentiment_stmt.where(base_filter)
         sentiment_result = await self.session.execute(sentiment_stmt)
         sentiment_distribution = {
-            sentiment: count for sentiment, count in sentiment_result.fetchall()
+            sentiment: count
+            for sentiment, count in sentiment_result.fetchall()
+            if sentiment
         }
 
-        # Top response reasons
+        # Top response reasons (for non-success responses)
         response_reasons_stmt = (
             select(
                 CallMetricsModel.response_reason,
                 func.count(CallMetricsModel.response_reason),
             )
-            .where(CallMetricsModel.response_reason.is_not(None))
+            .where(
+                CallMetricsModel.response != "Success",
+                CallMetricsModel.response_reason.is_not(None),
+            )
             .group_by(CallMetricsModel.response_reason)
             .order_by(desc(func.count(CallMetricsModel.response_reason)))
             .limit(10)
         )
         if base_filter is not None:
             response_reasons_stmt = response_reasons_stmt.where(base_filter)
-        response_reasons_result = await self.session.execute(response_reasons_stmt)
+        response_result = await self.session.execute(response_reasons_stmt)
         top_response_reasons = [
             {"reason": reason, "count": count}
-            for reason, count in response_reasons_result.fetchall()
+            for reason, count in response_result.fetchall()
         ]
 
-        # Top sentiment reasons
+        # Top sentiment reasons (for negative sentiment)
         sentiment_reasons_stmt = (
             select(
                 CallMetricsModel.sentiment_reason,
                 func.count(CallMetricsModel.sentiment_reason),
             )
-            .where(CallMetricsModel.sentiment_reason.is_not(None))
+            .where(
+                CallMetricsModel.sentiment == "Negative",
+                CallMetricsModel.sentiment_reason.is_not(None),
+            )
             .group_by(CallMetricsModel.sentiment_reason)
             .order_by(desc(func.count(CallMetricsModel.sentiment_reason)))
             .limit(10)
         )
         if base_filter is not None:
             sentiment_reasons_stmt = sentiment_reasons_stmt.where(base_filter)
-        sentiment_reasons_result = await self.session.execute(sentiment_reasons_stmt)
+        sentiment_result = await self.session.execute(sentiment_reasons_stmt)
         top_sentiment_reasons = [
             {"reason": reason, "count": count}
-            for reason, count in sentiment_reasons_result.fetchall()
+            for reason, count in sentiment_result.fetchall()
         ]
 
         return {
             "total_calls": total_calls,
             "success_rate": round(success_rate, 4),
-            "response_distribution": response_distribution,
             "sentiment_distribution": sentiment_distribution,
+            "response_distribution": response_distribution,
             "top_response_reasons": top_response_reasons,
             "top_sentiment_reasons": top_sentiment_reasons,
             "period": {

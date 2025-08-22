@@ -6,7 +6,9 @@ Created: 2024-08-14
 Updated: 2025-01-08 - Phase 1 metrics simplification
 """
 
+import uuid
 from datetime import datetime, timedelta, timezone
+from enum import Enum
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
@@ -26,7 +28,14 @@ from src.interfaces.api.v1.dependencies.database import get_database_session
 router = APIRouter(prefix="/metrics", tags=["Metrics"])
 
 
-# Request/Response models for call metrics
+class SentimentEnum(str, Enum):
+    """Sentiment values for call metrics."""
+
+    POSITIVE = "Positive"
+    NEUTRAL = "Neutral"
+    NEGATIVE = "Negative"
+
+
 class CallMetricsRequestModel(BaseModel):
     """Request model for creating call metrics."""
 
@@ -42,11 +51,11 @@ class CallMetricsRequestModel(BaseModel):
     response_reason: Optional[str] = Field(
         None, max_length=2000, description="Reason for the response"
     )
-    sentiment: Optional[str] = Field(
-        None, description="Sentiment of the call (Positive, Neutral, Negative)"
+    sentiment: Optional[SentimentEnum] = Field(
+        None, description="Call sentiment (Positive, Neutral, Negative)"
     )
     sentiment_reason: Optional[str] = Field(
-        None, max_length=2000, description="Reason for the sentiment classification"
+        None, max_length=2000, description="Reason for the sentiment"
     )
     session_id: Optional[str] = Field(
         None, min_length=1, max_length=100, description="Session identifier"
@@ -89,8 +98,8 @@ class CallMetricsSummaryResponse(BaseModel):
 
     total_calls: int
     success_rate: float
-    response_distribution: Dict[str, int]
     sentiment_distribution: Dict[str, int]
+    response_distribution: Dict[str, int]
     top_response_reasons: List[Dict[str, Any]]
     top_sentiment_reasons: List[Dict[str, Any]]
     period: Dict[str, Any]
@@ -122,15 +131,36 @@ async def create_call_metrics(
     reason, and final loadboard rate for later analysis and reporting.
     """
     try:
+        # Validate session_id is a valid UUID if provided
+        if request.session_id:
+            try:
+                # Try to parse the session_id as a UUID
+                uuid.UUID(request.session_id)
+            except (ValueError, AttributeError, TypeError) as e:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=f"Invalid session_id format. Must be a valid UUID string. Error: {str(e)}",
+                )
+
         # Initialize repository
         metrics_repo = PostgresCallMetricsRepository(session)
+
+        # Validate sentiment value if provided
+        sentiment_value = None
+        if request.sentiment:
+            # Convert enum to string for database
+            sentiment_value = (
+                request.sentiment.value
+                if hasattr(request.sentiment, "value")
+                else str(request.sentiment)
+            )
 
         # Create the metrics record
         metrics = await metrics_repo.create_metrics(
             transcript=request.transcript,
             response=request.response,
             response_reason=request.response_reason,
-            sentiment=request.sentiment,
+            sentiment=sentiment_value,
             sentiment_reason=request.sentiment_reason,
             session_id=request.session_id,
         )
@@ -244,8 +274,8 @@ async def get_call_metrics_summary(
         return CallMetricsSummaryResponse(
             total_calls=summary_data["total_calls"],
             success_rate=summary_data["success_rate"],
-            response_distribution=summary_data["response_distribution"],
             sentiment_distribution=summary_data["sentiment_distribution"],
+            response_distribution=summary_data["response_distribution"],
             top_response_reasons=summary_data["top_response_reasons"],
             top_sentiment_reasons=summary_data["top_sentiment_reasons"],
             period={
@@ -332,11 +362,13 @@ async def get_call_metrics(
                 transcript=str(metric.transcript),
                 response=str(metric.response),
                 response_reason=str(metric.response_reason)
-                if metric.response_reason
+                if hasattr(metric, "response_reason") and metric.response_reason
                 else None,
-                sentiment=str(metric.sentiment) if metric.sentiment else None,
+                sentiment=str(metric.sentiment)
+                if hasattr(metric, "sentiment") and metric.sentiment
+                else None,
                 sentiment_reason=str(metric.sentiment_reason)
-                if metric.sentiment_reason
+                if hasattr(metric, "sentiment_reason") and metric.sentiment_reason
                 else None,
                 session_id=str(metric.session_id) if metric.session_id else None,
                 created_at=metric.created_at,
