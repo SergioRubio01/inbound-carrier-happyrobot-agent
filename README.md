@@ -79,6 +79,17 @@ Exempt: `/health`, `/api/v1/health`, `/api/v1/openapi.json`, `/api/v1/docs`, `/a
 ## Deployment
 For detailed deployment instructions to AWS ECS/RDS, please refer to the [Deployment Guide](docs/DEPLOYMENT.md).
 
+## Metrics and Reporting
+For detailed instructions on using the metrics CLI tool to generate call analytics reports, see [METRICS.md](METRICS.md). The CLI allows you to:
+- Generate PDF reports with call statistics and sentiment analysis
+- Export metrics data as JSON for further analysis
+- Schedule automated reports for monitoring performance
+
+Quick start:
+```bash
+poetry run python -m src.interfaces.cli --api-key YOUR_KEY
+```
+
 ## Contributing
 We welcome contributions! Please see our [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to set up your development environment, run tests, and submit a pull request.
 
