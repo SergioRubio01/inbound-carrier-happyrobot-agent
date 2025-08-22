@@ -119,7 +119,7 @@ class TestSearchLoadsUseCase:
                 delivery_date=datetime.now(timezone.utc).date(),
                 equipment_type=EquipmentType.from_name("53-foot van"),
                 weight=35000,
-                miles=716,
+                miles="716",
                 loadboard_rate=Rate.from_float(2500),
                 status=LoadStatus.AVAILABLE,
                 urgency=UrgencyLevel.NORMAL,

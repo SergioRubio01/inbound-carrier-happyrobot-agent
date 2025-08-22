@@ -53,6 +53,9 @@ class LoadModel(Base, TimestampMixin):
     # Load Details
     weight = Column(Integer, nullable=False)  # in pounds
     commodity_type = Column(String(100))
+    dimensions = Column(String(255))
+    num_of_pieces = Column(Integer)
+    miles = Column(String(50))  # Store as string to allow for decimal values
 
     # Pricing
     loadboard_rate = Column(NUMERIC(10, 2), nullable=False, index=True)
@@ -62,9 +65,13 @@ class LoadModel(Base, TimestampMixin):
         String(30), nullable=False, default="AVAILABLE", index=True
     )
     # AVAILABLE, PENDING, BOOKED, IN_TRANSIT, DELIVERED, CANCELLED
+    booked = Column(Boolean, default=False, index=True)
 
     # Special Instructions
     notes = Column(Text)
+
+    # Session Information
+    session_id = Column(String(255), nullable=True)
 
     # Visibility
     is_active = Column(Boolean, default=True, index=True)

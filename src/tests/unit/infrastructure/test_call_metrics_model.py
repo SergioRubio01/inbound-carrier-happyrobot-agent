@@ -17,25 +17,28 @@ def test_call_metrics_model_creation():
     """Test CallMetricsModel creation with all fields."""
     metrics_id = uuid4()
     transcript = "Test conversation transcript"
-    response = "ACCEPTED"
-    reason = "Rate was acceptable"
-    final_rate = 2500.00
+    response = "Success"
+    response_reason = "Rate was acceptable"
+    sentiment = "Positive"
+    sentiment_reason = "Customer was satisfied"
     session_id = "session-123"
 
     metrics = CallMetricsModel(
         metrics_id=metrics_id,
         transcript=transcript,
         response=response,
-        reason=reason,
-        final_loadboard_rate=final_rate,
+        response_reason=response_reason,
+        sentiment=sentiment,
+        sentiment_reason=sentiment_reason,
         session_id=session_id,
     )
 
     assert metrics.metrics_id == metrics_id
     assert metrics.transcript == transcript
     assert metrics.response == response
-    assert metrics.reason == reason
-    assert metrics.final_loadboard_rate == final_rate
+    assert metrics.response_reason == response_reason
+    assert metrics.sentiment == sentiment
+    assert metrics.sentiment_reason == sentiment_reason
     assert metrics.session_id == session_id
 
 
@@ -43,7 +46,7 @@ def test_call_metrics_model_creation():
 def test_call_metrics_model_minimal_creation():
     """Test CallMetricsModel creation with minimal required fields."""
     transcript = "Minimal transcript"
-    response = "REJECTED"
+    response = "Rate too high"
 
     metrics = CallMetricsModel(
         transcript=transcript,
@@ -58,8 +61,9 @@ def test_call_metrics_model_minimal_creation():
     assert isinstance(metrics.metrics_id, UUID)
     assert metrics.transcript == transcript
     assert metrics.response == response
-    assert metrics.reason is None
-    assert metrics.final_loadboard_rate is None
+    assert metrics.response_reason is None
+    assert metrics.sentiment is None
+    assert metrics.sentiment_reason is None
     assert metrics.session_id is None
 
 
@@ -70,7 +74,7 @@ def test_call_metrics_model_repr():
     metrics = CallMetricsModel(
         metrics_id=metrics_id,
         transcript="Test transcript",
-        response="ACCEPTED",
+        response="Success",
         session_id="session-123",
     )
 
@@ -78,7 +82,7 @@ def test_call_metrics_model_repr():
 
     assert "CallMetricsModel" in repr_str
     assert str(metrics_id) in repr_str
-    assert "ACCEPTED" in repr_str
+    assert "Success" in repr_str
     assert "session-123" in repr_str
 
 
@@ -94,16 +98,18 @@ def test_call_metrics_model_nullable_constraints():
     # This test ensures the model structure is correct
     metrics = CallMetricsModel(
         transcript="Required transcript",
-        response="REQUIRED",
-        reason=None,  # Should be nullable
-        final_loadboard_rate=None,  # Should be nullable
+        response="Success",
+        response_reason=None,  # Should be nullable
+        sentiment=None,  # Should be nullable
+        sentiment_reason=None,  # Should be nullable
         session_id=None,  # Should be nullable
     )
 
     assert metrics.transcript is not None
     assert metrics.response is not None
-    assert metrics.reason is None
-    assert metrics.final_loadboard_rate is None
+    assert metrics.response_reason is None
+    assert metrics.sentiment is None
+    assert metrics.sentiment_reason is None
     assert metrics.session_id is None
 
 
@@ -112,7 +118,7 @@ def test_call_metrics_model_with_timestamp_mixin():
     """Test that TimestampMixin fields are available."""
     metrics = CallMetricsModel(
         transcript="Test transcript",
-        response="ACCEPTED",
+        response="Success",
     )
 
     # These fields should be available due to TimestampMixin
@@ -122,18 +128,18 @@ def test_call_metrics_model_with_timestamp_mixin():
 
 
 @pytest.mark.unit
-def test_call_metrics_model_numeric_precision():
-    """Test numeric field precision for final_loadboard_rate."""
-    # Test with various numeric values
-    test_rates = [0.00, 999.99, 1234.56, 99999999.99]
+def test_call_metrics_model_sentiment_enum():
+    """Test sentiment field with valid enum values."""
+    # Test with valid sentiment values
+    valid_sentiments = ["Positive", "Neutral", "Negative"]
 
-    for rate in test_rates:
+    for sentiment in valid_sentiments:
         metrics = CallMetricsModel(
             transcript="Test transcript",
-            response="ACCEPTED",
-            final_loadboard_rate=rate,
+            response="Success",
+            sentiment=sentiment,
         )
-        assert metrics.final_loadboard_rate == rate
+        assert metrics.sentiment == sentiment
 
 
 @pytest.mark.unit
@@ -199,21 +205,18 @@ def test_call_metrics_model_uuid_generation():
 def test_call_metrics_model_various_response_types():
     """Test model with various response types."""
     response_types = [
-        "ACCEPTED",
-        "REJECTED",
-        "ABANDONED",
-        "TRANSFER",
-        "ERROR",
-        "TIMEOUT",
-        "DISCONNECTED",
+        "Success",
+        "Rate too high",
+        "Incorrect MC",
+        "Fallback error",
     ]
 
     for response_type in response_types:
         metrics = CallMetricsModel(
             transcript=f"Transcript for {response_type}",
             response=response_type,
-            reason=f"Reason for {response_type}",
+            response_reason=f"Reason for {response_type}",
         )
 
         assert metrics.response == response_type
-        assert metrics.reason == f"Reason for {response_type}"
+        assert metrics.response_reason == f"Reason for {response_type}"

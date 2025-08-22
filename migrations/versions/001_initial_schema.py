@@ -38,13 +38,9 @@ def upgrade():
         sa.Column("bond_on_file", sa.NUMERIC(precision=12, scale=2), nullable=True),
         sa.Column("safety_rating", sa.String(length=20), nullable=True),
         sa.Column("safety_rating_date", sa.Date(), nullable=True),
-        sa.Column(
-            "safety_scores", postgresql.JSONB(astext_type=sa.Text()), nullable=True
-        ),
-        sa.Column(
-            "primary_contact", postgresql.JSONB(astext_type=sa.Text()), nullable=True
-        ),
-        sa.Column("address", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+        sa.Column("safety_scores", postgresql.JSONB(), nullable=True),
+        sa.Column("primary_contact", postgresql.JSONB(), nullable=True),
+        sa.Column("address", postgresql.JSONB(), nullable=True),
         sa.Column("eligibility_notes", sa.Text(), nullable=True),
         sa.Column("last_verified_at", sa.TIMESTAMP(timezone=True), nullable=True),
         sa.Column("verification_source", sa.String(length=50), nullable=True),
@@ -80,25 +76,13 @@ def upgrade():
         sa.Column("origin_city", sa.String(length=100), nullable=False),
         sa.Column("origin_state", sa.String(length=2), nullable=False),
         sa.Column("origin_zip", sa.String(length=10), nullable=True),
-        sa.Column(
-            "origin_coordinates", postgresql.JSONB(astext_type=sa.Text()), nullable=True
-        ),
-        sa.Column(
-            "origin_facility", postgresql.JSONB(astext_type=sa.Text()), nullable=True
-        ),
+        sa.Column("origin_coordinates", postgresql.JSONB(), nullable=True),
+        sa.Column("origin_facility", postgresql.JSONB(), nullable=True),
         sa.Column("destination_city", sa.String(length=100), nullable=False),
         sa.Column("destination_state", sa.String(length=2), nullable=False),
         sa.Column("destination_zip", sa.String(length=10), nullable=True),
-        sa.Column(
-            "destination_coordinates",
-            postgresql.JSONB(astext_type=sa.Text()),
-            nullable=True,
-        ),
-        sa.Column(
-            "destination_facility",
-            postgresql.JSONB(astext_type=sa.Text()),
-            nullable=True,
-        ),
+        sa.Column("destination_coordinates", postgresql.JSONB(), nullable=True),
+        sa.Column("destination_facility", postgresql.JSONB(), nullable=True),
         sa.Column("pickup_date", sa.Date(), nullable=False),
         sa.Column("pickup_time_start", sa.Time(), nullable=True),
         sa.Column("pickup_time_end", sa.Time(), nullable=True),
@@ -110,7 +94,7 @@ def upgrade():
         sa.Column("equipment_type", sa.String(length=50), nullable=False),
         sa.Column(
             "equipment_requirements",
-            postgresql.JSONB(astext_type=sa.Text()),
+            postgresql.JSONB(),
             nullable=True,
         ),
         sa.Column("weight", sa.Integer(), nullable=False),
@@ -125,9 +109,7 @@ def upgrade():
         sa.Column("route_notes", sa.Text(), nullable=True),
         sa.Column("loadboard_rate", sa.NUMERIC(precision=10, scale=2), nullable=False),
         sa.Column("fuel_surcharge", sa.NUMERIC(precision=10, scale=2), nullable=True),
-        sa.Column(
-            "accessorials", postgresql.JSONB(astext_type=sa.Text()), nullable=True
-        ),
+        sa.Column("accessorials", postgresql.JSONB(), nullable=True),
         sa.Column("minimum_rate", sa.NUMERIC(precision=10, scale=2), nullable=True),
         sa.Column("maximum_rate", sa.NUMERIC(precision=10, scale=2), nullable=True),
         sa.Column("target_rate", sa.NUMERIC(precision=10, scale=2), nullable=True),
@@ -135,9 +117,7 @@ def upgrade():
             "auto_accept_threshold", sa.NUMERIC(precision=10, scale=2), nullable=True
         ),
         sa.Column("broker_company", sa.String(length=255), nullable=True),
-        sa.Column(
-            "broker_contact", postgresql.JSONB(astext_type=sa.Text()), nullable=True
-        ),
+        sa.Column("broker_contact", postgresql.JSONB(), nullable=True),
         sa.Column("customer_name", sa.String(length=255), nullable=True),
         sa.Column("status", sa.String(length=30), nullable=False),
         sa.Column("status_changed_at", sa.TIMESTAMP(timezone=True), nullable=True),
@@ -231,15 +211,13 @@ def upgrade():
         sa.Column("sentiment_score", sa.NUMERIC(precision=3, scale=2), nullable=True),
         sa.Column(
             "sentiment_breakdown",
-            postgresql.JSONB(astext_type=sa.Text()),
+            postgresql.JSONB(),
             nullable=True,
         ),
         sa.Column("initial_offer", sa.NUMERIC(precision=10, scale=2), nullable=True),
         sa.Column("final_rate", sa.NUMERIC(precision=10, scale=2), nullable=True),
         sa.Column("rate_accepted", sa.Boolean(), nullable=True),
-        sa.Column(
-            "extracted_data", postgresql.JSONB(astext_type=sa.Text()), nullable=True
-        ),
+        sa.Column("extracted_data", postgresql.JSONB(), nullable=True),
         sa.Column("transcript", sa.Text(), nullable=True),
         sa.Column("transcript_summary", sa.Text(), nullable=True),
         sa.Column("key_points", postgresql.ARRAY(sa.Text()), nullable=True),
@@ -329,9 +307,7 @@ def upgrade():
         sa.Column(
             "maximum_acceptable", sa.NUMERIC(precision=10, scale=2), nullable=True
         ),
-        sa.Column(
-            "decision_factors", postgresql.JSONB(astext_type=sa.Text()), nullable=True
-        ),
+        sa.Column("decision_factors", postgresql.JSONB(), nullable=True),
         sa.Column("message_to_carrier", sa.Text(), nullable=True),
         sa.Column("justification", sa.Text(), nullable=True),
         sa.Column("final_status", sa.String(length=30), nullable=True),
