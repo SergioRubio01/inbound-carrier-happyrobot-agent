@@ -37,9 +37,10 @@ def sample_metrics_model():
     return CallMetricsModel(
         metrics_id=uuid4(),
         transcript="Test transcript",
-        response="ACCEPTED",
-        reason="Test reason",
-        final_loadboard_rate=2500.00,
+        response="Success",
+        response_reason="Test reason",
+        sentiment="Positive",
+        sentiment_reason="Customer was satisfied",
         session_id="test-session-123",
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
@@ -56,9 +57,10 @@ async def test_create_metrics_success(repository, mock_session, sample_metrics_m
 
         result = await repository.create_metrics(
             transcript="Test transcript",
-            response="ACCEPTED",
-            reason="Test reason",
-            final_loadboard_rate=2500.00,
+            response="Success",
+            response_reason="Test reason",
+            sentiment="Positive",
+            sentiment_reason="Customer was satisfied",
             session_id="test-session-123",
         )
 
@@ -68,9 +70,10 @@ async def test_create_metrics_success(repository, mock_session, sample_metrics_m
         # Verify the result
         assert result == sample_metrics_model
         assert result.transcript == "Test transcript"
-        assert result.response == "ACCEPTED"
-        assert result.reason == "Test reason"
-        assert result.final_loadboard_rate == 2500.00
+        assert result.response == "Success"
+        assert result.response_reason == "Test reason"
+        assert result.sentiment == "Positive"
+        assert result.sentiment_reason == "Customer was satisfied"
         assert result.session_id == "test-session-123"
 
 
@@ -81,9 +84,10 @@ async def test_create_metrics_minimal_data(repository, mock_session):
     minimal_model = CallMetricsModel(
         metrics_id=uuid4(),
         transcript="Minimal transcript",
-        response="REJECTED",
-        reason=None,
-        final_loadboard_rate=None,
+        response="Rate too high",
+        response_reason=None,
+        sentiment=None,
+        sentiment_reason=None,
         session_id=None,
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
@@ -94,12 +98,13 @@ async def test_create_metrics_minimal_data(repository, mock_session):
 
         result = await repository.create_metrics(
             transcript="Minimal transcript",
-            response="REJECTED",
+            response="Rate too high",
         )
 
         mock_create.assert_called_once()
-        assert result.reason is None
-        assert result.final_loadboard_rate is None
+        assert result.response_reason is None
+        assert result.sentiment is None
+        assert result.sentiment_reason is None
         assert result.session_id is None
 
 
@@ -183,25 +188,36 @@ async def test_get_metrics_summary_with_data(repository, mock_session):
 
     # Mock response distribution query
     mock_response_result = MagicMock()
-    mock_response_result.fetchall.return_value = [("ACCEPTED", 60), ("REJECTED", 40)]
+    mock_response_result.fetchall.return_value = [
+        ("Success", 60),
+        ("Rate too high", 40),
+    ]
 
-    # Mock average rate query
-    mock_avg_result = MagicMock()
-    mock_avg_result.scalar.return_value = 2450.50
+    # Mock sentiment distribution query
+    mock_sentiment_result = MagicMock()
+    mock_sentiment_result.fetchall.return_value = [("Positive", 60), ("Negative", 40)]
 
-    # Mock rejection reasons query
-    mock_rejection_result = MagicMock()
-    mock_rejection_result.fetchall.return_value = [
-        ("Rate too high", 25),
-        ("Equipment mismatch", 15),
+    # Mock response reasons query
+    mock_response_reasons_result = MagicMock()
+    mock_response_reasons_result.fetchall.return_value = [
+        ("Rate negotiation", 25),
+        ("Equipment concerns", 15),
+    ]
+
+    # Mock sentiment reasons query
+    mock_sentiment_reasons_result = MagicMock()
+    mock_sentiment_reasons_result.fetchall.return_value = [
+        ("Customer satisfied", 30),
+        ("Price concerns", 25),
     ]
 
     # Set up the execute calls to return the right mocks in sequence
     mock_session.execute.side_effect = [
         mock_total_result,
         mock_response_result,
-        mock_avg_result,
-        mock_rejection_result,
+        mock_sentiment_result,
+        mock_response_reasons_result,
+        mock_sentiment_reasons_result,
     ]
 
     start_date = datetime(2025, 1, 1, tzinfo=timezone.utc)
@@ -212,12 +228,15 @@ async def test_get_metrics_summary_with_data(repository, mock_session):
     )
 
     assert result["total_calls"] == 100
-    assert result["acceptance_rate"] == 0.6  # 60/100
-    assert result["average_final_rate"] == 2450.50
-    assert result["response_distribution"] == {"ACCEPTED": 60, "REJECTED": 40}
-    assert len(result["top_rejection_reasons"]) == 2
-    assert result["top_rejection_reasons"][0]["reason"] == "Rate too high"
-    assert result["top_rejection_reasons"][0]["count"] == 25
+    assert result["success_rate"] == 0.6  # 60/100
+    assert result["response_distribution"] == {"Success": 60, "Rate too high": 40}
+    assert result["sentiment_distribution"] == {"Positive": 60, "Negative": 40}
+    assert len(result["top_response_reasons"]) == 2
+    assert result["top_response_reasons"][0]["reason"] == "Rate negotiation"
+    assert result["top_response_reasons"][0]["count"] == 25
+    assert len(result["top_sentiment_reasons"]) == 2
+    assert result["top_sentiment_reasons"][0]["reason"] == "Customer satisfied"
+    assert result["top_sentiment_reasons"][0]["count"] == 30
     assert result["period"]["start"] == start_date.isoformat()
     assert result["period"]["end"] == end_date.isoformat()
 
@@ -236,10 +255,11 @@ async def test_get_metrics_summary_no_data(repository, mock_session):
     result = await repository.get_metrics_summary()
 
     assert result["total_calls"] == 0
-    assert result["acceptance_rate"] == 0.0
-    assert result["average_final_rate"] == 0.0
+    assert result["success_rate"] == 0.0
     assert result["response_distribution"] == {}
-    assert result["top_rejection_reasons"] == []
+    assert result["sentiment_distribution"] == {}
+    assert result["top_response_reasons"] == []
+    assert result["top_sentiment_reasons"] == []
 
 
 @pytest.mark.unit
@@ -362,9 +382,7 @@ async def test_delete_existing_metrics(repository, mock_session, sample_metrics_
         mock_create.return_value = sample_metrics_model
 
         # Create a metric
-        created = await repository.create_metrics(
-            transcript="Test", response="ACCEPTED"
-        )
+        created = await repository.create_metrics(transcript="Test", response="Success")
 
         # Mock the delete query to find the record
         mock_result = MagicMock()

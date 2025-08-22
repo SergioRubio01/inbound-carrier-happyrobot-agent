@@ -65,13 +65,13 @@ class Load:
     # Load Details
     weight: int = 0  # in pounds
     commodity_type: Optional[str] = None
-    pieces: Optional[int] = None
+    num_of_pieces: Optional[int] = None
     dimensions: Optional[str] = None
     special_requirements: Optional[list] = None
 
     # Pricing
     loadboard_rate: Optional[Rate] = field(default=None)
-    miles: Optional[float] = None
+    miles: Optional[str] = None  # Store as string to match database
 
     # Broker Information
     broker_company: Optional[str] = None
@@ -80,9 +80,13 @@ class Load:
     # Status
     status: LoadStatus = LoadStatus.AVAILABLE
     urgency: UrgencyLevel = UrgencyLevel.NORMAL
+    booked: bool = False
 
     # Special Instructions
     notes: Optional[str] = None
+
+    # Session Information
+    session_id: Optional[str] = None
 
     # Visibility
     is_active: bool = True
@@ -102,10 +106,16 @@ class Load:
     @property
     def rate_per_mile(self) -> Optional[Rate]:
         """Calculate rate per mile from loadboard rate and miles."""
-        if self.loadboard_rate is None or self.miles is None or self.miles <= 0:
+        if self.loadboard_rate is None or self.miles is None:
             return None
-        rate_per_mile_value = self.loadboard_rate.to_float() / self.miles
-        return Rate.from_float(rate_per_mile_value)
+        try:
+            miles_float = float(self.miles)
+            if miles_float <= 0:
+                return None
+            rate_per_mile_value = self.loadboard_rate.to_float() / miles_float
+            return Rate.from_float(rate_per_mile_value)
+        except (ValueError, TypeError):
+            return None
 
     @property
     def is_available(self) -> bool:

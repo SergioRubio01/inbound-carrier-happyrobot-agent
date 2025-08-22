@@ -29,9 +29,10 @@ def valid_call_metrics_data():
     """Valid call metrics data for testing."""
     return {
         "transcript": "Carrier: Hi, I'm interested in load LD-2025-001. Agent: Great! The rate is $2500. Carrier: That works for me. Agent: Perfect, I'll book it for you.",
-        "response": "ACCEPTED",
-        "reason": "Rate was acceptable",
-        "final_loadboard_rate": 2500.00,
+        "response": "Success",
+        "response_reason": "Rate was acceptable",
+        "sentiment": "Positive",
+        "sentiment_reason": "Customer was satisfied with the deal",
         "session_id": f"session-{uuid4()}",
     }
 
@@ -41,7 +42,7 @@ def minimal_call_metrics_data():
     """Minimal call metrics data for testing."""
     return {
         "transcript": "Short conversation transcript",
-        "response": "REJECTED",
+        "response": "Rate too high",
     }
 
 
@@ -152,9 +153,9 @@ def test_create_call_metrics_long_session_id_fails(client, valid_call_metrics_da
 
 
 @pytest.mark.integration
-def test_create_call_metrics_invalid_rate_fails(client, valid_call_metrics_data):
-    """Test that invalid final_loadboard_rate fails."""
-    valid_call_metrics_data["final_loadboard_rate"] = "not_a_number"
+def test_create_call_metrics_invalid_sentiment_fails(client, valid_call_metrics_data):
+    """Test that invalid sentiment value fails."""
+    valid_call_metrics_data["sentiment"] = "invalid_sentiment"
 
     response = client.post("/api/v1/metrics/call", json=valid_call_metrics_data)
 
@@ -166,9 +167,10 @@ def test_create_call_metrics_null_optional_fields(client):
     """Test creating call metrics with null optional fields."""
     data = {
         "transcript": "Test transcript",
-        "response": "ACCEPTED",
-        "reason": None,
-        "final_loadboard_rate": None,
+        "response": "Success",
+        "response_reason": None,
+        "sentiment": None,
+        "sentiment_reason": None,
         "session_id": None,
     }
 
@@ -182,13 +184,13 @@ def test_create_call_metrics_null_optional_fields(client):
 @pytest.mark.integration
 def test_create_call_metrics_various_responses(client):
     """Test creating call metrics with various response types."""
-    responses = ["ACCEPTED", "REJECTED", "ABANDONED", "TRANSFER", "ERROR"]
+    responses = ["Success", "Rate too high", "Incorrect MC", "Fallback error"]
 
     for response_type in responses:
         data = {
             "transcript": f"Test transcript for {response_type}",
             "response": response_type,
-            "reason": f"Test reason for {response_type}",
+            "response_reason": f"Test reason for {response_type}",
         }
 
         response = client.post("/api/v1/metrics/call", json=data)

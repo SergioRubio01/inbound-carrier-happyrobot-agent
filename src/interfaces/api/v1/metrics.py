@@ -37,13 +37,16 @@ class CallMetricsRequestModel(BaseModel):
         ...,
         min_length=1,
         max_length=50,
-        description="Call response (ACCEPTED, REJECTED, etc.)",
+        description="Call response (Success, Rate too high, Incorrect MC, Fallback error)",
     )
-    reason: Optional[str] = Field(
+    response_reason: Optional[str] = Field(
         None, max_length=2000, description="Reason for the response"
     )
-    final_loadboard_rate: Optional[float] = Field(
-        None, ge=0.01, le=1000000.00, description="Final agreed loadboard rate"
+    sentiment: Optional[str] = Field(
+        None, description="Sentiment of the call (Positive, Neutral, Negative)"
+    )
+    sentiment_reason: Optional[str] = Field(
+        None, max_length=2000, description="Reason for the sentiment classification"
     )
     session_id: Optional[str] = Field(
         None, min_length=1, max_length=100, description="Session identifier"
@@ -56,8 +59,9 @@ class CallMetricsResponseModel(BaseModel):
     metrics_id: UUID
     transcript: str
     response: str
-    reason: Optional[str]
-    final_loadboard_rate: Optional[float]
+    response_reason: Optional[str]
+    sentiment: Optional[str]
+    sentiment_reason: Optional[str]
     session_id: Optional[str]
     created_at: datetime
     updated_at: datetime
@@ -84,10 +88,11 @@ class CallMetricsSummaryResponse(BaseModel):
     """Response model for call metrics summary statistics."""
 
     total_calls: int
-    acceptance_rate: float
-    average_final_rate: float
+    success_rate: float
     response_distribution: Dict[str, int]
-    top_rejection_reasons: List[Dict[str, Any]]
+    sentiment_distribution: Dict[str, int]
+    top_response_reasons: List[Dict[str, Any]]
+    top_sentiment_reasons: List[Dict[str, Any]]
     period: Dict[str, Any]
 
 
@@ -124,8 +129,9 @@ async def create_call_metrics(
         metrics = await metrics_repo.create_metrics(
             transcript=request.transcript,
             response=request.response,
-            reason=request.reason,
-            final_loadboard_rate=request.final_loadboard_rate,
+            response_reason=request.response_reason,
+            sentiment=request.sentiment,
+            sentiment_reason=request.sentiment_reason,
             session_id=request.session_id,
         )
 
@@ -237,10 +243,11 @@ async def get_call_metrics_summary(
 
         return CallMetricsSummaryResponse(
             total_calls=summary_data["total_calls"],
-            acceptance_rate=summary_data["acceptance_rate"],
-            average_final_rate=summary_data["average_final_rate"],
+            success_rate=summary_data["success_rate"],
             response_distribution=summary_data["response_distribution"],
-            top_rejection_reasons=summary_data["top_rejection_reasons"],
+            sentiment_distribution=summary_data["sentiment_distribution"],
+            top_response_reasons=summary_data["top_response_reasons"],
+            top_sentiment_reasons=summary_data["top_sentiment_reasons"],
             period={
                 "start": start_date.isoformat() if start_date else None,
                 "end": end_date.isoformat() if end_date else None,
@@ -273,12 +280,13 @@ async def get_call_metrics_by_id(
             metrics_id=metrics.metrics_id,
             transcript=str(metrics.transcript),
             response=str(metrics.response),
-            reason=str(metrics.reason) if metrics.reason else None,
-            final_loadboard_rate=(
-                float(metrics.final_loadboard_rate)
-                if metrics.final_loadboard_rate
-                else None
-            ),
+            response_reason=str(metrics.response_reason)
+            if metrics.response_reason
+            else None,
+            sentiment=str(metrics.sentiment) if metrics.sentiment else None,
+            sentiment_reason=str(metrics.sentiment_reason)
+            if metrics.sentiment_reason
+            else None,
             session_id=str(metrics.session_id) if metrics.session_id else None,
             created_at=metrics.created_at,
             updated_at=metrics.updated_at,
@@ -323,12 +331,13 @@ async def get_call_metrics(
                 metrics_id=metric.metrics_id,
                 transcript=str(metric.transcript),
                 response=str(metric.response),
-                reason=str(metric.reason) if metric.reason else None,
-                final_loadboard_rate=(
-                    float(metric.final_loadboard_rate)
-                    if metric.final_loadboard_rate
-                    else None
-                ),
+                response_reason=str(metric.response_reason)
+                if metric.response_reason
+                else None,
+                sentiment=str(metric.sentiment) if metric.sentiment else None,
+                sentiment_reason=str(metric.sentiment_reason)
+                if metric.sentiment_reason
+                else None,
                 session_id=str(metric.session_id) if metric.session_id else None,
                 created_at=metric.created_at,
                 updated_at=metric.updated_at,

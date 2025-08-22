@@ -130,9 +130,14 @@ class MetricsCLI:
                 {
                     "metrics_id": f"sample-{i:04d}-{call_date.strftime('%Y%m%d')}",
                     "transcript": f"Sample call transcript {i + 1}...",
-                    "response": ["ACCEPTED", "REJECTED", "ABANDONED"][i % 3],
-                    "reason": "Rate negotiation" if i % 3 == 1 else None,
-                    "final_loadboard_rate": 2500.0 + (i * 100) if i % 3 == 0 else None,
+                    "response": ["Success", "Rate too high", "Fallback error"][i % 3],
+                    "response_reason": "Rate negotiation" if i % 3 == 1 else None,
+                    "sentiment": ["Positive", "Neutral", "Negative"][i % 3],
+                    "sentiment_reason": "Successful negotiation"
+                    if i % 3 == 0
+                    else "Price concerns"
+                    if i % 3 == 1
+                    else "Technical issues",
                     "created_at": call_date.isoformat(),
                 }
             )
@@ -141,10 +146,15 @@ class MetricsCLI:
             "call_metrics": sample_metrics,
             "summary": {
                 "total_calls": len(sample_metrics),
-                "acceptance_rate": 0.33,
-                "average_final_rate": 2750.0,
-                "response_distribution": {"ACCEPTED": 3, "REJECTED": 4, "ABANDONED": 3},
-                "top_rejection_reasons": [{"reason": "Rate negotiation", "count": 4}],
+                "success_rate": 0.33,
+                "response_distribution": {
+                    "Success": 3,
+                    "Rate too high": 4,
+                    "Fallback error": 3,
+                },
+                "sentiment_distribution": {"Positive": 3, "Neutral": 4, "Negative": 3},
+                "top_response_reasons": [{"reason": "Rate negotiation", "count": 4}],
+                "top_sentiment_reasons": [{"reason": "Price concerns", "count": 4}],
                 "period": {
                     "start": start_date.isoformat(),
                     "end": end_date.isoformat(),
@@ -163,50 +173,65 @@ class MetricsCLI:
         if not metrics:
             return {
                 "total_calls": 0,
-                "acceptance_rate": 0.0,
-                "average_final_rate": 0.0,
+                "success_rate": 0.0,
                 "response_distribution": {},
-                "top_rejection_reasons": [],
+                "sentiment_distribution": {},
+                "top_response_reasons": [],
+                "top_sentiment_reasons": [],
             }
 
         total_calls = len(metrics)
-        accepted_calls = sum(1 for m in metrics if m.get("response") == "ACCEPTED")
-        acceptance_rate = accepted_calls / total_calls if total_calls > 0 else 0.0
-
-        # Calculate average final rate
-        rates = [
-            m.get("final_loadboard_rate", 0)
-            for m in metrics
-            if m.get("final_loadboard_rate")
-        ]
-        average_final_rate = sum(rates) / len(rates) if rates else 0.0
+        successful_calls = sum(1 for m in metrics if m.get("response") == "Success")
+        success_rate = successful_calls / total_calls if total_calls > 0 else 0.0
 
         # Response distribution
         response_dist: Dict[str, int] = {}
         for metric in metrics:
-            response = metric.get("response", "UNKNOWN")
+            response = metric.get("response", "Unknown")
             response_dist[response] = response_dist.get(response, 0) + 1
 
-        # Top rejection reasons
-        rejection_reasons: Dict[str, int] = {}
+        # Sentiment distribution
+        sentiment_dist: Dict[str, int] = {}
         for metric in metrics:
-            if metric.get("response") == "REJECTED" and metric.get("reason"):
-                reason = metric.get("reason")
-                rejection_reasons[reason] = rejection_reasons.get(reason, 0) + 1
+            sentiment = metric.get("sentiment")
+            if sentiment:
+                sentiment_dist[sentiment] = sentiment_dist.get(sentiment, 0) + 1
 
-        top_rejection_reasons = [
+        # Top response reasons
+        response_reasons: Dict[str, int] = {}
+        for metric in metrics:
+            if metric.get("response_reason"):
+                reason = metric.get("response_reason")
+                response_reasons[reason] = response_reasons.get(reason, 0) + 1
+
+        top_response_reasons = [
             {"reason": reason, "count": count}
             for reason, count in sorted(
-                rejection_reasons.items(), key=lambda x: x[1], reverse=True
+                response_reasons.items(), key=lambda x: x[1], reverse=True
+            )
+        ][:10]  # Top 10
+
+        # Top sentiment reasons
+        sentiment_reasons: Dict[str, int] = {}
+        for metric in metrics:
+            if metric.get("sentiment_reason"):
+                reason = metric.get("sentiment_reason")
+                sentiment_reasons[reason] = sentiment_reasons.get(reason, 0) + 1
+
+        top_sentiment_reasons = [
+            {"reason": reason, "count": count}
+            for reason, count in sorted(
+                sentiment_reasons.items(), key=lambda x: x[1], reverse=True
             )
         ][:10]  # Top 10
 
         return {
             "total_calls": total_calls,
-            "acceptance_rate": acceptance_rate,
-            "average_final_rate": average_final_rate,
+            "success_rate": success_rate,
             "response_distribution": response_dist,
-            "top_rejection_reasons": top_rejection_reasons,
+            "sentiment_distribution": sentiment_dist,
+            "top_response_reasons": top_response_reasons,
+            "top_sentiment_reasons": top_sentiment_reasons,
         }
 
     def generate_pdf_report(
@@ -262,8 +287,7 @@ class MetricsCLI:
             summary_data = [
                 ["Metric", "Value"],
                 ["Total Calls", str(summary.get("total_calls", 0))],
-                ["Acceptance Rate", f"{summary.get('acceptance_rate', 0):.2%}"],
-                ["Average Final Rate", f"${summary.get('average_final_rate', 0):,.2f}"],
+                ["Success Rate", f"{summary.get('success_rate', 0):.2%}"],
             ]
 
             summary_table = Table(summary_data, colWidths=[3 * inch, 2 * inch])
@@ -318,13 +342,47 @@ class MetricsCLI:
                 story.append(dist_table)
                 story.append(Spacer(1, 20))
 
-            # Top rejection reasons
-            rejection_reasons = summary.get("top_rejection_reasons", [])
-            if rejection_reasons:
-                story.append(Paragraph("Top Rejection Reasons", heading_style))
+            # Sentiment distribution
+            sentiment_dist = summary.get("sentiment_distribution", {})
+            if sentiment_dist:
+                story.append(Paragraph("Sentiment Distribution", heading_style))
+
+                sentiment_data = [["Sentiment", "Count", "Percentage"]]
+                total_sentiments = sum(sentiment_dist.values())
+
+                for sentiment, count in sentiment_dist.items():
+                    percentage = (
+                        (count / total_sentiments * 100) if total_sentiments > 0 else 0
+                    )
+                    sentiment_data.append([sentiment, str(count), f"{percentage:.1f}%"])
+
+                sentiment_table = Table(
+                    sentiment_data, colWidths=[2 * inch, 1.5 * inch, 1.5 * inch]
+                )
+                sentiment_table.setStyle(
+                    TableStyle(
+                        [
+                            ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                            ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                            ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                            ("FONTSIZE", (0, 0), (-1, 0), 14),
+                            ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
+                            ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
+                            ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                        ]
+                    )
+                )
+                story.append(sentiment_table)
+                story.append(Spacer(1, 20))
+
+            # Top response reasons
+            response_reasons = summary.get("top_response_reasons", [])
+            if response_reasons:
+                story.append(Paragraph("Top Response Reasons", heading_style))
 
                 reasons_data = [["Reason", "Count"]]
-                for reason_info in rejection_reasons[:10]:  # Top 10
+                for reason_info in response_reasons[:10]:  # Top 10
                     reasons_data.append(
                         [
                             reason_info.get("reason", "N/A"),
@@ -350,6 +408,40 @@ class MetricsCLI:
                 story.append(reasons_table)
                 story.append(Spacer(1, 20))
 
+            # Top sentiment reasons
+            sentiment_reasons = summary.get("top_sentiment_reasons", [])
+            if sentiment_reasons:
+                story.append(Paragraph("Top Sentiment Reasons", heading_style))
+
+                sentiment_reasons_data = [["Reason", "Count"]]
+                for reason_info in sentiment_reasons[:10]:  # Top 10
+                    sentiment_reasons_data.append(
+                        [
+                            reason_info.get("reason", "N/A"),
+                            str(reason_info.get("count", 0)),
+                        ]
+                    )
+
+                sentiment_reasons_table = Table(
+                    sentiment_reasons_data, colWidths=[4 * inch, 1 * inch]
+                )
+                sentiment_reasons_table.setStyle(
+                    TableStyle(
+                        [
+                            ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                            ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                            ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                            ("FONTSIZE", (0, 0), (-1, 0), 14),
+                            ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
+                            ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
+                            ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                        ]
+                    )
+                )
+                story.append(sentiment_reasons_table)
+                story.append(Spacer(1, 20))
+
             # Detailed metrics table
             call_metrics = metrics_data.get("call_metrics", [])
             if call_metrics:
@@ -367,22 +459,25 @@ class MetricsCLI:
                     )
                     story.append(Spacer(1, 10))
 
-                metrics_data_table = [["Date", "Response", "Rate ($)", "Reason"]]
+                metrics_data_table = [
+                    ["Date", "Response", "Sentiment", "Response Reason"]
+                ]
 
                 for metric in limited_metrics:
                     created_at = metric.get("created_at", "N/A")
                     date_str = created_at[:10] if created_at != "N/A" else "N/A"
 
                     response = metric.get("response", "N/A")
-                    rate = metric.get("final_loadboard_rate")
-                    rate_str = f"${rate:,.2f}" if rate is not None else "N/A"
-                    reason = (
-                        metric.get("reason", "N/A")[:50]
-                        if metric.get("reason")
+                    sentiment = metric.get("sentiment", "N/A")
+                    response_reason = (
+                        metric.get("response_reason", "N/A")[:50]
+                        if metric.get("response_reason")
                         else "N/A"
                     )  # Truncate long reasons
 
-                    metrics_data_table.append([date_str, response, rate_str, reason])
+                    metrics_data_table.append(
+                        [date_str, response, sentiment, response_reason]
+                    )
 
                 detailed_table = Table(
                     metrics_data_table,

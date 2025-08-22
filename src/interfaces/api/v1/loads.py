@@ -59,6 +59,11 @@ class CreateLoadRequestModel(BaseModel):
     )
     commodity_type: str = Field(..., description="Type of commodity")
     notes: Optional[str] = Field(None, description="Additional notes")
+    dimensions: Optional[str] = Field(None, description="Load dimensions")
+    num_of_pieces: Optional[int] = Field(None, ge=0, description="Number of pieces")
+    miles: Optional[str] = Field(None, description="Distance in miles")
+    booked: Optional[bool] = Field(False, description="Is load booked")
+    session_id: Optional[str] = Field(None, description="Session identifier")
 
 
 class CreateLoadResponseModel(BaseModel):
@@ -95,6 +100,11 @@ class UpdateLoadRequestModel(BaseModel):
     commodity_type: Optional[str] = Field(None, description="Type of commodity")
     notes: Optional[str] = Field(None, description="Additional notes")
     status: Optional[str] = Field(None, description="Load status")
+    dimensions: Optional[str] = Field(None, description="Load dimensions")
+    num_of_pieces: Optional[int] = Field(None, ge=0, description="Number of pieces")
+    miles: Optional[str] = Field(None, description="Distance in miles")
+    booked: Optional[bool] = Field(None, description="Is load booked")
+    session_id: Optional[str] = Field(None, description="Session identifier")
 
 
 class UpdateLoadResponseModel(BaseModel):
@@ -121,6 +131,11 @@ class LoadSummaryModel(BaseModel):
     commodity_type: str = Field(..., description="Commodity type")
     status: str = Field(..., description="Load status")
     created_at: datetime = Field(..., description="Creation timestamp")
+    dimensions: Optional[str] = Field(None, description="Load dimensions")
+    num_of_pieces: Optional[int] = Field(None, description="Number of pieces")
+    miles: Optional[str] = Field(None, description="Distance in miles")
+    booked: Optional[bool] = Field(None, description="Is load booked")
+    session_id: Optional[str] = Field(None, description="Session identifier")
 
 
 class ListLoadsResponseModel(BaseModel):
@@ -187,6 +202,11 @@ async def create_load(
             weight=request.weight,
             commodity_type=request.commodity_type,
             notes=request.notes,
+            dimensions=request.dimensions,
+            num_of_pieces=request.num_of_pieces,
+            miles=request.miles,
+            booked=request.booked,
+            session_id=request.session_id,
         )
 
         # Execute use case
@@ -291,6 +311,11 @@ async def list_loads(
                 commodity_type=load.commodity_type,
                 status=load.status,
                 created_at=load.created_at,
+                dimensions=getattr(load, "dimensions", None),
+                num_of_pieces=getattr(load, "num_of_pieces", None),
+                miles=getattr(load, "miles", None),
+                booked=getattr(load, "booked", None),
+                session_id=getattr(load, "session_id", None),
             )
             for load in response.loads
         ]
@@ -388,6 +413,11 @@ async def get_load_by_id(
             commodity_type=load.commodity_type or "",
             status=load.status.value,
             created_at=load.created_at,
+            dimensions=load.dimensions,
+            num_of_pieces=load.num_of_pieces,
+            miles=load.miles,
+            booked=load.booked,
+            session_id=load.session_id,
         )
 
     except HTTPException:
@@ -536,6 +566,11 @@ async def update_load(
             commodity_type=request.commodity_type,
             notes=request.notes,
             status=request.status,
+            dimensions=request.dimensions,
+            num_of_pieces=request.num_of_pieces,
+            miles=request.miles,
+            booked=request.booked,
+            session_id=request.session_id,
         )
 
         # Execute use case

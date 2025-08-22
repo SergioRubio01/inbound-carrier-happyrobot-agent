@@ -194,7 +194,7 @@ class SearchLoadsUseCase:
             "miles": load.miles,
             "weight": load.weight,
             "commodity_type": load.commodity_type,
-            "num_of_pieces": load.pieces,
+            "num_of_pieces": load.num_of_pieces,
             "dimensions": load.dimensions,
             "special_requirements": load.special_requirements or [],
             "broker_info": (

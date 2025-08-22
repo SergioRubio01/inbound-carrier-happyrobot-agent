@@ -75,7 +75,7 @@ class TestLoad:
             delivery_date=datetime.now(timezone.utc).date(),
             equipment_type=EquipmentType.from_name("DRY_VAN"),
             weight=35000,
-            miles=716,
+            miles="716",
             loadboard_rate=Rate.from_float(2500),
             status=LoadStatus.AVAILABLE,
             urgency=UrgencyLevel.NORMAL,
@@ -87,7 +87,7 @@ class TestLoad:
         assert load.reference_number == "LOAD001"
         assert load.origin is not None and load.origin.city == "Chicago"
         assert load.destination is not None and load.destination.city == "Atlanta"
-        assert load.miles == 716
+        assert load.miles == "716"
         assert (
             load.loadboard_rate is not None and load.loadboard_rate.to_float() == 2500
         )
@@ -102,7 +102,7 @@ class TestLoad:
             delivery_date=datetime.now(timezone.utc).date(),
             equipment_type=EquipmentType.from_name("DRY_VAN"),
             weight=35000,
-            miles=500,
+            miles="500",
             loadboard_rate=Rate.from_float(2000),
             status=LoadStatus.AVAILABLE,
             urgency=UrgencyLevel.NORMAL,

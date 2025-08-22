@@ -48,6 +48,11 @@ class UpdateLoadRequest:
     commodity_type: Optional[str] = None
     notes: Optional[str] = None
     status: Optional[str] = None
+    dimensions: Optional[str] = None
+    num_of_pieces: Optional[int] = None
+    miles: Optional[str] = None
+    booked: Optional[bool] = None
+    session_id: Optional[str] = None
 
 
 @dataclass
@@ -174,6 +179,22 @@ class UpdateLoadUseCase:
         # Update notes
         if request.notes is not None:
             load.notes = request.notes
+
+        # Update new fields
+        if request.dimensions is not None:
+            load.dimensions = request.dimensions
+
+        if request.num_of_pieces is not None:
+            load.num_of_pieces = request.num_of_pieces
+
+        if request.miles is not None:
+            load.miles = request.miles
+
+        if request.booked is not None:
+            load.booked = request.booked
+
+        if request.session_id is not None:
+            load.session_id = request.session_id
 
         # Update status
         if request.status:

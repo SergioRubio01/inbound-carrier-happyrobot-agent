@@ -48,7 +48,9 @@ class CreateLoadRequest:
     notes: Optional[str] = None
     dimensions: Optional[str] = None
     num_of_pieces: Optional[int] = None
-    miles: Optional[int] = None
+    miles: Optional[str] = None
+    booked: Optional[bool] = False
+    session_id: Optional[str] = None
     reference_number: Optional[str] = None
 
 
@@ -109,6 +111,11 @@ class CreateLoadUseCase:
                 weight=request.weight,
                 commodity_type=request.commodity_type,
                 notes=request.notes,
+                dimensions=request.dimensions,
+                num_of_pieces=request.num_of_pieces,
+                miles=request.miles,
+                booked=request.booked or False,
+                session_id=request.session_id,
                 status=LoadStatus.AVAILABLE,
                 is_active=True,
                 created_at=datetime.utcnow(),
