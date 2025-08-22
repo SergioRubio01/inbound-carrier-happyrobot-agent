@@ -381,11 +381,22 @@ class MetricsCLI:
             if response_reasons:
                 story.append(Paragraph("Top Response Reasons", heading_style))
 
+                # Create a style for wrapping text in reason cells
+                reason_cell_style = ParagraphStyle(
+                    "ReasonCellStyle",
+                    parent=styles["Normal"],
+                    fontSize=10,
+                    leading=12,
+                )
+
                 reasons_data = [["Reason", "Count"]]
                 for reason_info in response_reasons[:10]:  # Top 10
+                    reason_text = reason_info.get("reason", "N/A")
                     reasons_data.append(
                         [
-                            reason_info.get("reason", "N/A"),
+                            Paragraph(reason_text, reason_cell_style)
+                            if len(reason_text) > 40
+                            else reason_text,
                             str(reason_info.get("count", 0)),
                         ]
                     )
@@ -413,11 +424,24 @@ class MetricsCLI:
             if sentiment_reasons:
                 story.append(Paragraph("Top Sentiment Reasons", heading_style))
 
+                # Create a style for wrapping text in sentiment reason cells
+                sentiment_reason_cell_style = ParagraphStyle(
+                    "SentimentReasonCellStyle",
+                    parent=styles["Normal"],
+                    fontSize=10,
+                    leading=12,
+                )
+
                 sentiment_reasons_data = [["Reason", "Count"]]
                 for reason_info in sentiment_reasons[:10]:  # Top 10
+                    sentiment_reason_text = reason_info.get("reason", "N/A")
                     sentiment_reasons_data.append(
                         [
-                            reason_info.get("reason", "N/A"),
+                            Paragraph(
+                                sentiment_reason_text, sentiment_reason_cell_style
+                            )
+                            if len(sentiment_reason_text) > 40
+                            else sentiment_reason_text,
                             str(reason_info.get("count", 0)),
                         ]
                     )
@@ -459,6 +483,14 @@ class MetricsCLI:
                     )
                     story.append(Spacer(1, 10))
 
+                # Create a style for wrapping text in cells
+                cell_style = ParagraphStyle(
+                    "CellStyle",
+                    parent=styles["Normal"],
+                    fontSize=8,
+                    leading=10,
+                )
+
                 metrics_data_table = [
                     ["Date", "Response", "Sentiment", "Response Reason"]
                 ]
@@ -470,13 +502,25 @@ class MetricsCLI:
                     response = metric.get("response", "N/A")
                     sentiment = metric.get("sentiment", "N/A")
                     response_reason = (
-                        metric.get("response_reason", "N/A")[:50]
+                        metric.get("response_reason", "N/A")
                         if metric.get("response_reason")
                         else "N/A"
-                    )  # Truncate long reasons
+                    )
 
+                    # Wrap long text in Paragraph objects for proper text wrapping
                     metrics_data_table.append(
-                        [date_str, response, sentiment, response_reason]
+                        [
+                            date_str,
+                            Paragraph(response, cell_style)
+                            if len(response) > 20
+                            else response,
+                            Paragraph(sentiment, cell_style)
+                            if len(sentiment) > 20
+                            else sentiment,
+                            Paragraph(response_reason, cell_style)
+                            if len(response_reason) > 30
+                            else response_reason,
+                        ]
                     )
 
                 detailed_table = Table(
