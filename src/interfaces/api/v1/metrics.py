@@ -174,6 +174,10 @@ async def create_call_metrics(
             created_at=metrics.created_at,
         )
 
+    except HTTPException:
+        # Re-raise HTTP exceptions (like our UUID validation error)
+        await session.rollback()
+        raise
     except ValueError as e:
         await session.rollback()
         raise HTTPException(
