@@ -98,13 +98,6 @@ class ILoadRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_loads_by_carrier(
-        self, carrier_id: UUID, limit: int = 100, offset: int = 0
-    ) -> List[Load]:
-        """Get loads booked by specific carrier."""
-        pass
-
-    @abstractmethod
     async def count_loads_by_criteria(self, criteria: LoadSearchCriteria) -> int:
         """Count loads matching criteria."""
         pass

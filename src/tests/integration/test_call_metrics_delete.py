@@ -39,9 +39,10 @@ def valid_call_metrics_data():
     return {
         "transcript": "Test transcript for deletion",
         "response": "Success",
-        "reason": "Rate was acceptable",
-        "final_loadboard_rate": 2500.00,
-        "session_id": f"session-{uuid4()}",
+        "response_reason": "Rate was acceptable",
+        "sentiment": "Positive",
+        "sentiment_reason": "Customer was satisfied with the deal",
+        "session_id": str(uuid4()),
     }
 
 
@@ -119,8 +120,8 @@ class TestDeleteCallMetrics:
         assert retrieved_data["transcript"] == valid_call_metrics_data["transcript"]
         assert retrieved_data["response"] == valid_call_metrics_data["response"]
         assert (
-            retrieved_data["final_loadboard_rate"]
-            == valid_call_metrics_data["final_loadboard_rate"]
+            retrieved_data["response_reason"]
+            == valid_call_metrics_data["response_reason"]
         )
 
         # Delete the metric
@@ -141,7 +142,7 @@ class TestDeleteCallMetrics:
             create_data = {
                 "transcript": f"Test transcript for {response_type}",
                 "response": response_type,
-                "reason": f"Test reason for {response_type}",
+                "response_reason": f"Test reason for {response_type}",
             }
             create_response = client.post("/api/v1/metrics/call", json=create_data)
             assert create_response.status_code == 201

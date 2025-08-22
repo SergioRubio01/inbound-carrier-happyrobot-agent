@@ -6,7 +6,6 @@ Created: 2024-08-14
 """
 
 from .call_metrics_model import CallMetricsModel
-from .carrier_model import CarrierModel
 from .load_model import LoadModel
 
-__all__ = ["CallMetricsModel", "CarrierModel", "LoadModel"]
+__all__ = ["CallMetricsModel", "LoadModel"]

@@ -71,9 +71,6 @@ class MockLoadRepository(ILoadRepository):
         # This method is no longer used since we removed LoadStatus_REMOVED
         return []
 
-    async def get_loads_by_carrier(self, carrier_id, limit=100, offset=0):
-        return []  # No longer used - removed carrier booking tracking
-
     async def count_loads_by_criteria(self, criteria):
         return len(self.loads)
 
