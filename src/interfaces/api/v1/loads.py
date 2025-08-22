@@ -598,6 +598,20 @@ async def update_load(
             booked=response.booked,
             updated_at=response.updated_at,
             modified_fields=response.modified_fields,
+            # Initialize all optional fields with None explicitly
+            origin=None,
+            destination=None,
+            pickup_datetime=None,
+            delivery_datetime=None,
+            equipment_type=None,
+            loadboard_rate=None,
+            weight=None,
+            commodity_type=None,
+            notes=None,
+            dimensions=None,
+            num_of_pieces=None,
+            miles=None,
+            session_id=None,
         )
 
         # Add all the modified field values to the response

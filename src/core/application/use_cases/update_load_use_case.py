@@ -118,23 +118,23 @@ class UpdateLoadUseCase:
             )
 
             # Add the actual updated values to the response
-            if request.origin:
+            if request.origin and saved_load.origin:
                 response.origin = f"{saved_load.origin.city}, {saved_load.origin.state}"
-            if request.destination:
+            if request.destination and saved_load.destination:
                 response.destination = (
                     f"{saved_load.destination.city}, {saved_load.destination.state}"
                 )
-            if request.pickup_datetime:
+            if request.pickup_datetime and saved_load.pickup_date:
                 response.pickup_datetime = datetime.combine(
                     saved_load.pickup_date, saved_load.pickup_time_start or time.min
                 )
-            if request.delivery_datetime:
+            if request.delivery_datetime and saved_load.delivery_date:
                 response.delivery_datetime = datetime.combine(
                     saved_load.delivery_date, saved_load.delivery_time_start or time.min
                 )
-            if request.equipment_type:
+            if request.equipment_type and saved_load.equipment_type:
                 response.equipment_type = saved_load.equipment_type.name
-            if request.loadboard_rate is not None:
+            if request.loadboard_rate is not None and saved_load.loadboard_rate:
                 response.loadboard_rate = saved_load.loadboard_rate.to_float()
             if request.weight is not None:
                 response.weight = saved_load.weight
