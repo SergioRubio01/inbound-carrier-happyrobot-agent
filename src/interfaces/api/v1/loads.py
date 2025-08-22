@@ -113,6 +113,29 @@ class UpdateLoadResponseModel(BaseModel):
     reference_number: Optional[str] = Field(None, description="Load reference number")
     booked: bool = Field(..., description="Is load booked")
     updated_at: datetime = Field(..., description="Update timestamp")
+    # Include all potentially updated fields
+    origin: Optional[str] = Field(None, description="Updated origin as 'City, ST'")
+    destination: Optional[str] = Field(
+        None, description="Updated destination as 'City, ST'"
+    )
+    pickup_datetime: Optional[datetime] = Field(
+        None, description="Updated pickup date and time"
+    )
+    delivery_datetime: Optional[datetime] = Field(
+        None, description="Updated delivery date and time"
+    )
+    equipment_type: Optional[str] = Field(None, description="Updated equipment type")
+    loadboard_rate: Optional[float] = Field(None, description="Updated loadboard rate")
+    weight: Optional[int] = Field(None, description="Updated weight in pounds")
+    commodity_type: Optional[str] = Field(None, description="Updated commodity type")
+    notes: Optional[str] = Field(None, description="Updated notes")
+    dimensions: Optional[str] = Field(None, description="Updated dimensions")
+    num_of_pieces: Optional[int] = Field(None, description="Updated number of pieces")
+    miles: Optional[str] = Field(None, description="Updated miles")
+    session_id: Optional[str] = Field(None, description="Updated session ID")
+    modified_fields: Optional[List[str]] = Field(
+        None, description="List of fields that were modified"
+    )
 
 
 class LoadSummaryModel(BaseModel):
@@ -568,13 +591,44 @@ async def update_load(
         # Commit the transaction
         await session.commit()
 
-        # Convert to API response
-        return UpdateLoadResponseModel(
+        # Convert to API response with all modified fields
+        api_response = UpdateLoadResponseModel(
             load_id=response.load_id,
             reference_number=response.reference_number,
             booked=response.booked,
             updated_at=response.updated_at,
+            modified_fields=response.modified_fields,
         )
+
+        # Add all the modified field values to the response
+        if response.origin:
+            api_response.origin = response.origin
+        if response.destination:
+            api_response.destination = response.destination
+        if response.pickup_datetime:
+            api_response.pickup_datetime = response.pickup_datetime
+        if response.delivery_datetime:
+            api_response.delivery_datetime = response.delivery_datetime
+        if response.equipment_type:
+            api_response.equipment_type = response.equipment_type
+        if response.loadboard_rate is not None:
+            api_response.loadboard_rate = response.loadboard_rate
+        if response.weight is not None:
+            api_response.weight = response.weight
+        if response.commodity_type:
+            api_response.commodity_type = response.commodity_type
+        if response.notes is not None:
+            api_response.notes = response.notes
+        if response.dimensions is not None:
+            api_response.dimensions = response.dimensions
+        if response.num_of_pieces is not None:
+            api_response.num_of_pieces = response.num_of_pieces
+        if response.miles is not None:
+            api_response.miles = response.miles
+        if response.session_id is not None:
+            api_response.session_id = response.session_id
+
+        return api_response
 
     except Exception as e:
         error_msg = str(e)

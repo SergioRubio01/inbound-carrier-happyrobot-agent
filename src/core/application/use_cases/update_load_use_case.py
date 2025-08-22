@@ -62,6 +62,21 @@ class UpdateLoadResponse:
     reference_number: Optional[str]
     booked: bool
     updated_at: datetime
+    # Include all potentially updated fields
+    origin: Optional[str] = None  # Formatted as "City, ST"
+    destination: Optional[str] = None  # Formatted as "City, ST"
+    pickup_datetime: Optional[datetime] = None
+    delivery_datetime: Optional[datetime] = None
+    equipment_type: Optional[str] = None
+    loadboard_rate: Optional[float] = None
+    weight: Optional[int] = None
+    commodity_type: Optional[str] = None
+    notes: Optional[str] = None
+    dimensions: Optional[str] = None
+    num_of_pieces: Optional[int] = None
+    miles: Optional[str] = None
+    session_id: Optional[str] = None
+    modified_fields: Optional[list] = None  # Track which fields were actually modified
 
 
 class UpdateLoadUseCase:
@@ -81,6 +96,9 @@ class UpdateLoadUseCase:
             # Validate business rules before making changes
             await self._validate_update_rules(load, request)
 
+            # Track which fields are being modified
+            modified_fields = self._track_modified_fields(request)
+
             # Update the load with new values
             updated_load = await self._apply_updates(load, request)
 
@@ -90,12 +108,50 @@ class UpdateLoadUseCase:
             # Save to repository
             saved_load = await self.load_repository.update(updated_load)
 
-            return UpdateLoadResponse(
+            # Build comprehensive response including all updated fields
+            response = UpdateLoadResponse(
                 load_id=str(saved_load.load_id),
                 reference_number=saved_load.reference_number,
                 booked=saved_load.booked,
                 updated_at=saved_load.updated_at,
+                modified_fields=modified_fields,
             )
+
+            # Add the actual updated values to the response
+            if request.origin:
+                response.origin = f"{saved_load.origin.city}, {saved_load.origin.state}"
+            if request.destination:
+                response.destination = (
+                    f"{saved_load.destination.city}, {saved_load.destination.state}"
+                )
+            if request.pickup_datetime:
+                response.pickup_datetime = datetime.combine(
+                    saved_load.pickup_date, saved_load.pickup_time_start or time.min
+                )
+            if request.delivery_datetime:
+                response.delivery_datetime = datetime.combine(
+                    saved_load.delivery_date, saved_load.delivery_time_start or time.min
+                )
+            if request.equipment_type:
+                response.equipment_type = saved_load.equipment_type.name
+            if request.loadboard_rate is not None:
+                response.loadboard_rate = saved_load.loadboard_rate.to_float()
+            if request.weight is not None:
+                response.weight = saved_load.weight
+            if request.commodity_type:
+                response.commodity_type = saved_load.commodity_type
+            if request.notes is not None:
+                response.notes = saved_load.notes
+            if request.dimensions is not None:
+                response.dimensions = saved_load.dimensions
+            if request.num_of_pieces is not None:
+                response.num_of_pieces = saved_load.num_of_pieces
+            if request.miles is not None:
+                response.miles = saved_load.miles
+            if request.session_id is not None:
+                response.session_id = saved_load.session_id
+
+            return response
 
         except (LoadNotFoundException, LoadUpdateException):
             raise
@@ -170,6 +226,39 @@ class UpdateLoadUseCase:
         load.updated_at = datetime.utcnow()
 
         return load
+
+    def _track_modified_fields(self, request: UpdateLoadRequest) -> list:
+        """Track which fields are being modified in the request."""
+        modified = []
+        if request.origin is not None:
+            modified.append("origin")
+        if request.destination is not None:
+            modified.append("destination")
+        if request.pickup_datetime is not None:
+            modified.append("pickup_datetime")
+        if request.delivery_datetime is not None:
+            modified.append("delivery_datetime")
+        if request.equipment_type is not None:
+            modified.append("equipment_type")
+        if request.loadboard_rate is not None:
+            modified.append("loadboard_rate")
+        if request.weight is not None:
+            modified.append("weight")
+        if request.commodity_type is not None:
+            modified.append("commodity_type")
+        if request.notes is not None:
+            modified.append("notes")
+        if request.dimensions is not None:
+            modified.append("dimensions")
+        if request.num_of_pieces is not None:
+            modified.append("num_of_pieces")
+        if request.miles is not None:
+            modified.append("miles")
+        if request.booked is not None:
+            modified.append("booked")
+        if request.session_id is not None:
+            modified.append("session_id")
+        return modified
 
     async def _validate_updated_load(
         self, load: Load, request: UpdateLoadRequest
