@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from src.core.domain.entities import Load, LoadStatus, UrgencyLevel
+from src.core.domain.entities import Load, UrgencyLevel
 from src.core.domain.value_objects import EquipmentType, Location, Rate
 
 
@@ -23,7 +23,7 @@ class TestLoad:
             weight=35000,
             miles="716",
             loadboard_rate=Rate.from_float(2500),
-            status=LoadStatus.AVAILABLE,
+            booked=False,
             urgency=UrgencyLevel.NORMAL,
             is_active=True,
             created_at=datetime.now(timezone.utc),
@@ -50,7 +50,7 @@ class TestLoad:
             weight=35000,
             miles="500",
             loadboard_rate=Rate.from_float(2000),
-            status=LoadStatus.AVAILABLE,
+            booked=False,
             urgency=UrgencyLevel.NORMAL,
             is_active=True,
             created_at=datetime.now(timezone.utc),

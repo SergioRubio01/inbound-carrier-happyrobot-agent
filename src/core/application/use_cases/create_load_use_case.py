@@ -11,7 +11,7 @@ from typing import Optional
 from uuid import uuid4
 
 from src.config.settings import settings
-from src.core.domain.entities import Load, LoadStatus
+from src.core.domain.entities import Load
 from src.core.domain.exceptions.base import DomainException
 from src.core.domain.value_objects import EquipmentType, Location, Rate
 from src.core.ports.repositories import ILoadRepository
@@ -60,7 +60,7 @@ class CreateLoadResponse:
 
     load_id: str
     reference_number: str
-    status: str
+    booked: bool
     created_at: datetime
 
 
@@ -116,7 +116,6 @@ class CreateLoadUseCase:
                 miles=request.miles,
                 booked=request.booked or False,
                 session_id=request.session_id,
-                status=LoadStatus.AVAILABLE,
                 is_active=True,
                 created_at=datetime.utcnow(),
                 updated_at=datetime.utcnow(),
@@ -132,7 +131,7 @@ class CreateLoadUseCase:
             return CreateLoadResponse(
                 load_id=str(created_load.load_id),
                 reference_number=created_load.reference_number,
-                status=created_load.status.value,
+                booked=created_load.booked,
                 created_at=created_load.created_at,
             )
 

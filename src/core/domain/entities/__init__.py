@@ -5,11 +5,10 @@ Author: HappyRobot Team
 Created: 2024-08-14
 """
 
-from .load import Load, LoadNotAvailableException, LoadStatus, UrgencyLevel
+from .load import Load, LoadNotAvailableException, UrgencyLevel
 
 __all__ = [
     "Load",
     "LoadNotAvailableException",
-    "LoadStatus",
     "UrgencyLevel",
 ]

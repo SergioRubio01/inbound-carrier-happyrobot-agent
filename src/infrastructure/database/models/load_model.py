@@ -60,11 +60,7 @@ class LoadModel(Base, TimestampMixin):
     # Pricing
     loadboard_rate = Column(NUMERIC(10, 2), nullable=False, index=True)
 
-    # Status
-    status: Mapped[str] = mapped_column(
-        String(30), nullable=False, default="AVAILABLE", index=True
-    )
-    # AVAILABLE, PENDING, BOOKED, IN_TRANSIT, DELIVERED, CANCELLED
+    # Status - using booked boolean field instead of status enum
     booked = Column(Boolean, default=False, index=True)
 
     # Special Instructions

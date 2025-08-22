@@ -18,7 +18,7 @@ from src.core.application.use_cases.create_load_use_case import (
     DuplicateReferenceException,
     LoadCreationException,
 )
-from src.core.domain.entities import Load, LoadStatus
+from src.core.domain.entities import Load
 from src.core.domain.value_objects import Location
 from src.core.ports.repositories import ILoadRepository
 
@@ -68,7 +68,8 @@ class MockLoadRepository(ILoadRepository):
         return list(self.loads.values())
 
     async def get_loads_by_status(self, status, limit=100, offset=0):
-        return [load for load in self.loads.values() if load.status == status]
+        # This method is no longer used since we removed LoadStatus_REMOVED
+        return []
 
     async def count_loads_by_criteria(self, criteria):
         return len(self.loads)
@@ -81,7 +82,7 @@ class MockLoadRepository(ILoadRepository):
 
     async def list_all(
         self,
-        status=None,
+        booked=None,
         equipment_type=None,
         start_date=None,
         end_date=None,
@@ -140,7 +141,7 @@ class TestCreateLoadUseCase:
         assert response.load_id is not None
         assert response.reference_number is not None
         assert response.reference_number.startswith("LD-2025-")
-        assert response.status == LoadStatus.AVAILABLE.value
+        assert response.booked is False
         assert response.created_at is not None
 
     @pytest.mark.asyncio
@@ -276,4 +277,4 @@ class TestCreateLoadUseCase:
         response = await create_load_use_case.execute(valid_create_request)
 
         assert response.load_id is not None
-        assert response.status == LoadStatus.AVAILABLE.value
+        assert response.booked is False
