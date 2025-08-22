@@ -88,8 +88,26 @@ docker-compose down -v
 ### Prerequisites
 - AWS Account with appropriate permissions
 - AWS CLI configured
-- Pulumi CLI installed
+- Pulumi CLI installed (see installation below)
 - Docker installed for building images
+
+#### Installing Pulumi CLI
+
+```bash
+# Windows (PowerShell)
+choco install pulumi
+# Or download installer from https://www.pulumi.com/docs/get-started/install/
+
+# macOS
+brew install pulumi
+# Or: curl -fsSL https://get.pulumi.com | sh
+
+# Linux/WSL
+curl -fsSL https://get.pulumi.com | sh
+
+# Verify installation
+pulumi version
+```
 
 ### Step 1: Configure AWS Credentials
 
@@ -111,8 +129,20 @@ cd infrastructure/pulumi
 # Install dependencies
 npm install
 
-# Login to Pulumi
+# Login to Pulumi (choose one method):
+
+# Option 1: Using Pulumi Cloud (free tier available)
 pulumi login
+# This will open browser for authentication
+
+# Option 2: Using access token (for CI/CD)
+export PULUMI_ACCESS_TOKEN=<your-pulumi-access-token>
+pulumi login
+# Get token from: https://app.pulumi.com/account/tokens
+
+# Option 3: Local backend (no cloud account needed)
+pulumi login --local
+# State stored locally in ~/.pulumi
 
 # Create new stack for FDE
 pulumi stack init happyrobot-fde
@@ -136,13 +166,17 @@ pulumi config set environment dev
 ### Step 4: Deploy Infrastructure
 
 ```bash
-# Set passphrase
+# Set passphrase for encryption (required for state security)
+# The passphrase encrypts sensitive values in your Pulumi state
 
-# - In cmd
-set PULUMI_CONFIG_PASSPHRASE=
+# - In Windows (cmd)
+set PULUMI_CONFIG_PASSPHRASE=<your-secure-passphrase>
 
-# - In bash
-export PULUMI_CONFIG_PASSPHRASE=
+# - In Linux/Mac (bash)
+export PULUMI_CONFIG_PASSPHRASE=<your-secure-passphrase>
+
+# Note: Store this passphrase securely - you'll need it for all future operations
+# For CI/CD, set PULUMI_CONFIG_PASSPHRASE in your pipeline's secret variables
 
 # Preview changes
 pulumi preview -y

@@ -47,6 +47,12 @@ Minimum required env vars:
 - `POSTGRES_PORT=5432`
 - `API_KEY=dev-local-api-key`
 
+### Generate self-signed certificates (optional for HTTPS locally)
+```bash
+# Generate self-signed cert for local HTTPS testing
+openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes -subj "/CN=localhost"
+```
+
 ### Start services
 ```bash
 docker compose up --build
@@ -55,7 +61,7 @@ docker compose up --build
 Services:
 - API: http://localhost:8000 (health at `/api/v1/health`)
 - Postgres: localhost:5432
-- pgAdmin: http://localhost:5050 (default: admin@local / admin)
+- pgAdmin: http://localhost:5050/browser (default: admin@local.host / admin)
 
 To access Postgres in pgAdmin, register a new server:
 - Host: `postgres`
