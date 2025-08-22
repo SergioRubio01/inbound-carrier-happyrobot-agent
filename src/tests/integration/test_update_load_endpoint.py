@@ -202,18 +202,18 @@ class TestUpdateLoadEndpoint:
         assert response.status_code == 409
         assert "version conflict" in response.json()["detail"].lower()
 
-    async def test_invalid_status_transition(
+    async def test_update_booked_field(
         self, client: AsyncClient, sample_load_in_db, api_key_headers
     ):
-        """Test invalid status transition."""
-        # Arrange - First set load to DELIVERED
+        """Test updating booked field."""
+        # Arrange - Set load to not booked initially
         session_gen = get_database_session()
         session = await session_gen.__anext__()
         try:
             load_model = await session.get(LoadModel, sample_load_in_db.load_id)
             if load_model is None:
                 raise ValueError(f"Load {sample_load_in_db.load_id} not found")
-            load_model.status = "DELIVERED"
+            load_model.booked = False
             setattr(load_model, "version", 2)
             await session.commit()
         finally:
@@ -222,7 +222,7 @@ class TestUpdateLoadEndpoint:
         load_id = str(sample_load_in_db.load_id)
         update_data = {
             "version": 2,
-            "status": "AVAILABLE",  # DELIVERED -> AVAILABLE is invalid
+            "booked": True,  # Update booked status
         }
 
         # Act
@@ -231,21 +231,21 @@ class TestUpdateLoadEndpoint:
         )
 
         # Assert
-        assert response.status_code == 409
-        assert "invalid status transition" in response.json()["detail"].lower()
+        assert response.status_code == 200
+        assert response.json()["booked"] is True
 
-    async def test_cannot_update_delivered_load(
+    async def test_update_booked_load(
         self, client: AsyncClient, sample_load_in_db, api_key_headers
     ):
-        """Test that delivered loads cannot be updated."""
-        # Arrange - First set load to DELIVERED
+        """Test that booked loads can still be updated."""
+        # Arrange - Set load to booked
         session_gen = get_database_session()
         session = await session_gen.__anext__()
         try:
             load_model = await session.get(LoadModel, sample_load_in_db.load_id)
             if load_model is None:
                 raise ValueError(f"Load {sample_load_in_db.load_id} not found")
-            load_model.status = "DELIVERED"
+            load_model.booked = True
             await session.commit()
         finally:
             await session.close()
@@ -258,9 +258,9 @@ class TestUpdateLoadEndpoint:
             f"/api/v1/loads/{load_id}", json=update_data, headers=api_key_headers
         )
 
-        # Assert
-        assert response.status_code == 409
-        assert "has been delivered" in response.json()["detail"].lower()
+        # Assert - Booked loads can be updated
+        assert response.status_code == 200
+        assert response.json()["weight"] == 30000
 
     async def test_validation_errors(
         self, client: AsyncClient, sample_load_in_db, api_key_headers
