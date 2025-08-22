@@ -36,16 +36,23 @@ class SentimentEnum(str, Enum):
     NEGATIVE = "Negative"
 
 
+class ResponseEnum(str, Enum):
+    """Response values for call metrics."""
+
+    SUCCESS = "Success"
+    RATE_TOO_HIGH = "Rate too high"
+    INCORRECT_MC = "Incorrect MC"
+    FALLBACK_ERROR = "Fallback error"
+
+
 class CallMetricsRequestModel(BaseModel):
     """Request model for creating call metrics."""
 
     transcript: str = Field(
         ..., min_length=1, max_length=50000, description="Full conversation transcript"
     )
-    response: str = Field(
+    response: ResponseEnum = Field(
         ...,
-        min_length=1,
-        max_length=50,
         description="Call response (Success, Rate too high, Incorrect MC, Fallback error)",
     )
     response_reason: Optional[str] = Field(
@@ -145,6 +152,13 @@ async def create_call_metrics(
         # Initialize repository
         metrics_repo = PostgresCallMetricsRepository(session)
 
+        # Convert response enum to string for database
+        response_value = (
+            request.response.value
+            if hasattr(request.response, "value")
+            else str(request.response)
+        )
+
         # Validate sentiment value if provided
         sentiment_value = None
         if request.sentiment:
@@ -158,7 +172,7 @@ async def create_call_metrics(
         # Create the metrics record
         metrics = await metrics_repo.create_metrics(
             transcript=request.transcript,
-            response=request.response,
+            response=response_value,
             response_reason=request.response_reason,
             sentiment=sentiment_value,
             sentiment_reason=request.sentiment_reason,
