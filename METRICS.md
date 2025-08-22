@@ -79,6 +79,10 @@ poetry run python -m src.interfaces.cli \
 
 ## Report Contents
 
+### Sample Report Output
+![HappyRobot Metrics Report Sample](docs/metrics.png)
+*Example PDF report showing metrics visualization with proper text wrapping in tables*
+
 ### PDF Report Includes:
 - **Summary Statistics**
   - Total calls processed
