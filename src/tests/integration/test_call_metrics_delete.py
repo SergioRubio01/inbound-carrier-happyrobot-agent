@@ -38,10 +38,11 @@ def valid_call_metrics_data():
     """Valid call metrics data for creating test records."""
     return {
         "transcript": "Test transcript for deletion",
-        "response": "ACCEPTED",
-        "reason": "Rate was acceptable",
-        "final_loadboard_rate": 2500.00,
-        "session_id": f"session-{uuid4()}",
+        "response": "Success",
+        "response_reason": "Rate was acceptable",
+        "sentiment": "Positive",
+        "sentiment_reason": "Customer was satisfied with the deal",
+        "session_id": str(uuid4()),
     }
 
 
@@ -52,7 +53,7 @@ class TestDeleteCallMetrics:
         # First create a metric
         create_data = {
             "transcript": "Test transcript for deletion",
-            "response": "ACCEPTED",
+            "response": "Success",
         }
         create_response = client.post("/api/v1/metrics/call", json=create_data)
         assert create_response.status_code == 201
@@ -91,7 +92,7 @@ class TestDeleteCallMetrics:
     def test_delete_idempotency(self, client):
         """Test that deleting already deleted metrics returns 404."""
         # Create and delete a metric
-        create_data = {"transcript": "Test transcript", "response": "REJECTED"}
+        create_data = {"transcript": "Test transcript", "response": "Rate too high"}
         create_response = client.post("/api/v1/metrics/call", json=create_data)
         metrics_id = create_response.json()["metrics_id"]
 
@@ -119,8 +120,8 @@ class TestDeleteCallMetrics:
         assert retrieved_data["transcript"] == valid_call_metrics_data["transcript"]
         assert retrieved_data["response"] == valid_call_metrics_data["response"]
         assert (
-            retrieved_data["final_loadboard_rate"]
-            == valid_call_metrics_data["final_loadboard_rate"]
+            retrieved_data["response_reason"]
+            == valid_call_metrics_data["response_reason"]
         )
 
         # Delete the metric
@@ -133,7 +134,7 @@ class TestDeleteCallMetrics:
 
     def test_delete_various_response_types(self, client):
         """Test deletion of metrics with various response types."""
-        response_types = ["ACCEPTED", "REJECTED", "ABANDONED", "TRANSFER", "ERROR"]
+        response_types = ["Success", "Rate too high", "Incorrect MC", "Fallback error"]
         metrics_ids = []
 
         # Create metrics with different response types
@@ -141,7 +142,7 @@ class TestDeleteCallMetrics:
             create_data = {
                 "transcript": f"Test transcript for {response_type}",
                 "response": response_type,
-                "reason": f"Test reason for {response_type}",
+                "response_reason": f"Test reason for {response_type}",
             }
             create_response = client.post("/api/v1/metrics/call", json=create_data)
             assert create_response.status_code == 201
@@ -160,7 +161,7 @@ class TestDeleteCallMetrics:
     def test_delete_empty_response_body(self, client):
         """Test that successful deletion returns empty body."""
         # Create a metric
-        create_data = {"transcript": "Test", "response": "ACCEPTED"}
+        create_data = {"transcript": "Test", "response": "Success"}
         create_response = client.post("/api/v1/metrics/call", json=create_data)
         metrics_id = create_response.json()["metrics_id"]
 
@@ -176,7 +177,7 @@ class TestDeleteCallMetrics:
         # We'll test that invalid operations don't affect valid ones
 
         # Create a valid metric
-        create_data = {"transcript": "Valid metric", "response": "ACCEPTED"}
+        create_data = {"transcript": "Valid metric", "response": "Success"}
         create_response = client.post("/api/v1/metrics/call", json=create_data)
         valid_metrics_id = create_response.json()["metrics_id"]
 
@@ -199,7 +200,7 @@ class TestDeleteCallMetrics:
         for i in range(3):
             create_data = {
                 "transcript": f"Concurrent test metric {i}",
-                "response": "ACCEPTED" if i % 2 == 0 else "REJECTED",
+                "response": "Success" if i % 2 == 0 else "Rate too high",
             }
             create_response = client.post("/api/v1/metrics/call", json=create_data)
             assert create_response.status_code == 201

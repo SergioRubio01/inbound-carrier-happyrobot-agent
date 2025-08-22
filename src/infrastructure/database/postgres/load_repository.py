@@ -285,13 +285,6 @@ class PostgresLoadRepository(BaseRepository[LoadModel, Load], ILoadRepository):
         entities = [self._model_to_entity(model) for model in models]
         return [e for e in entities if e is not None]
 
-    async def get_loads_by_carrier(
-        self, carrier_id: UUID, limit: int = 100, offset: int = 0
-    ) -> List[Load]:
-        """Get loads booked by specific carrier."""
-        # Note: This method is not applicable since we removed carrier booking tracking
-        return []
-
     async def count_loads_by_criteria(self, criteria: LoadSearchCriteria) -> int:
         """Count loads matching criteria."""
         stmt = select(func.count(LoadModel.load_id))

@@ -18,7 +18,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.infrastructure.database.postgres import (
     PostgresCallMetricsRepository,
-    PostgresCarrierRepository,
     PostgresLoadRepository,
 )
 
@@ -117,7 +116,6 @@ class MetricsSummaryResponseModel(BaseModel):
 
     period: Dict[str, Any]
     financial_metrics: Dict[str, Any]
-    carrier_metrics: Dict[str, Any]
     generated_at: str
 
 
@@ -221,7 +219,6 @@ async def get_metrics_summary(
     try:
         # Initialize repositories
         load_repo = PostgresLoadRepository(session)
-        carrier_repo = PostgresCarrierRepository(session)
 
         # Calculate date range
         end_date = datetime.now(timezone.utc)
@@ -229,9 +226,6 @@ async def get_metrics_summary(
 
         # Get additional metrics from database
         load_metrics_data = await load_repo.get_load_metrics(start_date, end_date)
-        carrier_metrics_data = await carrier_repo.get_carrier_metrics(
-            start_date, end_date
-        )
 
         # Build response from real data
         return MetricsSummaryResponseModel(
@@ -248,16 +242,6 @@ async def get_metrics_summary(
                 "average_agreed_rate": 0.0,  # Placeholder - would come from call metrics
                 "average_loadboard_rate": load_metrics_data.get(
                     "average_loadboard_rate", 0.0
-                ),
-            },
-            carrier_metrics={
-                "repeat_callers": carrier_metrics_data.get("repeat_callers", 0),
-                "new_carriers": carrier_metrics_data.get("new_carriers", 0),
-                "top_equipment_types": carrier_metrics_data.get(
-                    "top_equipment_types", []
-                ),
-                "average_mc_verification_time_ms": carrier_metrics_data.get(
-                    "avg_verification_time_ms", 0
                 ),
             },
             generated_at=datetime.now(timezone.utc).isoformat(),

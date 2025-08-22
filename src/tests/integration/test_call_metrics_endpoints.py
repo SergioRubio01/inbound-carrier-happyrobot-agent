@@ -33,7 +33,7 @@ def valid_call_metrics_data():
         "response_reason": "Rate was acceptable",
         "sentiment": "Positive",
         "sentiment_reason": "Customer was satisfied with the deal",
-        "session_id": f"session-{uuid4()}",
+        "session_id": str(uuid4()),
     }
 
 
