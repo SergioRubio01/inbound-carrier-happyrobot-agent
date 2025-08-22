@@ -1,4 +1,4 @@
-# FDE Technical Challenge: Inbound Carrier Sales (HappyRobot)
+# Inbound Carrier Sales (HappyRobot) API
 
 ## Table of Contents
 - [Overview](#overview)
@@ -6,6 +6,7 @@
 - [Repository Layout](#repository-layout)
 - [Local Development](#local-development)
 - [Deployment](#deployment)
+- [Metrics and Reporting](#metrics-and-reporting)
 - [Contributing](#contributing)
 
 ## Overview
