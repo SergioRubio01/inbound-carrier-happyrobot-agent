@@ -21,17 +21,6 @@ class LoadNotAvailableException(DomainException):
     pass
 
 
-class LoadStatus(Enum):
-    """Load status enumeration."""
-
-    AVAILABLE = "AVAILABLE"
-    PENDING = "PENDING"
-    BOOKED = "BOOKED"
-    IN_TRANSIT = "IN_TRANSIT"
-    DELIVERED = "DELIVERED"
-    CANCELLED = "CANCELLED"
-
-
 class UrgencyLevel(Enum):
     """Load urgency level enumeration."""
 
@@ -78,7 +67,6 @@ class Load:
     broker_contact: Optional[dict] = None
 
     # Status
-    status: LoadStatus = LoadStatus.AVAILABLE
     urgency: UrgencyLevel = UrgencyLevel.NORMAL
     booked: bool = False
 
@@ -120,14 +108,14 @@ class Load:
     @property
     def is_available(self) -> bool:
         """Check if load is available for booking."""
-        return self.status == LoadStatus.AVAILABLE and self.is_active
+        return not self.booked and self.is_active
 
     def verify_availability(self) -> None:
         """Verify load availability and raise exception if not available."""
         if not self.is_available:
-            if self.status != LoadStatus.AVAILABLE:
+            if self.booked:
                 raise LoadNotAvailableException(
-                    f"Load {self.reference_number} status is {self.status.value}"
+                    f"Load {self.reference_number} is already booked"
                 )
 
             if not self.is_active:
@@ -139,7 +127,7 @@ class Load:
         """Book the load by a carrier."""
         self.verify_availability()
 
-        self.status = LoadStatus.BOOKED
+        self.booked = True
         self.updated_at = datetime.utcnow()
 
         # Update the loadboard rate if a different rate was agreed upon
@@ -148,14 +136,8 @@ class Load:
 
     def cancel_booking(self, reason: Optional[str] = None) -> None:
         """Cancel the load booking."""
-        self.status = LoadStatus.CANCELLED
+        self.booked = False
         self.updated_at = datetime.utcnow()
-
-    def update_status(self, new_status: LoadStatus) -> None:
-        """Update load status."""
-        if self.status != new_status:
-            self.status = new_status
-            self.updated_at = datetime.utcnow()
 
     def matches_equipment(self, equipment_type: EquipmentType) -> bool:
         """Check if load matches the given equipment type."""

@@ -18,7 +18,7 @@ from src.core.application.use_cases.delete_load_use_case import (
     LoadDeletionException,
     LoadNotFoundException,
 )
-from src.core.domain.entities import Load, LoadStatus
+from src.core.domain.entities import Load
 from src.core.domain.value_objects import EquipmentType, Location, Rate
 
 
@@ -54,7 +54,7 @@ class TestDeleteLoadUseCase:
             loadboard_rate=rate,
             weight=40000,
             commodity_type="General Freight",
-            status=LoadStatus.AVAILABLE,
+            booked=False,
             is_active=True,
         )
 
@@ -100,44 +100,48 @@ class TestDeleteLoadUseCase:
         mock_load_repository.delete.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_delete_load_in_transit_fails(
+    async def test_delete_load_with_booked_status_succeeds(
         self, delete_use_case, mock_load_repository, sample_load
     ):
-        """Test deletion of load in transit fails."""
+        """Test deletion of booked load succeeds."""
         # Arrange
-        sample_load.status = LoadStatus.IN_TRANSIT
+        sample_load.booked = True
         load_id = sample_load.load_id
         mock_load_repository.get_by_id.return_value = sample_load
+        mock_load_repository.delete.return_value = True
 
         request = DeleteLoadRequest(load_id=load_id)
 
-        # Act & Assert
-        with pytest.raises(LoadDeletionException) as exc_info:
-            await delete_use_case.execute(request)
+        # Act
+        response = await delete_use_case.execute(request)
 
-        assert "in transit" in str(exc_info.value)
+        # Assert
+        assert isinstance(response, DeleteLoadResponse)
+        assert response.load_id == str(load_id)
         mock_load_repository.get_by_id.assert_called_once_with(load_id)
-        mock_load_repository.delete.assert_not_called()
+        mock_load_repository.delete.assert_called_once_with(load_id)
 
     @pytest.mark.asyncio
-    async def test_delete_load_delivered_fails(
+    async def test_delete_load_not_booked_succeeds(
         self, delete_use_case, mock_load_repository, sample_load
     ):
-        """Test deletion of delivered load fails."""
+        """Test deletion of not booked load succeeds."""
         # Arrange
-        sample_load.status = LoadStatus.DELIVERED
+        sample_load.booked = False
         load_id = sample_load.load_id
         mock_load_repository.get_by_id.return_value = sample_load
+        mock_load_repository.delete.return_value = True
 
         request = DeleteLoadRequest(load_id=load_id)
 
-        # Act & Assert
-        with pytest.raises(LoadDeletionException) as exc_info:
-            await delete_use_case.execute(request)
+        # Act
+        response = await delete_use_case.execute(request)
 
-        assert "delivered" in str(exc_info.value)
+        # Assert
+        assert isinstance(response, DeleteLoadResponse)
+        assert response.load_id == str(load_id)
         mock_load_repository.get_by_id.assert_called_once_with(load_id)
-        mock_load_repository.delete.assert_not_called()
+        mock_load_repository.delete.assert_called_once_with(load_id)
 
     @pytest.mark.asyncio
     async def test_delete_already_deleted_load_succeeds(
@@ -168,50 +172,6 @@ class TestDeleteLoadUseCase:
         """Test deletion of inactive load succeeds."""
         # Arrange
         sample_load.is_active = False
-        load_id = sample_load.load_id
-        mock_load_repository.get_by_id.return_value = sample_load
-        mock_load_repository.delete.return_value = True
-
-        request = DeleteLoadRequest(load_id=load_id)
-
-        # Act
-        response = await delete_use_case.execute(request)
-
-        # Assert
-        assert isinstance(response, DeleteLoadResponse)
-        assert response.load_id == str(load_id)
-        mock_load_repository.get_by_id.assert_called_once_with(load_id)
-        mock_load_repository.delete.assert_called_once_with(load_id)
-
-    @pytest.mark.asyncio
-    async def test_delete_booked_load_success(
-        self, delete_use_case, mock_load_repository, sample_load
-    ):
-        """Test deletion of booked load succeeds (business rule allows this)."""
-        # Arrange
-        sample_load.status = LoadStatus.BOOKED
-        load_id = sample_load.load_id
-        mock_load_repository.get_by_id.return_value = sample_load
-        mock_load_repository.delete.return_value = True
-
-        request = DeleteLoadRequest(load_id=load_id)
-
-        # Act
-        response = await delete_use_case.execute(request)
-
-        # Assert
-        assert isinstance(response, DeleteLoadResponse)
-        assert response.load_id == str(load_id)
-        mock_load_repository.get_by_id.assert_called_once_with(load_id)
-        mock_load_repository.delete.assert_called_once_with(load_id)
-
-    @pytest.mark.asyncio
-    async def test_delete_cancelled_load_success(
-        self, delete_use_case, mock_load_repository, sample_load
-    ):
-        """Test deletion of cancelled load succeeds."""
-        # Arrange
-        sample_load.status = LoadStatus.CANCELLED
         load_id = sample_load.load_id
         mock_load_repository.get_by_id.return_value = sample_load
         mock_load_repository.delete.return_value = True

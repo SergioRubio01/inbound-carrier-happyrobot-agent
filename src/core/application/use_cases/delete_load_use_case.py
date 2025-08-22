@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
-from src.core.domain.entities import Load, LoadStatus
+from src.core.domain.entities import Load
 from src.core.domain.exceptions.base import DomainException
 from src.core.ports.repositories import ILoadRepository
 
@@ -84,13 +84,6 @@ class DeleteLoadUseCase:
 
     async def _validate_deletion_rules(self, load: Load) -> None:
         """Validate business rules for load deletion."""
-        # Cannot delete loads that are in transit or delivered
-        if load.status == LoadStatus.IN_TRANSIT:
-            raise LoadDeletionException(
-                f"Cannot delete load {load.reference_number} - load is in transit"
-            )
-
-        if load.status == LoadStatus.DELIVERED:
-            raise LoadDeletionException(
-                f"Cannot delete load {load.reference_number} - load has been delivered"
-            )
+        # Currently no specific restrictions for deletion
+        # Can be extended to check booked status if needed
+        pass

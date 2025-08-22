@@ -7,11 +7,11 @@ Created: 2024-08-20
 
 from dataclasses import dataclass
 from datetime import datetime, time
-from typing import Dict, List, Optional
+from typing import Optional
 from uuid import UUID
 
 from src.config.settings import settings
-from src.core.domain.entities import Load, LoadStatus
+from src.core.domain.entities import Load
 from src.core.domain.exceptions.base import DomainException
 from src.core.domain.value_objects import EquipmentType, Location, Rate
 from src.core.ports.repositories import ILoadRepository
@@ -47,7 +47,6 @@ class UpdateLoadRequest:
     weight: Optional[int] = None
     commodity_type: Optional[str] = None
     notes: Optional[str] = None
-    status: Optional[str] = None
     dimensions: Optional[str] = None
     num_of_pieces: Optional[int] = None
     miles: Optional[str] = None
@@ -61,7 +60,7 @@ class UpdateLoadResponse:
 
     load_id: str
     reference_number: Optional[str]
-    status: str
+    booked: bool
     updated_at: datetime
 
 
@@ -94,7 +93,7 @@ class UpdateLoadUseCase:
             return UpdateLoadResponse(
                 load_id=str(saved_load.load_id),
                 reference_number=saved_load.reference_number,
-                status=saved_load.status.value,
+                booked=saved_load.booked,
                 updated_at=saved_load.updated_at,
             )
 
@@ -107,42 +106,11 @@ class UpdateLoadUseCase:
         self, load: Load, request: UpdateLoadRequest
     ) -> None:
         """Validate business rules for load update."""
-        # Cannot update delivered loads
-        if load.status == LoadStatus.DELIVERED:
+        # Simplified validation - just check if load is active
+        if not load.is_active:
             raise LoadUpdateException(
-                f"Cannot update load {load.reference_number} - load has been delivered"
+                f"Cannot update load {load.reference_number} - load is not active"
             )
-
-        # Validate status transitions if status is being changed
-        if request.status and request.status != load.status.value:
-            new_status = LoadStatus(request.status)
-            if not self._is_valid_status_transition(load.status, new_status):
-                raise LoadUpdateException(
-                    f"Invalid status transition from {load.status.value} to {new_status.value}"
-                )
-
-    def _is_valid_status_transition(
-        self, current_status: LoadStatus, new_status: LoadStatus
-    ) -> bool:
-        """Check if status transition is valid."""
-        valid_transitions: Dict[LoadStatus, List[LoadStatus]] = {
-            LoadStatus.AVAILABLE: [
-                LoadStatus.PENDING,
-                LoadStatus.BOOKED,
-                LoadStatus.CANCELLED,
-            ],
-            LoadStatus.PENDING: [
-                LoadStatus.AVAILABLE,
-                LoadStatus.BOOKED,
-                LoadStatus.CANCELLED,
-            ],
-            LoadStatus.BOOKED: [LoadStatus.IN_TRANSIT, LoadStatus.CANCELLED],
-            LoadStatus.IN_TRANSIT: [LoadStatus.DELIVERED],
-            LoadStatus.CANCELLED: [],  # Cannot change from cancelled
-            LoadStatus.DELIVERED: [],  # Cannot change from delivered
-        }
-
-        return new_status in valid_transitions.get(current_status, [])
 
     async def _apply_updates(self, load: Load, request: UpdateLoadRequest) -> Load:
         """Apply updates to the load entity."""
@@ -196,11 +164,7 @@ class UpdateLoadUseCase:
         if request.session_id is not None:
             load.session_id = request.session_id
 
-        # Update status
-        if request.status:
-            new_status = LoadStatus(request.status)
-            if load.status != new_status:
-                load.update_status(new_status)
+        # Booked status can be updated directly
 
         # Always update the timestamp
         load.updated_at = datetime.utcnow()

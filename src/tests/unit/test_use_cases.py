@@ -12,7 +12,7 @@ from src.core.application.use_cases.search_loads import (
 )
 
 # VerifyCarrier use case is not implemented yet
-from src.core.domain.entities import Load, LoadStatus, UrgencyLevel
+from src.core.domain.entities import Load, UrgencyLevel
 from src.core.domain.value_objects import EquipmentType, Location, Rate
 
 # NOTE: VerifyCarrierUseCase tests are deferred pending implementation
@@ -121,7 +121,7 @@ class TestSearchLoadsUseCase:
                 weight=35000,
                 miles="716",
                 loadboard_rate=Rate.from_float(2500),
-                status=LoadStatus.AVAILABLE,
+                booked=False,
                 urgency=UrgencyLevel.NORMAL,
                 is_active=True,
                 created_at=datetime.now(timezone.utc),
