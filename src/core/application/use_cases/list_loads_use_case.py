@@ -51,6 +51,10 @@ class LoadSummary:
     commodity_type: str
     booked: bool
     created_at: datetime
+    miles: Optional[str] = None
+    num_of_pieces: Optional[int] = None
+    dimensions: Optional[str] = None
+    session_id: Optional[str] = None
 
 
 @dataclass
@@ -184,4 +188,8 @@ class ListLoadsUseCase:
             commodity_type=load.commodity_type or "",
             booked=load.booked,
             created_at=load.created_at,
+            miles=load.miles,
+            num_of_pieces=load.num_of_pieces,
+            dimensions=load.dimensions,
+            session_id=load.session_id,
         )

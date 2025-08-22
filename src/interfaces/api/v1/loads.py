@@ -309,10 +309,10 @@ async def list_loads(
                 commodity_type=load.commodity_type,
                 booked=load.booked,
                 created_at=load.created_at,
-                dimensions=getattr(load, "dimensions", None),
-                num_of_pieces=getattr(load, "num_of_pieces", None),
-                miles=getattr(load, "miles", None),
-                session_id=getattr(load, "session_id", None),
+                dimensions=load.dimensions,
+                num_of_pieces=load.num_of_pieces,
+                miles=load.miles,
+                session_id=load.session_id,
             )
             for load in response.loads
         ]
