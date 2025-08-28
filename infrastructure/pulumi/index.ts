@@ -6,6 +6,7 @@ import { ContainersComponent } from "./components/containers";
 import { LoadBalancerComponent } from "./components/loadbalancer";
 import { MonitoringComponent } from "./components/monitoring";
 import { HappyRobotDNS } from "./components/route53";
+import { IAMComponent } from "./components/iam";
 
 // Get configuration
 const config = new pulumi.Config();
@@ -26,6 +27,14 @@ const commonTags = {
     ManagedBy: "pulumi",
     Owner: "engineering",
 };
+
+// Create IAM policies for deployment permissions
+// This includes Route 53 permissions needed for DNS management
+const iam = new IAMComponent(`${resourcePrefix}-iam`, {
+    environment,
+    tags: commonTags,
+    attachToUser: "Sergio-HappyRobot", // Attach policies to the CI/CD user
+});
 
 // Create VPC and networking infrastructure
 const networking = new NetworkingComponent(`${resourcePrefix}-networking`, {
@@ -95,6 +104,8 @@ const dns = new HappyRobotDNS(`${resourcePrefix}-dns`, {
 
 // Export important values
 export const vpcId = networking.vpc.id;
+export const route53PolicyArn = iam.route53Policy.arn;
+export const deploymentPolicyArn = iam.deploymentUserPolicy.arn;
 export const publicSubnetIds = networking.publicSubnets.map(subnet => subnet.id);
 export const privateSubnetIds = networking.privateSubnets.map(subnet => subnet.id);
 export const databaseEndpoint = database.endpoint;
@@ -137,5 +148,10 @@ export const outputs = {
         logGroupNames: {
             api: monitoring.apiLogGroup.name,
         },
+    },
+    iam: {
+        route53PolicyArn: iam.route53Policy.arn,
+        deploymentPolicyArn: iam.deploymentUserPolicy.arn,
+        note: "Attach these policies to your IAM user for Route 53 access",
     },
 };
