@@ -68,7 +68,6 @@ export class ContainersComponent extends pulumi.ComponentResource {
             platform: "linux/amd64", // Ensure compatibility with Fargate
             // The image will be tagged with a hash of the build context
             // This ensures we only rebuild when source files actually change
-            imageName: pulumi.interpolate`${this.apiRepository.repositoryUrl}:${args.environment || 'latest'}`,
             args: {
                 // Build args if needed
                 BUILDKIT_INLINE_CACHE: "1", // Enable inline cache for better caching
