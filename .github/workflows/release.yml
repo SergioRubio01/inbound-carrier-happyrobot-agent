@@ -162,6 +162,9 @@ jobs:
     needs: create-release
     runs-on: ubuntu-latest
     if: success() && !contains(needs.create-release.outputs.version, '-')
+    permissions:
+      actions: write
+      contents: read
 
     steps:
       - name: Trigger deployment workflow
