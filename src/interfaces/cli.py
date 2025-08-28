@@ -389,7 +389,7 @@ class MetricsCLI:
                     leading=12,
                 )
 
-                reasons_data = [["Reason", "Count"]]
+                reasons_data: List[List[Any]] = [["Reason", "Count"]]
                 for reason_info in response_reasons[:10]:  # Top 10
                     reason_text = reason_info.get("reason", "N/A")
                     reasons_data.append(
@@ -432,7 +432,7 @@ class MetricsCLI:
                     leading=12,
                 )
 
-                sentiment_reasons_data = [["Reason", "Count"]]
+                sentiment_reasons_data: List[List[Any]] = [["Reason", "Count"]]
                 for reason_info in sentiment_reasons[:10]:  # Top 10
                     sentiment_reason_text = reason_info.get("reason", "N/A")
                     sentiment_reasons_data.append(
@@ -491,7 +491,7 @@ class MetricsCLI:
                     leading=10,
                 )
 
-                metrics_data_table = [
+                metrics_data_table: List[List[Any]] = [
                     ["Date", "Response", "Sentiment", "Response Reason"]
                 ]
 
