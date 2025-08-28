@@ -30,10 +30,12 @@ const commonTags = {
 
 // Create IAM policies for deployment permissions
 // This includes Route 53 permissions needed for DNS management
+// The IAM user is configured in Pulumi.happyrobot-fde.yaml
+const deploymentIamUser = config.get("deploymentIamUser");
 const iam = new IAMComponent(`${resourcePrefix}-iam`, {
     environment,
     tags: commonTags,
-    attachToUser: "Sergio-HappyRobot", // Attach policies to the CI/CD user
+    attachToUser: deploymentIamUser, // Attach policies to the CI/CD user if configured
 });
 
 // Create VPC and networking infrastructure

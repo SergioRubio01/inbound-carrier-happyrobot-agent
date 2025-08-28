@@ -166,6 +166,7 @@ jobs:
           pulumi config set happyrobot-fde:maxLoadWeightLbs 80000
           pulumi config set happyrobot-fde:maxReferenceNumberCounter 99999
           pulumi config set happyrobot-fde:maxRateAmount 999999.99
+          pulumi config set happyrobot-fde:deploymentIamUser Sergio-HappyRobot
         env:
           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
           PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}

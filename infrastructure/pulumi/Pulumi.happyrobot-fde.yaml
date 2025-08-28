@@ -18,3 +18,6 @@ config:
     secure: AAABADiIsDw6lLl2rKsMYqiVrFP/nXyke8Fu3E2xVnSxoIcufcXF6+SZAuZSuzU4H5BPgjbaxS+e3sc=
   happyrobot-fde:certificateArn: arn:aws:acm:eu-south-2:533267139503:certificate/86ba13ac-ebee-4279-8ea5-ffdf9a71fb85
   happyrobot-fde:importExistingDatabase: "true"
+
+  # IAM Configuration
+  happyrobot-fde:deploymentIamUser: "Sergio-HappyRobot"  # IAM user for CI/CD deployments
