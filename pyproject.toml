@@ -1,6 +1,6 @@
 [project]
 name = "happyrobotfde"
-version = "0.4.3"
+version = "0.4.4"
 description = "FDE Technical Challenge: Inbound Carrier Sales"
 authors = [
     {name = "Rubio",email = "100428611@alumnos.uc3m.es"}
