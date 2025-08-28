@@ -1,7 +1,7 @@
 repos:
   # Python hooks
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v6.0.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
@@ -13,7 +13,7 @@ repos:
       - id: check-merge-conflict
 
   - repo: https://github.com/pycqa/isort
-    rev: 5.13.2
+    rev: 6.0.1
     hooks:
       - id: isort
         name: isort (python)
@@ -28,7 +28,7 @@ repos:
   #       files: ^(src|scripts|migrations)/.*\.py$|^main\.py$
 
   - repo: https://github.com/charliermarsh/ruff-pre-commit
-    rev: v0.1.14
+    rev: v0.12.11
     hooks:
       - id: ruff
         args: [--fix]
@@ -38,7 +38,7 @@ repos:
         files: ^(src|scripts|migrations)/.*\.py$|^main\.py$
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.8.0
+    rev: v1.17.1  # Match the version in pyproject.toml
     hooks:
       - id: mypy
         name: mypy
@@ -48,7 +48,20 @@ repos:
           sqlalchemy-stubs,
           types-PyYAML,
           pytest,
-          pytest-asyncio
+          pytest-asyncio,
+          pydantic,
+          pydantic-settings,
+          fastapi,
+          uvicorn,
+          httpx,
+          boto3-stubs,
+          reportlab,
+          types-tabulate,
+          types-colorama
         ]
-        files: ^(src|scripts|migrations)/.*\.py$|^main\.py$
-        args: [--ignore-missing-imports, --no-strict-optional]
+        files: ^(src|scripts)/.*\.py$|^main\.py$  # Exclude migrations as per pyproject.toml
+        args: [
+          --config-file=pyproject.toml,  # Use project's mypy configuration
+          --show-error-codes,
+          --pretty
+        ]
