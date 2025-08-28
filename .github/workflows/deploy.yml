@@ -102,12 +102,12 @@ jobs:
 
     environment:
       name: ${{ matrix.environment }}
-      url: ${{ steps.pulumi.outputs.loadbalancer-dns-name }}
+      url: ${{ steps.get-outputs.outputs.loadbalancer-dns-name }}
 
     outputs:
       ecr-registry: ${{ steps.login-ecr.outputs.registry }}
       api-repository: ${{ env.ECR_API_REPOSITORY }}
-      loadbalancer-dns-name: ${{ steps.pulumi.outputs.loadbalancer-dns-name }}
+      loadbalancer-dns-name: ${{ steps.get-outputs.outputs.loadbalancer-dns-name }}
 
     steps:
       - name: Checkout code
@@ -145,6 +145,17 @@ jobs:
       - name: Install Pulumi CLI
         uses: pulumi/actions@v4
 
+      - name: Create or select Pulumi stack
+        run: |
+          cd infrastructure/pulumi
+          pulumi login
+          # Try to select the stack, if it doesn't exist, create it
+          pulumi stack select happyrobot-fde 2>/dev/null || pulumi stack init happyrobot-fde
+          # Set the AWS region config
+          pulumi config set aws:region ${{ env.AWS_REGION }}
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+
       - name: Deploy with Pulumi
         id: pulumi
         uses: pulumi/actions@v4
@@ -156,6 +167,14 @@ jobs:
         env:
           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
           PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+
+      - name: Get Pulumi outputs
+        id: get-outputs
+        run: |
+          cd infrastructure/pulumi
+          echo "loadbalancer-dns-name=$(pulumi stack output loadBalancerDnsName -s happyrobot-fde 2>/dev/null || echo '')" >> $GITHUB_OUTPUT
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
 
   # Build and push Docker images after infrastructure is ready
   build:
