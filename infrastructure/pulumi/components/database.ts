@@ -41,12 +41,93 @@ export class DatabaseComponent extends pulumi.ComponentResource {
             },
         }, { parent: this });
 
-        // Use default parameter group to avoid issues with static parameters
-        // Custom parameters can be added later after the database is created
+        // Check if we should import an existing RDS instance or create a new one
+        // This allows for smooth transitions from existing infrastructure
+        const importExisting = pulumi.Config.prototype.getBoolean.call(new pulumi.Config(), "importExistingDatabase") || false;
 
-        // Reference the existing database instance
-        // The database already exists in AWS, so we just reference it
-        this.instance = aws.rds.Instance.get(`${name}-postgres`, `${name}-postgres`, undefined, { parent: this }) as aws.rds.Instance;
+        if (importExisting) {
+            // Import existing RDS instance
+            this.instance = aws.rds.Instance.get(`${name}-postgres`, `${name}-postgres`, undefined, { parent: this });
+        } else {
+            // Create RDS parameter group for PostgreSQL optimization (only when creating new instance)
+            const parameterGroup = new aws.rds.ParameterGroup(`${name}-parameter-group`, {
+                name: `${name}-parameter-group`,
+                family: "postgres15",
+                description: "Custom parameter group for HappyRobot FDE PostgreSQL",
+                parameters: [
+                    {
+                        name: "shared_preload_libraries",
+                        value: "pg_stat_statements",
+                    },
+                    {
+                        name: "log_statement",
+                        value: "all",
+                    },
+                ],
+                tags: {
+                    ...args.tags,
+                    Name: `${name}-parameter-group`,
+                },
+            }, { parent: this });
+
+            // Create new RDS instance
+            this.instance = new aws.rds.Instance(`${name}-postgres`, {
+                identifier: `${name}-postgres`,
+                engine: "postgres",
+                engineVersion: "15.8", // Latest stable PostgreSQL 15.x version
+                instanceClass: args.instanceClass,
+                allocatedStorage: args.allocatedStorage,
+                maxAllocatedStorage: args.allocatedStorage * 2, // Allow auto-scaling up to 2x initial storage
+                storageType: "gp3",
+                storageEncrypted: true,
+
+                // Database configuration
+                dbName: "happyrobot",
+                username: "happyrobot",
+                password: dbPassword.result,
+
+                // Network configuration
+                dbSubnetGroupName: this.subnetGroup.name,
+                vpcSecurityGroupIds: [args.databaseSecurityGroup.id],
+                publiclyAccessible: false,
+
+                // Backup and maintenance
+                backupRetentionPeriod: 7,
+                backupWindow: "03:00-04:00", // UTC
+                maintenanceWindow: "sun:04:00-sun:05:00", // UTC
+
+                // Monitoring and logging
+                enabledCloudwatchLogsExports: ["postgresql"],
+                performanceInsightsEnabled: true,
+                performanceInsightsRetentionPeriod: 7, // Free tier
+                monitoringInterval: 60, // Enhanced monitoring every 60 seconds
+                monitoringRoleArn: this.createMonitoringRole().arn,
+
+                // High availability and performance
+                multiAz: false, // Disabled to reduce costs
+                parameterGroupName: parameterGroup.name,
+
+                // Security and compliance
+                deletionProtection: false, // Allow deletion for development
+                skipFinalSnapshot: true, // Skip final snapshot for development
+                finalSnapshotIdentifier: undefined,
+
+                // Auto minor version updates
+                autoMinorVersionUpgrade: true,
+
+                // Tags
+                tags: {
+                    ...args.tags,
+                    Name: `${name}-postgres`,
+                    Engine: "postgres",
+                    Purpose: "primary-database",
+                },
+            }, {
+                parent: this,
+                // Add explicit dependency on subnet group and security group
+                dependsOn: [this.subnetGroup, args.databaseSecurityGroup, parameterGroup],
+            });
+        }
 
         // Create AWS Secrets Manager secret for database credentials
         this.secret = new aws.secretsmanager.Secret(`${name}-credentials`, {

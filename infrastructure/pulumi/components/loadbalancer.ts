@@ -48,9 +48,9 @@ export class LoadBalancerComponent extends pulumi.ComponentResource {
             },
         }, { parent: this });
 
-        // HTTPS is only enabled if a certificate ARN is provided
+        // HTTPS is only enabled if both a certificate ARN is provided AND enableHttps is true
         // AWS ALBs require valid certificates for HTTPS listeners
-        const httpsEnabled = !!args.certificateArn;
+        const httpsEnabled = !!args.certificateArn && !!args.enableHttps;
         const certificateArn = args.certificateArn;
 
         // Create HTTP listener (redirects to HTTPS if HTTPS is enabled)
@@ -83,38 +83,28 @@ export class LoadBalancerComponent extends pulumi.ComponentResource {
 
         // Create HTTPS listener if certificate is provided
         if (httpsEnabled && certificateArn) {
-            // For now, use the existing listener that was manually created
-            // This prevents Pulumi from trying to create a duplicate
-            // TODO: Remove this workaround after properly importing the listener
-            if (args.environment === "dev") {
-                // Get the existing manually created listener
-                this.httpsListener = aws.lb.Listener.get(`${name}-https-listener`,
-                    "arn:aws:elasticloadbalancing:eu-south-2:533267139503:listener/app/happyrobot-dev-loadbalancer-alb/d734ec258e344f19/c9f87e7427a952ce",
-                    undefined, { parent: this });
-            } else {
-                // For other environments, create normally
-                this.httpsListener = new aws.lb.Listener(`${name}-https-listener`, {
-                    loadBalancerArn: this.alb.arn,
-                    port: 443,
-                    protocol: "HTTPS",
-                    sslPolicy: "ELBSecurityPolicy-TLS13-1-2-2021-06", // Use latest TLS 1.3 policy
-                    certificateArn: certificateArn,
-                    defaultActions: [
-                        {
-                            type: "forward",
-                            targetGroupArn: args.apiTargetGroup.arn,
-                        },
-                    ],
-                    tags: {
-                        ...args.tags,
-                        Name: `${name}-https-listener`,
+            this.httpsListener = new aws.lb.Listener(`${name}-https-listener`, {
+                loadBalancerArn: this.alb.arn,
+                port: 443,
+                protocol: "HTTPS",
+                sslPolicy: "ELBSecurityPolicy-TLS13-1-2-2021-06", // Use latest TLS 1.3 policy
+                certificateArn: certificateArn,
+                defaultActions: [
+                    {
+                        type: "forward",
+                        targetGroupArn: args.apiTargetGroup.arn,
                     },
-                }, { parent: this });
-            }
+                ],
+                tags: {
+                    ...args.tags,
+                    Name: `${name}-https-listener`,
+                },
+            }, { parent: this });
         }
 
         // Determine which listener to use for rules
-        const listenerArn = this.httpsListener ? this.httpsListener.arn : this.httpListener.arn;
+        // If HTTPS is enabled and we have an HTTPS listener, use it; otherwise use HTTP listener
+        const listenerArn = httpsEnabled && this.httpsListener ? this.httpsListener.arn : this.httpListener.arn;
 
         // Create listener rule for API routes (/api/*)
         this.apiListenerRule = new aws.lb.ListenerRule(`${name}-api-rule`, {
