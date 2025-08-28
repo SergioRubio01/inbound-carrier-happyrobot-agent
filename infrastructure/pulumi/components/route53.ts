@@ -21,6 +21,7 @@ export class HappyRobotDNS extends pulumi.ComponentResource {
         }, { parent: this });
 
         // Create an A record (ALIAS) for api.bizai.es that points to the ALB
+        // Note: Route53 records don't support tags
         this.apiRecord = new aws.route53.Record(`${name}-api-record`, {
             zoneId: hostedZone.then(zone => zone.zoneId),
             name: args.domainName,
@@ -30,10 +31,6 @@ export class HappyRobotDNS extends pulumi.ComponentResource {
                 zoneId: args.albZoneId,
                 evaluateTargetHealth: true,
             }],
-            tags: {
-                ...args.commonTags,
-                Environment: args.environment,
-            },
         }, { parent: this });
 
         // Export the created DNS record
