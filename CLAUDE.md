@@ -151,3 +151,4 @@ Each step uses HTTP POST to the API endpoints with appropriate JSON payloads.
 - use .is() method in sqlalchemy for boolean comparisons in queries
 - If and only if the user tells you, commit your changes with pre-commit hooks checks passed successfully. Otherwise, the user will manually do it
 - After the user has created a PR, go check the errors if the user tells you there are errors.
+- Use cerebras-mcp mcp to create/make edits in files.
