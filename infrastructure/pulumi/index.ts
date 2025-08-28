@@ -46,6 +46,9 @@ const database = new DatabaseComponent(`${resourcePrefix}-database`, {
 });
 
 // Create ECS cluster and container services
+// Component name: happyrobot-{environment}-containers
+// This will create ECR repository: happyrobot-{environment}-containers-api
+// Must match ECR_API_REPOSITORY in GitHub workflow (.github/workflows/deploy.yml)
 const containers = new ContainersComponent(`${resourcePrefix}-containers`, {
     vpc: networking.vpc,
     privateSubnets: networking.privateSubnets,
