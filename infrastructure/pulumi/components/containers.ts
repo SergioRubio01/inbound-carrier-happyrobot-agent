@@ -63,8 +63,8 @@ export class ContainersComponent extends pulumi.ComponentResource {
         // Pulumi automatically tracks file changes and only rebuilds when necessary
         const apiImage = new awsx.ecr.Image(`${name}-api-image`, {
             repositoryUrl: this.apiRepository.repositoryUrl,
-            context: path.resolve(__dirname, "../../../.."), // Path to the root of the project
-            dockerfile: path.resolve(__dirname, "../../../../Dockerfile.api"),
+            context: path.resolve(__dirname, "../../.."), // Path to the root of the project
+            dockerfile: path.resolve(__dirname, "../../../Dockerfile.api"),
             platform: "linux/amd64", // Ensure compatibility with Fargate
             // The image will be tagged with a hash of the build context
             // This ensures we only rebuild when source files actually change
