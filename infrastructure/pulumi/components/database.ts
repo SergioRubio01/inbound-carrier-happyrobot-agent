@@ -39,7 +39,6 @@ export class DatabaseComponent extends pulumi.ComponentResource {
 
         // Check if we should import an existing RDS instance or create a new one
         // This allows for smooth transitions from existing infrastructure
-        const config = new pulumi.Config("happyrobot-fde");
         const importExisting = config.getBoolean("importExistingDatabase") || false;
 
         if (importExisting) {
