@@ -1,7 +1,5 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
-import * as awsx from "@pulumi/awsx";
-import * as path from "path";
 
 export interface ContainersArgs {
     vpc: aws.ec2.Vpc;
@@ -58,21 +56,10 @@ export class ContainersComponent extends pulumi.ComponentResource {
             },
         }, { parent: this });
 
-        // Build and push Docker image to ECR
-        // This will only rebuild if the Docker context or Dockerfile changes
-        // Pulumi automatically tracks file changes and only rebuilds when necessary
-        const apiImage = new awsx.ecr.Image(`${name}-api-image`, {
-            repositoryUrl: this.apiRepository.repositoryUrl,
-            context: path.resolve(__dirname, "../../.."), // Path to the root of the project
-            dockerfile: path.resolve(__dirname, "../../../Dockerfile.api"),
-            platform: "linux/amd64", // Ensure compatibility with Fargate
-            // The image will be tagged with a hash of the build context
-            // This ensures we only rebuild when source files actually change
-            args: {
-                // Build args if needed
-                BUILDKIT_INLINE_CACHE: "1", // Enable inline cache for better caching
-            },
-        }, { parent: this });
+        // Note: Docker images are built and pushed by GitHub Actions
+        // We just reference the latest image here
+        // The image URL will use the 'latest' tag which is updated by CI/CD
+        const apiImageUri = pulumi.interpolate`${this.apiRepository.repositoryUrl}:latest`;
 
         // Create lifecycle policies for ECR repositories
         new aws.ecr.LifecyclePolicy(`${name}-api-lifecycle`, {
@@ -223,7 +210,7 @@ export class ContainersComponent extends pulumi.ComponentResource {
             executionRoleArn: this.executionRole.arn,
             taskRoleArn: this.taskRole.arn,
             containerDefinitions: pulumi.all([
-                apiImage.imageUri,
+                apiImageUri,
                 args.databaseEndpoint,
                 args.databaseSecretArn,
                 apiLogGroup.name,
