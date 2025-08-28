@@ -96,18 +96,18 @@ const monitoring = new MonitoringComponent(`${resourcePrefix}-monitoring`, {
 });
 
 // Create Route 53 DNS records for api.bizai.es
+// IMPORTANT: This depends on IAM being set up first to avoid permission errors
 const dns = new HappyRobotDNS(`${resourcePrefix}-dns`, {
     albDnsName: loadBalancer.alb.dnsName,
     albZoneId: loadBalancer.alb.zoneId,
     domainName: "api.bizai.es",
     environment,
     commonTags,
-});
+}, { dependsOn: [iam] }); // Ensure IAM is created first
 
 // Export important values
 export const vpcId = networking.vpc.id;
-export const route53PolicyArn = iam.route53Policy.arn;
-export const deploymentPolicyArn = iam.deploymentUserPolicy.arn;
+export const comprehensivePolicyArn = iam.comprehensiveDeploymentPolicy.arn;
 export const publicSubnetIds = networking.publicSubnets.map(subnet => subnet.id);
 export const privateSubnetIds = networking.privateSubnets.map(subnet => subnet.id);
 export const databaseEndpoint = database.endpoint;
@@ -152,8 +152,7 @@ export const outputs = {
         },
     },
     iam: {
-        route53PolicyArn: iam.route53Policy.arn,
-        deploymentPolicyArn: iam.deploymentUserPolicy.arn,
-        note: "Attach these policies to your IAM user for Route 53 access",
+        comprehensivePolicyArn: iam.comprehensiveDeploymentPolicy.arn,
+        note: "Attach this comprehensive policy to your IAM user for full deployment access",
     },
 };
