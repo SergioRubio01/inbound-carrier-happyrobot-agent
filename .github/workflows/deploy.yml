@@ -145,16 +145,30 @@ jobs:
       - name: Install Pulumi CLI
         uses: pulumi/actions@v4
 
-      - name: Create or select Pulumi stack
+      - name: Create or select Pulumi stack and set configuration
         run: |
           cd infrastructure/pulumi
           pulumi login
           # Try to select the stack, if it doesn't exist, create it
           pulumi stack select happyrobot-fde 2>/dev/null || pulumi stack init happyrobot-fde
-          # Set the AWS region config
+
+          # Set AWS region configuration
           pulumi config set aws:region ${{ env.AWS_REGION }}
+
+          # Set project-specific configuration values with namespace
+          pulumi config set happyrobot-fde:environment ${{ matrix.environment || 'dev' }}
+          pulumi config set happyrobot-fde:dbInstanceClass db.t3.micro
+          pulumi config set happyrobot-fde:dbAllocatedStorage 20
+          pulumi config set happyrobot-fde:dbPassword ${{ secrets.DB_PASSWORD }} --secret
+          pulumi config set happyrobot-fde:apiKey ${{ secrets.API_KEY }} --secret
+          pulumi config set happyrobot-fde:enableHttps true
+          pulumi config set happyrobot-fde:certificateArn arn:aws:acm:eu-south-2:533267139503:certificate/86ba13ac-ebee-4279-8ea5-ffdf9a71fb85
+          pulumi config set happyrobot-fde:maxLoadWeightLbs 80000
+          pulumi config set happyrobot-fde:maxReferenceNumberCounter 99999
+          pulumi config set happyrobot-fde:maxRateAmount 999999.99
         env:
           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
 
       - name: Deploy with Pulumi
         id: pulumi
