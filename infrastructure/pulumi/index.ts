@@ -5,6 +5,7 @@ import { DatabaseComponent } from "./components/database";
 import { ContainersComponent } from "./components/containers";
 import { LoadBalancerComponent } from "./components/loadbalancer";
 import { MonitoringComponent } from "./components/monitoring";
+import { HappyRobotDNS } from "./components/route53";
 
 // Get configuration
 const config = new pulumi.Config();
@@ -83,6 +84,15 @@ const monitoring = new MonitoringComponent(`${resourcePrefix}-monitoring`, {
     tags: commonTags,
 });
 
+// Create Route 53 DNS records for api.bizai.es
+const dns = new HappyRobotDNS(`${resourcePrefix}-dns`, {
+    albDnsName: loadBalancer.alb.dnsName,
+    albZoneId: loadBalancer.alb.zoneId,
+    domainName: "api.bizai.es",
+    environment,
+    commonTags,
+});
+
 // Export important values
 export const vpcId = networking.vpc.id;
 export const publicSubnetIds = networking.publicSubnets.map(subnet => subnet.id);
@@ -93,6 +103,7 @@ export const apiRepositoryUrl = containers.apiRepository.repositoryUrl;
 export const loadBalancerDnsName = loadBalancer.alb.dnsName;
 export const loadBalancerZoneId = loadBalancer.alb.zoneId;
 export const dashboardUrl = monitoring.dashboardUrl;
+export const apiDomainName = dns.apiRecord.fqdn;
 
 // Export environment-specific outputs
 export const outputs = {
@@ -116,6 +127,10 @@ export const outputs = {
         dnsName: loadBalancer.alb.dnsName,
         hostedZoneId: loadBalancer.alb.zoneId,
         apiTargetGroupArn: containers.apiTargetGroup.arn,
+    },
+    dns: {
+        apiDomain: dns.apiRecord.fqdn,
+        apiUrl: pulumi.interpolate`https://${dns.apiRecord.fqdn}`,
     },
     monitoring: {
         dashboardUrl: monitoring.dashboardUrl,
