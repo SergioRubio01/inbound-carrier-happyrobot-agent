@@ -238,7 +238,7 @@ export class ContainersComponent extends pulumi.ComponentResource {
                         },
                         {
                             name: "POSTGRES_HOST",
-                            value: dbEndpoint.split(':')[0], // Extract hostname only
+                            value: dbEndpoint ? dbEndpoint.split(':')[0] : "localhost", // Extract hostname only, fallback to localhost
                         },
                         {
                             name: "POSTGRES_PORT",

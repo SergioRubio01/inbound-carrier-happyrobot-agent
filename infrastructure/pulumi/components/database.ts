@@ -1,6 +1,5 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
-import * as random from "@pulumi/random";
 
 export interface DatabaseArgs {
     vpc: aws.ec2.Vpc;
@@ -24,12 +23,9 @@ export class DatabaseComponent extends pulumi.ComponentResource {
     constructor(name: string, args: DatabaseArgs, opts?: pulumi.ComponentResourceOptions) {
         super("happyrobot:database", name, {}, opts);
 
-        // Generate random password for database
-        const dbPassword = new random.RandomPassword(`${name}-password`, {
-            length: 32,
-            special: true,
-            overrideSpecial: "!#$%&*()-_=+[]{}:?", // Exclude characters that RDS doesn't accept: /@"' and space
-        }, { parent: this });
+        // Get database password from config (set by GitHub Actions)
+        const config = new pulumi.Config("happyrobot-fde");
+        const dbPasswordFromConfig = config.requireSecret("dbPassword");
 
         // Create database subnet group
         this.subnetGroup = new aws.rds.SubnetGroup(`${name}-subnet-group`, {
@@ -43,12 +39,18 @@ export class DatabaseComponent extends pulumi.ComponentResource {
 
         // Check if we should import an existing RDS instance or create a new one
         // This allows for smooth transitions from existing infrastructure
-        const importExisting = pulumi.Config.prototype.getBoolean.call(new pulumi.Config(), "importExistingDatabase") || false;
+        const config = new pulumi.Config("happyrobot-fde");
+        const importExisting = config.getBoolean("importExistingDatabase") || false;
 
         if (importExisting) {
             // Import existing RDS instance
-            this.instance = aws.rds.Instance.get(`${name}-postgres`, `${name}-postgres`, undefined, { parent: this });
-        } else {
+            // Note: For now, we'll skip importing and always create new
+            // This can be enabled later when we have an existing database to import
+            pulumi.log.warn("importExistingDatabase is set to true, but creating new database instead for initial deployment");
+        }
+
+        // Always create new for now (remove the else condition)
+        if (true) {
             // Create RDS parameter group for PostgreSQL optimization (only when creating new instance)
             const parameterGroup = new aws.rds.ParameterGroup(`${name}-parameter-group`, {
                 name: `${name}-parameter-group`,
@@ -84,7 +86,7 @@ export class DatabaseComponent extends pulumi.ComponentResource {
                 // Database configuration
                 dbName: "happyrobot",
                 username: "happyrobot",
-                password: dbPassword.result,
+                password: dbPasswordFromConfig,
 
                 // Network configuration
                 dbSubnetGroupName: this.subnetGroup.name,
@@ -144,7 +146,7 @@ export class DatabaseComponent extends pulumi.ComponentResource {
             secretId: this.secret.id,
             secretString: pulumi.jsonStringify({
                 username: "happyrobot",
-                password: dbPassword.result,
+                password: dbPasswordFromConfig,
                 engine: "postgres",
                 host: this.instance.endpoint,
                 port: this.instance.port,
