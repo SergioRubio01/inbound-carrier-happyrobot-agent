@@ -131,7 +131,7 @@ export class DatabaseComponent extends pulumi.ComponentResource {
 
         // Create AWS Secrets Manager secret for database credentials
         this.secret = new aws.secretsmanager.Secret(`${name}-credentials`, {
-            name: `${name}/database/credentials`,
+            name: `${name}-db-credentials-v2`,
             description: "Database credentials for HappyRobot FDE",
             tags: {
                 ...args.tags,
