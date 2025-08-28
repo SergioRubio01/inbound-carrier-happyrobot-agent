@@ -37,6 +37,9 @@ on:
 
 env:
   AWS_REGION: eu-south-2  # Spain region for compliance
+  # ECR repository name must match the name created by Pulumi infrastructure
+  # Naming convention: happyrobot-{environment}-containers-api
+  # This matches the ECR repository created in infrastructure/pulumi/components/containers.ts
   ECR_API_REPOSITORY: happyrobot-dev-containers-api
   PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
 
@@ -85,15 +88,26 @@ jobs:
         run: |
           poetry run pytest -m "not integration" --cov=src --cov-report=term-missing
 
-  # Build and push Docker images
-  build:
-    name: Build and Push Docker Images
+  # Deploy infrastructure first to create ECR repositories
+  deploy-infrastructure:
+    name: Deploy Infrastructure
     needs: test
     runs-on: ubuntu-latest
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
 
+    strategy:
+      matrix:
+        environment:
+          - ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'dev' }}
+
+    environment:
+      name: ${{ matrix.environment }}
+      url: ${{ steps.pulumi.outputs.loadbalancer-dns-name }}
+
     outputs:
-      api-image-tag: ${{ steps.meta.outputs.api-tag }}
+      ecr-registry: ${{ steps.login-ecr.outputs.registry }}
+      api-repository: ${{ env.ECR_API_REPOSITORY }}
+      loadbalancer-dns-name: ${{ steps.pulumi.outputs.loadbalancer-dns-name }}
 
     steps:
       - name: Checkout code
@@ -109,75 +123,6 @@ jobs:
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Generate image tags
-        id: meta
-        run: |
-          TIMESTAMP=$(date +%Y%m%d%H%M%S)
-          SHORT_SHA=${GITHUB_SHA::8}
-
-          # If this is a tag, use the tag as part of the image tag
-          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            VERSION=${GITHUB_REF#refs/tags/}
-            API_TAG="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_API_REPOSITORY }}:${VERSION}"
-            API_LATEST="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_API_REPOSITORY }}:latest"
-
-            # For production releases (non-prerelease), also tag as stable
-            if [[ ! "$VERSION" =~ - ]]; then
-              API_STABLE="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_API_REPOSITORY }}:stable"
-              echo "api-stable=${API_STABLE}" >> $GITHUB_OUTPUT
-            fi
-          else
-            API_TAG="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_API_REPOSITORY }}:${TIMESTAMP}-${SHORT_SHA}"
-            API_LATEST="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_API_REPOSITORY }}:latest"
-          fi
-
-          echo "api-tag=${API_TAG}" >> $GITHUB_OUTPUT
-          echo "api-latest=${API_LATEST}" >> $GITHUB_OUTPUT
-
-      - name: Build and push API image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./Dockerfile.api
-          push: true
-          tags: |
-            ${{ steps.meta.outputs.api-tag }}
-            ${{ steps.meta.outputs.api-latest }}
-            ${{ steps.meta.outputs.api-stable }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          platforms: linux/amd64
-
-  # Deploy infrastructure with Pulumi
-  deploy:
-    name: Deploy Infrastructure
-    needs: [test, build]
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-
-    strategy:
-      matrix:
-        environment:
-          - ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'dev' }}
-
-    environment:
-      name: ${{ matrix.environment }}
-      url: ${{ steps.pulumi.outputs.loadbalancer-dns-name }}
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -211,6 +156,98 @@ jobs:
         env:
           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
           PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+
+  # Build and push Docker images after infrastructure is ready
+  build:
+    name: Build and Push Docker Images
+    needs: [test, deploy-infrastructure]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+
+    outputs:
+      api-image-tag: ${{ steps.meta.outputs.api-tag }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Generate image tags
+        id: meta
+        run: |
+          TIMESTAMP=$(date +%Y%m%d%H%M%S)
+          SHORT_SHA=${GITHUB_SHA::8}
+
+          # If this is a tag, use the tag as part of the image tag
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/}
+            API_TAG="${{ needs.deploy-infrastructure.outputs.ecr-registry }}/${{ needs.deploy-infrastructure.outputs.api-repository }}:${VERSION}"
+            API_LATEST="${{ needs.deploy-infrastructure.outputs.ecr-registry }}/${{ needs.deploy-infrastructure.outputs.api-repository }}:latest"
+
+            # For production releases (non-prerelease), also tag as stable
+            if [[ ! "$VERSION" =~ - ]]; then
+              API_STABLE="${{ needs.deploy-infrastructure.outputs.ecr-registry }}/${{ needs.deploy-infrastructure.outputs.api-repository }}:stable"
+              echo "api-stable=${API_STABLE}" >> $GITHUB_OUTPUT
+            fi
+          else
+            API_TAG="${{ needs.deploy-infrastructure.outputs.ecr-registry }}/${{ needs.deploy-infrastructure.outputs.api-repository }}:${TIMESTAMP}-${SHORT_SHA}"
+            API_LATEST="${{ needs.deploy-infrastructure.outputs.ecr-registry }}/${{ needs.deploy-infrastructure.outputs.api-repository }}:latest"
+          fi
+
+          echo "api-tag=${API_TAG}" >> $GITHUB_OUTPUT
+          echo "api-latest=${API_LATEST}" >> $GITHUB_OUTPUT
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.api
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.api-tag }}
+            ${{ steps.meta.outputs.api-latest }}
+            ${{ steps.meta.outputs.api-stable }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+
+  # Update ECS services with new images
+  deploy:
+    name: Update ECS Services
+    needs: [test, deploy-infrastructure, build]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+
+    strategy:
+      matrix:
+        environment:
+          - ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'dev' }}
+
+    environment:
+      name: ${{ matrix.environment }}
+      url: ${{ needs.deploy-infrastructure.outputs.loadbalancer-dns-name }}
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Update ECS services with new images
         if: needs.build.outputs.api-image-tag != ''
@@ -247,9 +284,7 @@ jobs:
 
       - name: Run health checks
         run: |
-          # Get ALB DNS name from Pulumi outputs
-          cd infrastructure/pulumi
-          ALB_DNS=$(pulumi stack output loadBalancerDnsName -s happyrobot-fde)
+          ALB_DNS="${{ needs.deploy-infrastructure.outputs.loadbalancer-dns-name }}"
 
           echo "Running health checks against http://${ALB_DNS}"
 
@@ -265,7 +300,7 @@ jobs:
   # Notify on deployment completion
   notify:
     name: Notify Deployment Status
-    needs: deploy
+    needs: [deploy-infrastructure, deploy]
     runs-on: ubuntu-latest
     if: always() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
 
@@ -276,7 +311,7 @@ jobs:
           echo "🚀 Deployment completed successfully!"
           echo "Environment: ${{ matrix.environment || 'dev' }}"
           echo "Commit: ${{ github.sha }}"
-          echo "Load Balancer: ${{ needs.deploy.outputs.loadbalancer-dns-name }}"
+          echo "Load Balancer: ${{ needs.deploy-infrastructure.outputs.loadbalancer-dns-name }}"
 
       - name: Notify Failure
         if: needs.deploy.result == 'failure'

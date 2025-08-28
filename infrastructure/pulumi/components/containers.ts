@@ -43,6 +43,9 @@ export class ContainersComponent extends pulumi.ComponentResource {
         }, { parent: this });
 
         // Create ECR repositories
+        // Repository naming convention: {environment}-containers-api
+        // For dev environment: happyrobot-dev-containers-api
+        // This name must match ECR_API_REPOSITORY in GitHub workflow deploy.yml
         this.apiRepository = new aws.ecr.Repository(`${name}-api-repo`, {
             name: `${name}-api`,
             imageTagMutability: "MUTABLE",
