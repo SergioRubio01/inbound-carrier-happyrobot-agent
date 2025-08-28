@@ -66,9 +66,6 @@ export class ContainersComponent extends pulumi.ComponentResource {
             // The image will be tagged with a hash of the build context
             // This ensures we only rebuild when source files actually change
             imageName: pulumi.interpolate`${this.apiRepository.repositoryUrl}:${args.environment}`,
-            cacheFrom: {
-                stages: ["build", "runtime"], // Cache intermediate build stages if your Dockerfile uses multi-stage builds
-            },
             args: {
                 // Build args if needed
                 BUILDKIT_INLINE_CACHE: "1", // Enable inline cache for better caching
