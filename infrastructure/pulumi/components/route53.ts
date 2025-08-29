@@ -7,6 +7,7 @@ interface HappyRobotDNSArgs {
     domainName: pulumi.Input<string>;
     environment: pulumi.Input<string>;
     commonTags: pulumi.Input<{[key: string]: pulumi.Input<string>}>;
+    hostedZoneId?: pulumi.Input<string>;
 }
 
 export class HappyRobotDNS extends pulumi.ComponentResource {
@@ -15,15 +16,22 @@ export class HappyRobotDNS extends pulumi.ComponentResource {
     constructor(name: string, private args: HappyRobotDNSArgs, opts?: pulumi.ResourceOptions) {
         super('happyrobot:dns:Route53', name, args, opts);
 
-        // Look up the existing hosted zone for bizai.es domain
-        const hostedZone = aws.route53.getZone({
-            name: 'bizai.es',
-        }, { parent: this });
+        // Defer the hosted zone lookup to deployment time
+        const zoneId = pulumi.output(args.hostedZoneId).apply(zoneId => {
+            if (zoneId) {
+                return zoneId;
+            }
+
+            // If no zone ID provided, look up the hosted zone
+            return aws.route53.getZone({
+                name: 'bizai.es',
+            }, { parent: this }).then(zone => zone.zoneId);
+        });
 
         // Create an A record (ALIAS) for api.bizai.es that points to the ALB
         // Note: Route53 records don't support tags
         this.apiRecord = new aws.route53.Record(`${name}-api-record`, {
-            zoneId: hostedZone.then(zone => zone.zoneId),
+            zoneId: zoneId,
             name: args.domainName,
             type: 'A',
             aliases: [{

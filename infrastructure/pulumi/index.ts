@@ -96,13 +96,15 @@ const monitoring = new MonitoringComponent(`${resourcePrefix}-monitoring`, {
 });
 
 // Create Route 53 DNS records for api.bizai.es
-// IMPORTANT: This depends on IAM being set up first to avoid permission errors
+// Providing hostedZoneId directly to avoid permission errors during compilation
+// The hosted zone ID is known from previous deployments and configured in Pulumi config
 const dns = new HappyRobotDNS(`${resourcePrefix}-dns`, {
     albDnsName: loadBalancer.alb.dnsName,
     albZoneId: loadBalancer.alb.zoneId,
     domainName: "api.bizai.es",
     environment,
     commonTags,
+    hostedZoneId: config.get("hostedZoneId"), // Provide hosted zone ID directly from config
 }, { dependsOn: [iam] }); // Ensure IAM is created first
 
 // Export important values

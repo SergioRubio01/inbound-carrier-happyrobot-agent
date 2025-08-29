@@ -167,6 +167,8 @@ jobs:
           pulumi config set happyrobot-fde:maxReferenceNumberCounter 99999
           pulumi config set happyrobot-fde:maxRateAmount 999999.99
           pulumi config set happyrobot-fde:deploymentIamUser Sergio-HappyRobot
+          # Set hosted zone ID directly to avoid Route53 lookup permission issues
+          pulumi config set happyrobot-fde:hostedZoneId Z3UJ7V8ZXAMVXN
         env:
           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
           PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
