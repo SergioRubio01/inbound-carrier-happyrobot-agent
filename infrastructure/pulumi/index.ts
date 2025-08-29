@@ -107,7 +107,6 @@ const dns = new HappyRobotDNS(`${resourcePrefix}-dns`, {
 
 // Export important values
 export const vpcId = networking.vpc.id;
-export const comprehensivePolicyArn = iam.comprehensiveDeploymentPolicy.arn;
 export const publicSubnetIds = networking.publicSubnets.map(subnet => subnet.id);
 export const privateSubnetIds = networking.privateSubnets.map(subnet => subnet.id);
 export const databaseEndpoint = database.endpoint;
@@ -152,7 +151,7 @@ export const outputs = {
         },
     },
     iam: {
-        comprehensivePolicyArn: iam.comprehensiveDeploymentPolicy.arn,
-        note: "Attach this comprehensive policy to your IAM user for full deployment access",
+        policyAttached: !!iam.comprehensiveDeploymentPolicy,
+        note: "Comprehensive inline policy attached directly to the specified IAM user",
     },
 };

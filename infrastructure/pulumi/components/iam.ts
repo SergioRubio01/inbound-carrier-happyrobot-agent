@@ -8,95 +8,84 @@ export interface IAMComponentArgs {
 }
 
 export class IAMComponent extends pulumi.ComponentResource {
-    public readonly comprehensiveDeploymentPolicy: aws.iam.Policy;
+    public readonly comprehensiveDeploymentPolicy: aws.iam.UserPolicy | undefined;
 
     constructor(name: string, args: IAMComponentArgs, opts?: pulumi.ComponentResourceOptions) {
         super("happyrobot:iam", name, {}, opts);
 
-        // Create a single comprehensive deployment policy that includes all permissions
-        // This consolidation helps avoid the AWS limit of 10 policies per user
-        this.comprehensiveDeploymentPolicy = new aws.iam.Policy(`${name}-comprehensive-policy`, {
-            name: `${name}-comprehensive-deployment`,
-            description: "Comprehensive policy for Pulumi deployments including Route 53 and all deployment permissions",
-            policy: JSON.stringify({
-                Version: "2012-10-17",
-                Statement: [
-                    // Route 53 List permissions (needed for getZone operations)
-                    {
-                        Sid: "Route53ListPermissions",
-                        Effect: "Allow",
-                        Action: [
-                            "route53:ListHostedZones",
-                            "route53:ListHostedZonesByName",
-                            "route53:GetHostedZoneCount",
-                            "route53:ListResourceRecordSets"
-                        ],
-                        Resource: "*"
-                    },
-                    // Route 53 Zone permissions
-                    {
-                        Sid: "Route53ZonePermissions",
-                        Effect: "Allow",
-                        Action: [
-                            "route53:GetHostedZone",
-                            "route53:GetHostedZoneLimit",
-                            "route53:ListTagsForResource"
-                        ],
-                        Resource: [
-                            "arn:aws:route53:::hostedzone/*"
-                        ]
-                    },
-                    // Route 53 Record permissions
-                    {
-                        Sid: "Route53RecordPermissions",
-                        Effect: "Allow",
-                        Action: [
-                            "route53:ChangeResourceRecordSets",
-                            "route53:GetChange"
-                        ],
-                        Resource: [
-                            "arn:aws:route53:::hostedzone/*",
-                            "arn:aws:route53:::change/*"
-                        ]
-                    },
-                    // Tagging permissions
-                    {
-                        Sid: "TaggingPermissions",
-                        Effect: "Allow",
-                        Action: [
-                            "tag:GetResources",
-                            "tag:TagResources",
-                            "tag:UntagResources",
-                            "tag:GetTagKeys",
-                            "tag:GetTagValues"
-                        ],
-                        Resource: "*"
-                    }
-                ]
-            }),
-            tags: {
-                ...args.tags,
-                Name: `${name}-comprehensive-policy`,
-                Purpose: "Comprehensive Pulumi Deployment"
-            }
-        }, { parent: this });
-
-        // Optionally attach the comprehensive policy to an existing IAM user
+        // Create a single comprehensive deployment inline policy that includes all permissions
+        // This avoids the AWS limit of 10 managed policies per user
         if (args.attachToUser) {
-            // Attach the single comprehensive policy to the user
-            new aws.iam.UserPolicyAttachment(`${name}-user-comprehensive-attachment`, {
+            this.comprehensiveDeploymentPolicy = new aws.iam.UserPolicy(`${name}-comprehensive-policy`, {
                 user: args.attachToUser,
-                policyArn: this.comprehensiveDeploymentPolicy.arn,
+                name: `${name}-comprehensive-deployment`,
+                policy: JSON.stringify({
+                    Version: "2012-10-17",
+                    Statement: [
+                        // Route 53 List permissions (needed for getZone operations)
+                        {
+                            Sid: "Route53ListPermissions",
+                            Effect: "Allow",
+                            Action: [
+                                "route53:ListHostedZones",
+                                "route53:ListHostedZonesByName",
+                                "route53:GetHostedZoneCount",
+                                "route53:ListResourceRecordSets"
+                            ],
+                            Resource: "*"
+                        },
+                        // Route 53 Zone permissions
+                        {
+                            Sid: "Route53ZonePermissions",
+                            Effect: "Allow",
+                            Action: [
+                                "route53:GetHostedZone",
+                                "route53:GetHostedZoneLimit",
+                                "route53:ListTagsForResource"
+                            ],
+                            Resource: [
+                                "arn:aws:route53:::hostedzone/*"
+                            ]
+                        },
+                        // Route 53 Record permissions
+                        {
+                            Sid: "Route53RecordPermissions",
+                            Effect: "Allow",
+                            Action: [
+                                "route53:ChangeResourceRecordSets",
+                                "route53:GetChange"
+                            ],
+                            Resource: [
+                                "arn:aws:route53:::hostedzone/*",
+                                "arn:aws:route53:::change/*"
+                            ]
+                        },
+                        // Tagging permissions
+                        {
+                            Sid: "TaggingPermissions",
+                            Effect: "Allow",
+                            Action: [
+                                "tag:GetResources",
+                                "tag:TagResources",
+                                "tag:UntagResources",
+                                "tag:GetTagKeys",
+                                "tag:GetTagValues"
+                            ],
+                            Resource: "*"
+                        }
+                    ]
+                }),
             }, { parent: this });
 
-            pulumi.log.info(`Comprehensive IAM policy will be attached to user: ${args.attachToUser}`);
+            pulumi.log.info(`Comprehensive inline IAM policy attached to user: ${args.attachToUser}`);
         } else {
-            pulumi.log.info("Comprehensive IAM policy created but not attached to any user. Attach manually or set 'attachToUser' parameter.");
+            this.comprehensiveDeploymentPolicy = undefined;
+            pulumi.log.info("No IAM user specified. Comprehensive inline IAM policy not created.");
         }
 
-        // Export policy ARN for manual attachment or reference
+        // Export a flag to indicate if the policy was created
         this.registerOutputs({
-            comprehensivePolicyArn: this.comprehensiveDeploymentPolicy.arn,
+            policyCreated: !!this.comprehensiveDeploymentPolicy,
         });
     }
 }
